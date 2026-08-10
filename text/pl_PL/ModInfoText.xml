@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Database>
+    <EnglishText>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_NAME">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_DESCRIPTION">
+            <Text>Ulepsza ekran Handlu - miejsce zarzadzania zasobami i szlakami handlowymi. Zmienia wylacznie interfejs, nie rusza zasad gry.</Text>
+        </Row>
+    </EnglishText>
+</Database>

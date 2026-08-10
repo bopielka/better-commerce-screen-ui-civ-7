@@ -1,0 +1,14 @@
+# System
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Edytory
+.vscode/
+.idea/
+*.swp
+*~
+
+# Lokalne notatki / zrzuty z gry
+scratch/
+*.log

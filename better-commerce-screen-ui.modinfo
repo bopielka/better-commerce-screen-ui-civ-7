@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Mod id="better-commerce-screen-ui" version="0.1"
+    xmlns="ModInfo">
+    <Properties>
+        <Name>LOC_MOD_NAJANE_COMMERCE_NAME</Name>
+        <Version>0.1</Version>
+        <Description>LOC_MOD_NAJANE_COMMERCE_DESCRIPTION</Description>
+        <Authors>Najane</Authors>
+        <Package>Mod</Package>
+        <AffectsSavedGames>0</AffectsSavedGames>
+        <ShowInBrowser>1</ShowInBrowser>
+    </Properties>
+    <Dependencies>
+        <Mod id="base-standard" title="LOC_MODULE_BASE_STANDARD_NAME" />
+    </Dependencies>
+    <ActionCriteria>
+        <Criteria id="always">
+            <AlwaysMet></AlwaysMet>
+        </Criteria>
+    </ActionCriteria>
+    <ActionGroups>
+        <ActionGroup id="najane-commerce-ui" scope="game" criteria="always">
+            <Properties>
+                <LoadOrder>1000</LoadOrder>
+            </Properties>
+            <Actions>
+                <UpdateText>
+                    <Item>text/en_us/InGameText.xml</Item>
+                    <Item locale="pl_PL">text/pl_PL/InGameText.xml</Item>
+                </UpdateText>
+                <UIScripts>
+                    <Item>ui/better-commerce-screen-ui.js</Item>
+                </UIScripts>
+            </Actions>
+        </ActionGroup>
+    </ActionGroups>
+    <LocalizedText>
+        <File>text/en_us/ModInfoText.xml</File>
+        <File>text/pl_PL/ModInfoText.xml</File>
+    </LocalizedText>
+</Mod>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Database>
+    <EnglishText>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_NAME">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_DESCRIPTION">
+            <Text>Improves the Commerce screen - the place where resources and trade routes are managed. UI only - no game rules are changed.</Text>
+        </Row>
+    </EnglishText>
+</Database>
