@@ -1,6 +1,284 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Every string this mod puts on screen lives here. Nothing is written into the
+    JavaScript, so a new language needs only a copy of this file - see text/pl_PL.
+
+    Yield names are NOT repeated here: the priority picker reads them from the game's
+    own data (GameInfo.Yields -> Name), so they are already translated everywhere.
+-->
 <Database>
     <EnglishText>
-        <!-- In-game strings for the mod go here. -->
+        <!-- The three buttons above the tabs -->
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL">
+            <Text>Assign All</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_BUSY">
+            <Text>Assigning...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP">
+            <Text>Assigns all currently unassigned resources while preserving existing assignments. Settlements on negative happiness are served first, worst one at a time, until none is below zero. After that: camels, then resources whose stronger settlement criteria are met, then single-yield resources, then multi-yield ones.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL">
+            <Text>Reassign All</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_BUSY">
+            <Text>Reassigning...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_TOOLTIP">
+            <Text>Clears every assigned resource, then rebuilds the assignments from scratch using the same order.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL">
+            <Text>Unassign All</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY">
+            <Text>Unassigning...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP">
+            <Text>Returns every assigned resource in the empire to the unassigned pool.</Text>
+        </Row>
+
+        <!-- The controls on each settlement card -->
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP">
+            <Text>Choose the yield this settlement should prioritize. Balanced targets the settlement's lowest affected yields.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT">
+            <Text>Priority: {1_Priority}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_OPTION_TOOLTIP">
+            <Text>Prioritize {1_Priority} in this settlement.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED">
+            <Text>Balanced</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP">
+            <Text>Use Balanced assignment and prioritize this settlement's lowest affected yields.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN">
+            <Text>Quick Assign</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP">
+            <Text>Assigns currently unassigned resources only to this settlement while preserving existing assignments.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE">
+            <Text>Assign resources automatically</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION">
+            <Text>What to do when a resource is acquired, by improving a tile or over a trade route, without opening the Commerce screen. Uses the same order as Assign All.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF">
+            <Text>Never</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_NEW">
+            <Text>Place the new resource</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_ALL">
+            <Text>Place everything unassigned</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD">
+            <Text>Rebuild every assignment</Text>
+        </Row>
+
+        <!-- The "?" beside the buttons -->
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS">
+            <Text>Mouse shortcuts</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP">
+            <Text>Mouse shortcuts[N][N]Right-click an assigned resource - send it back to the unassigned pool.[N]Shift + right-click - send back every resource of that same kind in that settlement.[N][N]Shift while assigning, by dragging or by clicking - keep filling that settlement with resources of the same kind until it runs out of room.[N][N]Hold Shift and hover anything - every resource of that kind grows, showing what the action above would affect.</Text>
+        </Row>
+
+        <!-- The Modern-age switch in the button row -->
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST">
+            <Text>Factories first</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP">
+            <Text>Place factory resources before anything else. A settlement can run only one kind of factory resource, but any number of copies of it, so each factory is started on the kind you have most of and then filled with it. Settlements below zero happiness are still dealt with first. Modern age only, and on unless you turn it off.</Text>
+        </Row>
+
+        <!-- Unit classes: the game's data has no name for these tags anywhere -->
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT">
+            <Text>aircraft</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY">
+            <Text>cavalry</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY">
+            <Text>heavy naval</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_INFANTRY">
+            <Text>infantry</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_LIGHT">
+            <Text>light naval</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_NAVAL">
+            <Text>all naval</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_RANGED">
+            <Text>ranged</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_SIEGE">
+            <Text>siege</Text>
+        </Row>
+
+        <!-- Tab strip tooltips; the tab titles do not say what each tab holds -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES">
+            <Text>City and bonus resources</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE">
+            <Text>Empire resources</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE">
+            <Text>Empire and treasure resources</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE">
+            <Text>Treasure settlements</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY">
+            <Text>Factory resources</Text>
+        </Row>
+
+        <!-- Factory Resources tab -->
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING">
+            <Text>In factories</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING_EMPTY">
+            <Text>No factory resource is assigned anywhere, so none of them is doing anything.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE">
+            <Text>Not assigned</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_EMPTY">
+            <Text>Every factory resource you hold is in a factory.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE">
+            <Text>These give nothing where they are. The figures above are what they would add once assigned to a settlement with a Factory.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP">
+            <Text>GDP from factory resources</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP">
+            <Text>{1_Rate} GDP per turn for every factory resource in a factory, and you have {2_Count} of them assigned. This is what the Modern economic legacy path is scored on. Some unique quarters, such as America's Industrial Park, pay more on top of this and are not counted here.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW">
+            <Text>Roughly {1_Amount} of the {3_Net} {2_Yield} your empire makes each turn comes from this. An estimate: percentage bonuses from other sources shift it.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD">
+            <Text>Assigning these would add roughly {1_Amount} per turn to the {3_Net} {2_Yield} your empire already makes. An estimate: percentage bonuses from other sources shift it.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS">
+            <Text>In factories</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_BUILDINGS">
+            <Text>buildings</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WONDERS">
+            <Text>wonders</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_LAND_UNITS">
+            <Text>land units</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_SEA_UNITS">
+            <Text>naval units</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GROWTH">
+            <Text>growth rate</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_HEAL">
+            <Text>healing per turn</Text>
+        </Row>
+
+        <!-- The trade route total above the tabs -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL">
+            <Text>Trade routes</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_SLOTS_FREE">
+            <Text>{1_Count} still free</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_USED">
+            <Text>Trade routes in use: {1_Used} of {2_Total}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OPEN_NOW">
+            <Text>You can open one now with:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OUT_OF_REACH">
+            <Text>Room left, but nothing of theirs is in range:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_FULL">
+            <Text>Every trade route you can hold is in use.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_NOBODY">
+            <Text>You have not met anyone to trade with yet.</Text>
+        </Row>
+
+        <!-- Treasure convoys tab -->
+        <!--
+            Blanking a base-game string, not adding one of ours.
+
+            "Treasure Resources" is written above the icons on every convoy card, on a
+            screen whose every card is a treasure convoy. The card already says which
+            settlement it is; the heading only costs a line.
+
+            The card renders it as a bare text node, so no CSS selector can reach it -
+            but the key is used in exactly one place in the whole game, so emptying it
+            here removes the heading and nothing else. One row per language: a locale
+            without this row keeps the heading.
+        -->
+        <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE">
+            <Text></Text>
+        </Replace>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK">
+            <Text>What a click does here</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP">
+            <Text>Clicking a settlement's name, one of its resources or its convoy flag moves the map to it - but this screen stays open, so you will not see it until you close the screen yourself. Nothing is assigned, moved or spent by clicking.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL">
+            <Text>Paid out per convoy, once it unloads in your homeland.</Text>
+        </Row>
+
+        <!-- Trade routes tab -->
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT">
+            <Text>Only the trade route limit is in the way</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_RANGE">
+            <Text>Out of trade route range</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA">
+            <Text>Sea trade route</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_LAND">
+            <Text>Land trade route</Text>
+        </Row>
+
+        <!-- The rebuilt Empire Resources tab -->
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING">
+            <Text>Counted once for the empire - further copies do not add to this.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_INCOME">
+            <Text>Income from empire resources</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ONE">
+            <Text>One</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ALL">
+            <Text>All</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY">
+            <Text>Only during a Celebration, so it is not counted in the income above.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CAPPED">
+            <Text>The game caps this bonus, so the copies beyond the cap add nothing to it.</Text>
+        </Row>
+
+        <!-- The Factory Resources tab, Modern age -->
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION">
+            <Text>Factory resources across your empire.</Text>
+        </Row>
     </EnglishText>
 </Database>

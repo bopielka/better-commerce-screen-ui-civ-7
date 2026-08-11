@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL" Language="de_DE">
+            <Text>Alle zuweisen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_BUSY" Language="de_DE">
+            <Text>Wird zugewiesen ...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="de_DE">
+            <Text>Weist alle derzeit nicht zugewiesenen Ressourcen zu und behält bestehende Zuweisungen bei. Siedlungen mit negativer Zufriedenheit kommen zuerst, jeweils die schlechteste, bis keine mehr unter null liegt. Danach: Kamele, dann Ressourcen, deren stärkeres Siedlungskriterium erfüllt ist, dann Ressourcen mit einem Ertrag, zuletzt die mit mehreren.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="de_DE">
+            <Text>Alle neu zuweisen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_BUSY" Language="de_DE">
+            <Text>Wird neu zugewiesen ...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_TOOLTIP" Language="de_DE">
+            <Text>Hebt jede Zuweisung auf und baut sie anschließend in derselben Reihenfolge von Grund auf neu auf.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL" Language="de_DE">
+            <Text>Alle freigeben</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY" Language="de_DE">
+            <Text>Wird freigegeben ...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP" Language="de_DE">
+            <Text>Gibt jede zugewiesene Ressource im Reich in den Vorrat zurück.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="de_DE">
+            <Text>Wählt den Ertrag, den diese Siedlung bevorzugt erhalten soll. Ausgewogen zielt auf die niedrigsten betroffenen Erträge der Siedlung.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="de_DE">
+            <Text>Priorität: {1_Priority}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_OPTION_TOOLTIP" Language="de_DE">
+            <Text>{1_Priority} in dieser Siedlung bevorzugen.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED" Language="de_DE">
+            <Text>Ausgewogen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="de_DE">
+            <Text>Weist ausgewogen zu und bevorzugt die niedrigsten betroffenen Erträge dieser Siedlung.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="de_DE">
+            <Text>Schnell zuweisen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="de_DE">
+            <Text>Weist nicht zugewiesene Ressourcen nur dieser Siedlung zu und behält bestehende Zuweisungen bei.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="de_DE">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="de_DE">
+            <Text>Ressourcen automatisch zuweisen</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="de_DE">
+            <Text>Was geschehen soll, wenn eine Ressource hinzukommt - durch den Ausbau eines Felds oder über einen Handelsweg - ohne dass der Handelsbildschirm geöffnet wird. Verwendet dieselbe Reihenfolge wie Alle zuweisen.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="de_DE">
+            <Text>Nie</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_NEW" Language="de_DE">
+            <Text>Die neue Ressource platzieren</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_ALL" Language="de_DE">
+            <Text>Alles Nichtzugewiesene platzieren</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="de_DE">
+            <Text>Alle Zuweisungen neu aufbauen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="de_DE">
+            <Text>Maus-Kurzbefehle</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="de_DE">
+            <Text>Maus-Kurzbefehle[N][N]Rechtsklick auf eine zugewiesene Ressource - gibt sie in den Vorrat zurück.[N]Umschalt + Rechtsklick - gibt alle Ressourcen derselben Art in dieser Siedlung zurück.[N][N]Umschalt beim Zuweisen, per Ziehen oder Klicken - füllt die Siedlung weiter mit Ressourcen derselben Art, bis kein Platz mehr ist.[N][N]Umschalt halten und über etwas fahren - alle Ressourcen dieser Art werden größer und zeigen, was die Aktion oben betreffen würde.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="de_DE">
+            <Text>Fabriken zuerst</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="de_DE">
+            <Text>Platziert Fabrikressourcen vor allem anderen. Eine Siedlung kann nur eine Art Fabrikressource betreiben, davon aber beliebig viele Exemplare - daher wird jede Fabrik mit der Art begonnen, von der Ihr am meisten habt, und dann damit gefüllt. Siedlungen unter null Zufriedenheit kommen weiterhin zuerst. Nur im Modernen Zeitalter, und aktiv, sofern Ihr es nicht abschaltet.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="de_DE">
+            <Text>Flugzeuge</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="de_DE">
+            <Text>Kavallerie</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="de_DE">
+            <Text>schwere Schiffe</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_INFANTRY" Language="de_DE">
+            <Text>Infanterie</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_LIGHT" Language="de_DE">
+            <Text>leichte Schiffe</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_NAVAL" Language="de_DE">
+            <Text>alle Schiffe</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_RANGED" Language="de_DE">
+            <Text>Fernkampf</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_SIEGE" Language="de_DE">
+            <Text>Belagerung</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES" Language="de_DE">
+            <Text>Stadt- und Bonusressourcen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE" Language="de_DE">
+            <Text>Reichsressourcen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE" Language="de_DE">
+            <Text>Reichs- und Schatzressourcen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE" Language="de_DE">
+            <Text>Schatzsiedlungen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="de_DE">
+            <Text>Fabrikressourcen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="de_DE">
+            <Text>In Fabriken</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING_EMPTY" Language="de_DE">
+            <Text>Keine Fabrikressource ist irgendwo zugewiesen, also bewirkt keine davon etwas.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE" Language="de_DE">
+            <Text>Nicht zugewiesen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_EMPTY" Language="de_DE">
+            <Text>Jede Fabrikressource, die Ihr besitzt, steckt in einer Fabrik.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE" Language="de_DE">
+            <Text>Dort, wo sie liegen, bewirken sie nichts. Die Zahlen oben sind das, was sie beitragen würden, sobald sie einer Siedlung mit Fabrik zugewiesen sind.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP" Language="de_DE">
+            <Text>BIP aus Fabrikressourcen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="de_DE">
+            <Text>{1_Rate} BIP pro Runde für jede Fabrikressource in einer Fabrik, und Ihr habt {2_Count} davon zugewiesen. Danach wird der wirtschaftliche Vermächtnispfad der Moderne gewertet. Manche einzigartigen Viertel, etwa Amerikas Industriepark, zahlen zusätzlich und sind hier nicht mitgezählt.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="de_DE">
+            <Text>Rund {1_Amount} der {3_Net} {2_Yield}, die Euer Reich pro Runde erwirtschaftet, stammen hieraus. Eine Schätzung: prozentuale Boni aus anderen Quellen verschieben sie.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="de_DE">
+            <Text>Diese zuzuweisen brächte rund {1_Amount} pro Runde zusätzlich zu den {3_Net} {2_Yield}, die Euer Reich bereits erwirtschaftet. Eine Schätzung: prozentuale Boni aus anderen Quellen verschieben sie.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="de_DE">
+            <Text>In Fabriken</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_BUILDINGS" Language="de_DE">
+            <Text>Gebäude</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WONDERS" Language="de_DE">
+            <Text>Wunder</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_LAND_UNITS" Language="de_DE">
+            <Text>Landeinheiten</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_SEA_UNITS" Language="de_DE">
+            <Text>Schiffe</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GROWTH" Language="de_DE">
+            <Text>Wachstumsrate</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_HEAL" Language="de_DE">
+            <Text>Heilung pro Runde</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL" Language="de_DE">
+            <Text>Handelswege</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_SLOTS_FREE" Language="de_DE">
+            <Text>noch frei: {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_USED" Language="de_DE">
+            <Text>Genutzte Handelswege: {1_Used} von {2_Total}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OPEN_NOW" Language="de_DE">
+            <Text>Sofort möglich mit:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OUT_OF_REACH" Language="de_DE">
+            <Text>Platz vorhanden, aber nichts von ihnen in Reichweite:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_FULL" Language="de_DE">
+            <Text>Jeder Handelsweg, den Ihr unterhalten könnt, ist in Gebrauch.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_NOBODY" Language="de_DE">
+            <Text>Ihr habt noch niemanden getroffen, mit dem Ihr handeln könntet.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK" Language="de_DE">
+            <Text>Was ein Klick hier bewirkt</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP" Language="de_DE">
+            <Text>Ein Klick auf den Namen einer Siedlung, auf eine ihrer Ressourcen oder auf ihre Konvoiflagge bewegt die Karte dorthin - dieser Bildschirm bleibt jedoch offen, Ihr seht es also erst, wenn Ihr ihn selbst schließt. Durch den Klick wird nichts zugewiesen, verschoben oder ausgegeben.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="de_DE">
+            <Text>Wird je Konvoi ausgezahlt, sobald er im Heimatland entladen wird.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="de_DE">
+            <Text>Nur das Handelsweg-Limit steht im Weg</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_RANGE" Language="de_DE">
+            <Text>Außerhalb der Handelsweg-Reichweite</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA" Language="de_DE">
+            <Text>Seehandelsweg</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_LAND" Language="de_DE">
+            <Text>Landhandelsweg</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING" Language="de_DE">
+            <Text>Zählt einmal für das gesamte Reich - weitere Exemplare erhöhen dies nicht.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_INCOME" Language="de_DE">
+            <Text>Einkommen aus Reichsressourcen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ONE" Language="de_DE">
+            <Text>Eines</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ALL" Language="de_DE">
+            <Text>Alle</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY" Language="de_DE">
+            <Text>Nur während einer Feier, daher im Einkommen oben nicht mitgezählt.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CAPPED" Language="de_DE">
+            <Text>Das Spiel begrenzt diesen Bonus, die Exemplare jenseits der Grenze tragen also nichts mehr bei.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION" Language="de_DE">
+            <Text>Fabrikressourcen in Eurem gesamten Reich.</Text>
+        </Row>
+
+        <!--
+            Blanking a base-game string, not adding one of ours: the "Treasure Resources"
+            heading repeated on every convoy card. One row per language - a locale without
+            this row keeps the heading. See text/en_us/InGameText.xml for the full note.
+        -->
+        <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="de_DE">
+            <Text></Text>
+        </Replace>
+    </LocalizedText>
+</Database>

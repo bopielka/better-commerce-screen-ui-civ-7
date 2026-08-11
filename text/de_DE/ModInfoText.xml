@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_NAME" Language="de_DE">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_DESCRIPTION" Language="de_DE">
+            <Text>Verbessert den Handelsbildschirm - dort, wo Ressourcen und Handelswege verwaltet werden. Rechtsklick auf eine zugewiesene Ressource gibt sie zurück, Umschalt + Rechtsklick gibt alle Ressourcen dieser Art zurück.</Text>
+        </Row>
+    </LocalizedText>
+</Database>

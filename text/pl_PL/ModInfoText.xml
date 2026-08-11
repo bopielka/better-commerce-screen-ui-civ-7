@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Non-English text uses <LocalizedText> with an explicit Language attribute.
+    <EnglishText> here would be inserted as en_US regardless of the folder name and
+    collide with text/en_us/ModInfoText.xml:
+        ERROR: Database: UNIQUE constraint failed: LocalizedText.ModRowId, Tag, Locale
+-->
 <Database>
-    <EnglishText>
-        <Row Tag="LOC_MOD_NAJANE_COMMERCE_NAME">
+    <LocalizedText>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_NAME" Language="pl_PL">
             <Text>Better Commerce Screen UI by Najane</Text>
         </Row>
-        <Row Tag="LOC_MOD_NAJANE_COMMERCE_DESCRIPTION">
-            <Text>Ulepsza ekran Handlu - miejsce zarzadzania zasobami i szlakami handlowymi. Zmienia wylacznie interfejs, nie rusza zasad gry.</Text>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_DESCRIPTION" Language="pl_PL">
+            <Text>Ulepsza ekran Handlu - miejsce zarządzania zasobami i szlakami handlowymi. Prawy przycisk myszy na przypisanym zasobie cofa go do puli, Shift + PPM cofa wszystkie zasoby tego rodzaju.</Text>
         </Row>
-    </EnglishText>
+    </LocalizedText>
 </Database>

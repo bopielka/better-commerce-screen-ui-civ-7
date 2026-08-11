@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL" Language="zh_Hant_HK">
+            <Text>全部指派</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_BUSY" Language="zh_Hant_HK">
+            <Text>指派中……</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="zh_Hant_HK">
+            <Text>在保留現有指派的前提下，指派所有未指派的資源。幸福感為負的聚落優先處理，每次一個、從最差的開始，直到沒有低於零的為止。之後依序是：駱駝、符合較強聚落條件的資源、單一產出資源，最後是多產出資源。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="zh_Hant_HK">
+            <Text>全部重新指派</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_BUSY" Language="zh_Hant_HK">
+            <Text>重新指派中……</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_TOOLTIP" Language="zh_Hant_HK">
+            <Text>清空所有已指派的資源，再按同樣的順序從頭重新指派。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL" Language="zh_Hant_HK">
+            <Text>全部取消指派</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY" Language="zh_Hant_HK">
+            <Text>取消指派中……</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP" Language="zh_Hant_HK">
+            <Text>把帝國內所有已指派的資源退回未指派區。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="zh_Hant_HK">
+            <Text>選擇這個聚落優先取得的產出。「均衡」會針對該聚落最低的相關產出。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="zh_Hant_HK">
+            <Text>優先：{1_Priority}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_OPTION_TOOLTIP" Language="zh_Hant_HK">
+            <Text>在這個聚落優先{1_Priority}。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED" Language="zh_Hant_HK">
+            <Text>均衡</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="zh_Hant_HK">
+            <Text>按均衡方式指派，優先補足這個聚落最低的相關產出。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="zh_Hant_HK">
+            <Text>快速指派</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="zh_Hant_HK">
+            <Text>只把未指派的資源指派給這個聚落，並保留現有指派。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="zh_Hant_HK">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="zh_Hant_HK">
+            <Text>自動指派資源</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="zh_Hant_HK">
+            <Text>當透過改良地塊或貿易路線取得資源時，在不開啟商業畫面的情況下要做什麼。使用與「全部指派」相同的順序。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="zh_Hant_HK">
+            <Text>永不</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_NEW" Language="zh_Hant_HK">
+            <Text>只放置新到的資源</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_ALL" Language="zh_Hant_HK">
+            <Text>放置所有未指派資源</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="zh_Hant_HK">
+            <Text>重建全部指派</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="zh_Hant_HK">
+            <Text>滑鼠快捷操作</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="zh_Hant_HK">
+            <Text>滑鼠快捷操作[N][N]右鍵點擊已指派的資源——把它退回未指派區。[N]Shift + 右鍵——把該聚落內同類的資源全部退回。[N][N]指派時按住 Shift（拖曳或點擊皆可）——持續用同類資源填滿該聚落，直到沒有空位。[N][N]按住 Shift 並停留——該類資源會全部放大，顯示上面的操作會影響哪些。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="zh_Hant_HK">
+            <Text>工廠優先</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="zh_Hant_HK">
+            <Text>先於其他一切放置工廠資源。一個聚落同時只能運作一種工廠資源，但同一種可以放任意多份，因此每座工廠都從你數量最多的那一種開始，並用它填滿。幸福感低於零的聚落仍然最先處理。僅限現代，除非關閉否則預設啟用。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="zh_Hant_HK">
+            <Text>空軍</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="zh_Hant_HK">
+            <Text>騎兵</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="zh_Hant_HK">
+            <Text>重型艦船</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_INFANTRY" Language="zh_Hant_HK">
+            <Text>步兵</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_LIGHT" Language="zh_Hant_HK">
+            <Text>輕型艦船</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_NAVAL" Language="zh_Hant_HK">
+            <Text>所有艦船</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_RANGED" Language="zh_Hant_HK">
+            <Text>遠程</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_SIEGE" Language="zh_Hant_HK">
+            <Text>攻城</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES" Language="zh_Hant_HK">
+            <Text>城市資源與加成資源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE" Language="zh_Hant_HK">
+            <Text>帝國資源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE" Language="zh_Hant_HK">
+            <Text>帝國資源與寶藏資源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE" Language="zh_Hant_HK">
+            <Text>寶藏聚落</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="zh_Hant_HK">
+            <Text>工廠資源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="zh_Hant_HK">
+            <Text>已入工廠</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING_EMPTY" Language="zh_Hant_HK">
+            <Text>沒有任何工廠資源被指派到任何地方，因此它們都沒有發揮作用。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE" Language="zh_Hant_HK">
+            <Text>未指派</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_EMPTY" Language="zh_Hant_HK">
+            <Text>你擁有的工廠資源全部都在工廠裡。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE" Language="zh_Hant_HK">
+            <Text>停在現在的位置不會帶來任何收益。上面的數字是把它們指派到有工廠的聚落後會增加的量。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP" Language="zh_Hant_HK">
+            <Text>工廠資源帶來的GDP</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="zh_Hant_HK">
+            <Text>每份放入工廠的工廠資源每回合提供{1_Rate}點GDP，你目前已指派{2_Count}份。現代經濟傳承路線正是以此計分。部分獨特街區（例如美國的工業園區）會在此之外額外提供，未計入這裡。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="zh_Hant_HK">
+            <Text>你的帝國每回合產出的{3_Net}點{2_Yield}中，約有{1_Amount}點來自於此。這是估算值：其他來源的百分比加成會讓它有所變化。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="zh_Hant_HK">
+            <Text>把它們指派出去，會在帝國現有的{3_Net}點{2_Yield}之外每回合再增加約{1_Amount}點。這是估算值：其他來源的百分比加成會讓它有所變化。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="zh_Hant_HK">
+            <Text>已入工廠</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_BUILDINGS" Language="zh_Hant_HK">
+            <Text>建築</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WONDERS" Language="zh_Hant_HK">
+            <Text>奇觀</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_LAND_UNITS" Language="zh_Hant_HK">
+            <Text>陸地單位</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_SEA_UNITS" Language="zh_Hant_HK">
+            <Text>海上單位</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GROWTH" Language="zh_Hant_HK">
+            <Text>成長速度</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_HEAL" Language="zh_Hant_HK">
+            <Text>每回合治療</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL" Language="zh_Hant_HK">
+            <Text>貿易路線</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_SLOTS_FREE" Language="zh_Hant_HK">
+            <Text>剩餘{1_Count}個</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_USED" Language="zh_Hant_HK">
+            <Text>已使用的貿易路線：{2_Total}中的{1_Used}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OPEN_NOW" Language="zh_Hant_HK">
+            <Text>現在就能與之開通：</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OUT_OF_REACH" Language="zh_Hant_HK">
+            <Text>還有名額，但對方沒有城市在範圍內：</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_FULL" Language="zh_Hant_HK">
+            <Text>你能維持的貿易路線已全部佔用。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_NOBODY" Language="zh_Hant_HK">
+            <Text>你還沒有遇到可以貿易的對象。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK" Language="zh_Hant_HK">
+            <Text>在這裡點擊會發生什麼</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP" Language="zh_Hant_HK">
+            <Text>點擊聚落名稱、它的某個資源或運輸隊旗幟，會把地圖移到那裡，但本畫面仍然開著，所以在你自己關閉之前看不到。點擊不會指派、移動或消耗任何東西。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="zh_Hant_HK">
+            <Text>每支運輸隊在本土卸貨後支付。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="zh_Hant_HK">
+            <Text>只差貿易路線上限</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_RANGE" Language="zh_Hant_HK">
+            <Text>超出貿易路線範圍</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA" Language="zh_Hant_HK">
+            <Text>海上貿易路線</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_LAND" Language="zh_Hant_HK">
+            <Text>陸上貿易路線</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING" Language="zh_Hant_HK">
+            <Text>整個帝國只計一次，多餘的份數不會再增加。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_INCOME" Language="zh_Hant_HK">
+            <Text>帝國資源帶來的收入</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ONE" Language="zh_Hant_HK">
+            <Text>單份</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ALL" Language="zh_Hant_HK">
+            <Text>全部</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY" Language="zh_Hant_HK">
+            <Text>僅在慶典期間生效，因此未計入上面的收入。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CAPPED" Language="zh_Hant_HK">
+            <Text>遊戲對這項加成設有上限，超過上限的份數不再增加任何數值。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION" Language="zh_Hant_HK">
+            <Text>你整個帝國的工廠資源。</Text>
+        </Row>
+
+        <!--
+            Blanking a base-game string, not adding one of ours: the "Treasure Resources"
+            heading repeated on every convoy card. One row per language - a locale without
+            this row keeps the heading. See text/en_us/InGameText.xml for the full note.
+        -->
+        <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="zh_Hant_HK">
+            <Text></Text>
+        </Replace>
+    </LocalizedText>
+</Database>

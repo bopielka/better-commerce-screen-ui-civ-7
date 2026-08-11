@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_NAME" Language="zh_Hans_CN">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>改进管理资源与贸易路线的商业界面。右键点击已分配的资源即可退回未分配区，Shift + 右键可一次退回同类的全部资源。</Text>
+        </Row>
+    </LocalizedText>
+</Database>

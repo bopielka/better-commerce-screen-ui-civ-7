@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL" Language="fr_FR">
+            <Text>Tout assigner</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_BUSY" Language="fr_FR">
+            <Text>Assignation...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="fr_FR">
+            <Text>Assigne toutes les ressources non assignées en conservant les assignations existantes. Les colonies dont le bonheur est négatif passent d'abord, la pire à la fois, jusqu'à ce qu'aucune ne soit sous zéro. Ensuite : les chameaux, puis les ressources dont le critère de colonie le plus fort est rempli, puis celles à un seul rendement, enfin celles à plusieurs.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="fr_FR">
+            <Text>Tout réassigner</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_BUSY" Language="fr_FR">
+            <Text>Réassignation...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_TOOLTIP" Language="fr_FR">
+            <Text>Retire toutes les ressources assignées, puis reconstruit les assignations depuis zéro dans le même ordre.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL" Language="fr_FR">
+            <Text>Tout désassigner</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY" Language="fr_FR">
+            <Text>Désassignation...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP" Language="fr_FR">
+            <Text>Renvoie dans la réserve toutes les ressources assignées de l'empire.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="fr_FR">
+            <Text>Choisissez le rendement que cette colonie doit privilégier. Équilibré vise les rendements affectés les plus bas de la colonie.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="fr_FR">
+            <Text>Priorité : {1_Priority}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_OPTION_TOOLTIP" Language="fr_FR">
+            <Text>Privilégier {1_Priority} dans cette colonie.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED" Language="fr_FR">
+            <Text>Équilibré</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="fr_FR">
+            <Text>Assigne de façon équilibrée en privilégiant les rendements affectés les plus bas de cette colonie.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="fr_FR">
+            <Text>Assignation rapide</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="fr_FR">
+            <Text>Assigne les ressources non assignées à cette seule colonie, en conservant les assignations existantes.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="fr_FR">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="fr_FR">
+            <Text>Assigner les ressources automatiquement</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="fr_FR">
+            <Text>Ce qu'il faut faire lorsqu'une ressource arrive, par l'aménagement d'une case ou par une route commerciale, sans ouvrir l'écran de commerce. Utilise le même ordre que Tout assigner.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="fr_FR">
+            <Text>Jamais</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_NEW" Language="fr_FR">
+            <Text>Placer la nouvelle ressource</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_ALL" Language="fr_FR">
+            <Text>Placer tout ce qui n'est pas assigné</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="fr_FR">
+            <Text>Reconstruire toutes les assignations</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="fr_FR">
+            <Text>Raccourcis souris</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="fr_FR">
+            <Text>Raccourcis souris[N][N]Clic droit sur une ressource assignée : la renvoie dans la réserve.[N]Maj + clic droit : renvoie toutes les ressources de ce type dans cette colonie.[N][N]Maj pendant l'assignation, par glissement ou par clic : continue de remplir la colonie avec des ressources du même type jusqu'à ce qu'il n'y ait plus de place.[N][N]Maintenez Maj et survolez : toutes les ressources de ce type s'agrandissent, montrant ce que l'action ci-dessus affecterait.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="fr_FR">
+            <Text>Usines d'abord</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="fr_FR">
+            <Text>Place les ressources d'usine avant tout le reste. Une colonie ne peut exploiter qu'un seul type de ressource d'usine, mais autant d'exemplaires que voulu : chaque usine démarre donc sur le type dont vous avez le plus, puis s'en remplit. Les colonies sous zéro bonheur restent traitées en premier. Ère moderne uniquement, et actif tant que vous ne le désactivez pas.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="fr_FR">
+            <Text>aéronefs</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="fr_FR">
+            <Text>cavalerie</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="fr_FR">
+            <Text>navires lourds</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_INFANTRY" Language="fr_FR">
+            <Text>infanterie</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_LIGHT" Language="fr_FR">
+            <Text>navires légers</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_NAVAL" Language="fr_FR">
+            <Text>tous les navires</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_RANGED" Language="fr_FR">
+            <Text>unités à distance</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_SIEGE" Language="fr_FR">
+            <Text>unités de siège</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES" Language="fr_FR">
+            <Text>Ressources de ville et bonus</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE" Language="fr_FR">
+            <Text>Ressources d'empire</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE" Language="fr_FR">
+            <Text>Ressources d'empire et de trésor</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE" Language="fr_FR">
+            <Text>Colonies à trésor</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="fr_FR">
+            <Text>Ressources d'usine</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="fr_FR">
+            <Text>En usine</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING_EMPTY" Language="fr_FR">
+            <Text>Aucune ressource d'usine n'est assignée où que ce soit, donc aucune ne produit d'effet.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE" Language="fr_FR">
+            <Text>Non assignées</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_EMPTY" Language="fr_FR">
+            <Text>Toutes les ressources d'usine que vous possédez sont dans une usine.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE" Language="fr_FR">
+            <Text>Là où elles sont, elles n'apportent rien. Les chiffres ci-dessus sont ce qu'elles ajouteraient une fois assignées à une colonie dotée d'une usine.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP" Language="fr_FR">
+            <Text>PIB des ressources d'usine</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="fr_FR">
+            <Text>{1_Rate} PIB par tour pour chaque ressource d'usine placée en usine, et vous en avez {2_Count} d'assignées. C'est ce qui compte pour la voie d'héritage économique de l'ère moderne. Certains quartiers uniques, comme le Parc industriel américain, rapportent davantage en plus et ne sont pas comptés ici.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="fr_FR">
+            <Text>Environ {1_Amount} des {3_Net} {2_Yield} que votre empire produit chaque tour viennent de là. Une estimation : les bonus en pourcentage d'autres sources la décalent.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="fr_FR">
+            <Text>Les assigner ajouterait environ {1_Amount} par tour aux {3_Net} {2_Yield} que votre empire produit déjà. Une estimation : les bonus en pourcentage d'autres sources la décalent.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="fr_FR">
+            <Text>En usine</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_BUILDINGS" Language="fr_FR">
+            <Text>bâtiments</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WONDERS" Language="fr_FR">
+            <Text>merveilles</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_LAND_UNITS" Language="fr_FR">
+            <Text>unités terrestres</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_SEA_UNITS" Language="fr_FR">
+            <Text>unités navales</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GROWTH" Language="fr_FR">
+            <Text>taux de croissance</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_HEAL" Language="fr_FR">
+            <Text>soins par tour</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL" Language="fr_FR">
+            <Text>Routes commerciales</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_SLOTS_FREE" Language="fr_FR">
+            <Text>encore libres : {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_USED" Language="fr_FR">
+            <Text>Routes commerciales utilisées : {1_Used} sur {2_Total}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OPEN_NOW" Language="fr_FR">
+            <Text>Vous pouvez en ouvrir une tout de suite avec :</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OUT_OF_REACH" Language="fr_FR">
+            <Text>De la place, mais rien de chez eux à portée :</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_FULL" Language="fr_FR">
+            <Text>Toutes les routes commerciales que vous pouvez entretenir sont utilisées.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_NOBODY" Language="fr_FR">
+            <Text>Vous n'avez encore rencontré personne avec qui commercer.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK" Language="fr_FR">
+            <Text>Ce que fait un clic ici</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP" Language="fr_FR">
+            <Text>Cliquer sur le nom d'une colonie, sur l'une de ses ressources ou sur son fanion de convoi déplace la carte jusqu'à elle, mais cet écran reste ouvert : vous ne le verrez qu'après l'avoir fermé vous-même. Le clic n'assigne, ne déplace et ne dépense rien.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="fr_FR">
+            <Text>Versé par convoi, une fois déchargé dans votre patrie.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="fr_FR">
+            <Text>Seule la limite de routes commerciales bloque</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_RANGE" Language="fr_FR">
+            <Text>Hors de portée commerciale</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA" Language="fr_FR">
+            <Text>Route commerciale maritime</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_LAND" Language="fr_FR">
+            <Text>Route commerciale terrestre</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING" Language="fr_FR">
+            <Text>Compté une seule fois pour l'empire : les exemplaires supplémentaires n'y ajoutent rien.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_INCOME" Language="fr_FR">
+            <Text>Revenus des ressources d'empire</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ONE" Language="fr_FR">
+            <Text>Un</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ALL" Language="fr_FR">
+            <Text>Tous</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY" Language="fr_FR">
+            <Text>Uniquement pendant une célébration, donc non compté dans les revenus ci-dessus.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CAPPED" Language="fr_FR">
+            <Text>Le jeu plafonne ce bonus : les exemplaires au-delà du plafond n'y ajoutent rien.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION" Language="fr_FR">
+            <Text>Les ressources d'usine dans tout votre empire.</Text>
+        </Row>
+
+        <!--
+            Blanking a base-game string, not adding one of ours: the "Treasure Resources"
+            heading repeated on every convoy card. One row per language - a locale without
+            this row keeps the heading. See text/en_us/InGameText.xml for the full note.
+        -->
+        <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="fr_FR">
+            <Text></Text>
+        </Replace>
+    </LocalizedText>
+</Database>

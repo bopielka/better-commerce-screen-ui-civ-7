@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_NAME" Language="ja_JP">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_DESCRIPTION" Language="ja_JP">
+            <Text>資源と交易路を管理する商業画面を使いやすくします。割り当て済み資源を右クリックすると未割り当てに戻り、Shift + 右クリックで同じ種類をまとめて戻せます。</Text>
+        </Row>
+    </LocalizedText>
+</Database>

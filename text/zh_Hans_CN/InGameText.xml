@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL" Language="zh_Hans_CN">
+            <Text>全部分配</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_BUSY" Language="zh_Hans_CN">
+            <Text>正在分配……</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="zh_Hans_CN">
+            <Text>在保留现有分配的前提下，分配所有未分配的资源。幸福值为负的定居地优先处理，每次一个、从最差的开始，直到没有低于零的为止。之后依次是：骆驼、满足较强定居地条件的资源、单一产出资源，最后是多产出资源。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="zh_Hans_CN">
+            <Text>全部重新分配</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_BUSY" Language="zh_Hans_CN">
+            <Text>正在重新分配……</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_TOOLTIP" Language="zh_Hans_CN">
+            <Text>清空所有已分配的资源，再按同样的顺序从头重新分配。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL" Language="zh_Hans_CN">
+            <Text>全部取消分配</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY" Language="zh_Hans_CN">
+            <Text>正在取消分配……</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP" Language="zh_Hans_CN">
+            <Text>把帝国内所有已分配的资源退回未分配区。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="zh_Hans_CN">
+            <Text>选择这个定居地优先获得的产出。“均衡”会针对该定居地最低的相关产出。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="zh_Hans_CN">
+            <Text>优先：{1_Priority}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_OPTION_TOOLTIP" Language="zh_Hans_CN">
+            <Text>在这个定居地优先{1_Priority}。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED" Language="zh_Hans_CN">
+            <Text>均衡</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="zh_Hans_CN">
+            <Text>按均衡方式分配，优先补足这个定居地最低的相关产出。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="zh_Hans_CN">
+            <Text>快速分配</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="zh_Hans_CN">
+            <Text>只把未分配的资源分配给这个定居地，并保留现有分配。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="zh_Hans_CN">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="zh_Hans_CN">
+            <Text>自动分配资源</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>当通过改良地块或贸易路线获得资源时，在不打开商业界面的情况下要做什么。使用与“全部分配”相同的顺序。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="zh_Hans_CN">
+            <Text>从不</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_NEW" Language="zh_Hans_CN">
+            <Text>只放置新到的资源</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_ALL" Language="zh_Hans_CN">
+            <Text>放置所有未分配资源</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="zh_Hans_CN">
+            <Text>重建全部分配</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="zh_Hans_CN">
+            <Text>鼠标快捷操作</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="zh_Hans_CN">
+            <Text>鼠标快捷操作[N][N]右键点击已分配的资源——把它退回未分配区。[N]Shift + 右键——把该定居地内同类的资源全部退回。[N][N]分配时按住 Shift（拖动或点击均可）——持续用同类资源填满该定居地，直到没有空位。[N][N]按住 Shift 并悬停——该类资源会全部放大，显示上面的操作会影响到哪些。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="zh_Hans_CN">
+            <Text>工厂优先</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="zh_Hans_CN">
+            <Text>先于其他一切放置工厂资源。一个定居地同时只能运作一种工厂资源，但同一种可以放任意多份，因此每座工厂都从你数量最多的那一种开始，并用它填满。幸福值低于零的定居地仍然最先处理。仅限现代，除非关闭否则默认启用。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="zh_Hans_CN">
+            <Text>空军</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="zh_Hans_CN">
+            <Text>骑兵</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="zh_Hans_CN">
+            <Text>重型舰船</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_INFANTRY" Language="zh_Hans_CN">
+            <Text>步兵</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_LIGHT" Language="zh_Hans_CN">
+            <Text>轻型舰船</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_NAVAL" Language="zh_Hans_CN">
+            <Text>所有舰船</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_RANGED" Language="zh_Hans_CN">
+            <Text>远程</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_SIEGE" Language="zh_Hans_CN">
+            <Text>攻城</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES" Language="zh_Hans_CN">
+            <Text>城市资源与加成资源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE" Language="zh_Hans_CN">
+            <Text>帝国资源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE" Language="zh_Hans_CN">
+            <Text>帝国资源与宝藏资源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE" Language="zh_Hans_CN">
+            <Text>宝藏定居地</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="zh_Hans_CN">
+            <Text>工厂资源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="zh_Hans_CN">
+            <Text>已入工厂</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING_EMPTY" Language="zh_Hans_CN">
+            <Text>没有任何工厂资源被分配到任何地方，因此它们都没有发挥作用。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE" Language="zh_Hans_CN">
+            <Text>未分配</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_EMPTY" Language="zh_Hans_CN">
+            <Text>你拥有的工厂资源全部都在工厂里。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE" Language="zh_Hans_CN">
+            <Text>停在现在的位置不会带来任何收益。上面的数字是把它们分配到有工厂的定居地后会增加的量。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP" Language="zh_Hans_CN">
+            <Text>工厂资源带来的GDP</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="zh_Hans_CN">
+            <Text>每份放入工厂的工厂资源每回合提供{1_Rate}点GDP，你目前已分配{2_Count}份。现代经济传承路线正是以此计分。部分独特街区（例如美国的工业园区）会在此之外额外提供，未计入这里。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="zh_Hans_CN">
+            <Text>你的帝国每回合产出的{3_Net}点{2_Yield}中，约有{1_Amount}点来自于此。这是估算值：其他来源的百分比加成会让它有所变化。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="zh_Hans_CN">
+            <Text>把它们分配出去，会在帝国现有的{3_Net}点{2_Yield}之外每回合再增加约{1_Amount}点。这是估算值：其他来源的百分比加成会让它有所变化。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="zh_Hans_CN">
+            <Text>已入工厂</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_BUILDINGS" Language="zh_Hans_CN">
+            <Text>建筑</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WONDERS" Language="zh_Hans_CN">
+            <Text>奇观</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_LAND_UNITS" Language="zh_Hans_CN">
+            <Text>陆地单位</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_SEA_UNITS" Language="zh_Hans_CN">
+            <Text>海上单位</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GROWTH" Language="zh_Hans_CN">
+            <Text>成长速度</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_HEAL" Language="zh_Hans_CN">
+            <Text>每回合治疗</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL" Language="zh_Hans_CN">
+            <Text>贸易路线</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_SLOTS_FREE" Language="zh_Hans_CN">
+            <Text>剩余{1_Count}个</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_USED" Language="zh_Hans_CN">
+            <Text>已使用的贸易路线：{2_Total}中的{1_Used}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OPEN_NOW" Language="zh_Hans_CN">
+            <Text>现在就能与之开通：</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OUT_OF_REACH" Language="zh_Hans_CN">
+            <Text>还有名额，但对方没有城市在范围内：</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_FULL" Language="zh_Hans_CN">
+            <Text>你能维持的贸易路线已全部占用。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_NOBODY" Language="zh_Hans_CN">
+            <Text>你还没有遇到可以贸易的对象。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK" Language="zh_Hans_CN">
+            <Text>在这里点击会发生什么</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP" Language="zh_Hans_CN">
+            <Text>点击定居地名称、它的某个资源或运输队旗帜，会把地图移到那里，但本界面仍然打开，所以在你自己关闭之前看不到。点击不会分配、移动或消耗任何东西。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="zh_Hans_CN">
+            <Text>每支运输队在本土卸货后支付。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="zh_Hans_CN">
+            <Text>只差贸易路线上限</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_RANGE" Language="zh_Hans_CN">
+            <Text>超出贸易路线范围</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA" Language="zh_Hans_CN">
+            <Text>海上贸易路线</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_LAND" Language="zh_Hans_CN">
+            <Text>陆上贸易路线</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING" Language="zh_Hans_CN">
+            <Text>整个帝国只计一次，多余的份数不会再增加。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_INCOME" Language="zh_Hans_CN">
+            <Text>帝国资源带来的收入</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ONE" Language="zh_Hans_CN">
+            <Text>单份</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ALL" Language="zh_Hans_CN">
+            <Text>全部</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY" Language="zh_Hans_CN">
+            <Text>仅在庆典期间生效，因此未计入上面的收入。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CAPPED" Language="zh_Hans_CN">
+            <Text>游戏对这项加成设有上限，超过上限的份数不再增加任何数值。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>你整个帝国的工厂资源。</Text>
+        </Row>
+
+        <!--
+            Blanking a base-game string, not adding one of ours: the "Treasure Resources"
+            heading repeated on every convoy card. One row per language - a locale without
+            this row keeps the heading. See text/en_us/InGameText.xml for the full note.
+        -->
+        <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="zh_Hans_CN">
+            <Text></Text>
+        </Replace>
+    </LocalizedText>
+</Database>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_NAME" Language="ko_KR">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_DESCRIPTION" Language="ko_KR">
+            <Text>자원과 교역로를 관리하는 상업 화면을 쓰기 좋게 바꿉니다. 할당된 자원을 오른쪽 클릭하면 되돌아가고, Shift + 오른쪽 클릭이면 같은 종류를 한꺼번에 되돌립니다.</Text>
+        </Row>
+    </LocalizedText>
+</Database>

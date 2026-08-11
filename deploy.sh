@@ -60,6 +60,61 @@ if [[ $DRY_RUN -eq 1 ]]; then
     exit 0
 fi
 
+# --- check: every script must parse -------------------------------------------
+#
+# ⚠️ `node --check <file>.js` DOES NOT CHECK THESE FILES. It parses a .js file as
+# CommonJS, and every file here is an ES module; faced with `import` it gives up and
+# exits 0. Verified against a file with a deliberate line break inside a string literal:
+#
+#     node --check ui/screen/tab-icons.js                  -> exit 0   (says nothing)
+#     node --input-type=module --check < .../tab-icons.js  -> exit 1   (points at line 23)
+#
+# Reading from stdin with --input-type=module is what actually parses them. Every
+# "syntax ok" this project reported before that was worthless, which is how a broken
+# string literal reached the game and stopped the mod loading entirely.
+#
+# It runs here rather than by hand because by hand is the other half of that failure: a
+# file was checked, edited once more, and deployed unchecked.
+if command -v node >/dev/null 2>&1; then
+    broken=0
+    while IFS= read -r file; do
+        node --input-type=module --check < "$SRC_DIR/$file" >/dev/null 2>&1 || {
+            printf 'SYNTAX ERROR: %s\n' "$file" >&2
+            node --input-type=module --check < "$SRC_DIR/$file" 2>&1 | sed -n '1,4p' >&2
+            broken=$((broken + 1))
+        }
+    done < <(cd "$SRC_DIR" && find ui -name '*.js' -type f | sort)
+    [[ $broken -eq 0 ]] || die "$broken file(s) do not parse - the mod would not load."
+else
+    say "note: node not found, skipping the syntax check"
+fi
+
+# --- check: a backtick inside a style block ends the string early -------------
+#
+# The CSS in this mod lives in template literals, and a backtick written inside one -
+# quoting a property name in a comment, say - closes it. What follows is then parsed as
+# code and the module fails to load, taking the whole mod with it.
+#
+# The parser above does catch this - it reports the same "SyntaxError: Unexpected
+# identifier" the game does. This check is kept because it names the actual mistake
+# instead of pointing at whatever line the wreckage first stops parsing on, and because
+# it still works if node is missing. (An earlier note here claimed Node could not catch
+# it at all; that was wrong - the check simply was not parsing these files.)
+stray=0
+while IFS= read -r hit; do
+    printf 'BACKTICK INSIDE A STYLE BLOCK: %s\n' "$hit" >&2
+    stray=$((stray + 1))
+done < <(
+    cd "$SRC_DIR" && find ui -name '*.js' -type f 2>/dev/null | sort | while IFS= read -r file; do
+        awk -v f="$file" '
+            /^const [A-Za-z_]+ = `$/ { inside = 1; next }
+            inside && /^`;$/         { inside = 0; next }
+            inside && /`/            { printf "%s:%d  %s\n", f, NR, $0 }
+        ' "$file"
+    done
+)
+[[ $stray -eq 0 ]] || die "$stray stray backtick(s) - the mod would fail to load. Use quotes in CSS comments."
+
 # --- deploy ------------------------------------------------------------------
 rm -rf "$DEST_DIR"
 mkdir -p "$DEST_DIR"

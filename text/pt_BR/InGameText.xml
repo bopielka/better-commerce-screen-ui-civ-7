@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL" Language="pt_BR">
+            <Text>Atribuir tudo</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_BUSY" Language="pt_BR">
+            <Text>Atribuindo...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="pt_BR">
+            <Text>Atribui todos os recursos não atribuídos preservando as atribuições existentes. Assentamentos com felicidade negativa vêm primeiro, o pior de cada vez, até nenhum ficar abaixo de zero. Depois: camelos, então os recursos cujo critério de assentamento mais forte é cumprido, depois os de rendimento único e por fim os de vários rendimentos.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="pt_BR">
+            <Text>Reatribuir tudo</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_BUSY" Language="pt_BR">
+            <Text>Reatribuindo...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_TOOLTIP" Language="pt_BR">
+            <Text>Remove todos os recursos atribuídos e reconstrói as atribuições do zero na mesma ordem.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL" Language="pt_BR">
+            <Text>Remover tudo</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY" Language="pt_BR">
+            <Text>Removendo...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP" Language="pt_BR">
+            <Text>Devolve à reserva todos os recursos atribuídos do império.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="pt_BR">
+            <Text>Escolha o rendimento que este assentamento deve priorizar. Equilibrado mira nos rendimentos afetados mais baixos do assentamento.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="pt_BR">
+            <Text>Prioridade: {1_Priority}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_OPTION_TOOLTIP" Language="pt_BR">
+            <Text>Priorizar {1_Priority} neste assentamento.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED" Language="pt_BR">
+            <Text>Equilibrado</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="pt_BR">
+            <Text>Atribui de forma equilibrada, priorizando os rendimentos afetados mais baixos deste assentamento.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="pt_BR">
+            <Text>Atribuição rápida</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="pt_BR">
+            <Text>Atribui os recursos não atribuídos apenas a este assentamento, preservando as atribuições existentes.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="pt_BR">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="pt_BR">
+            <Text>Atribuir recursos automaticamente</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="pt_BR">
+            <Text>O que fazer quando um recurso chega, ao melhorar um espaço ou por uma rota comercial, sem abrir a tela de comércio. Usa a mesma ordem de Atribuir tudo.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="pt_BR">
+            <Text>Nunca</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_NEW" Language="pt_BR">
+            <Text>Colocar o recurso novo</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_ALL" Language="pt_BR">
+            <Text>Colocar tudo o que não está atribuído</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="pt_BR">
+            <Text>Refazer todas as atribuições</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="pt_BR">
+            <Text>Atalhos do mouse</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="pt_BR">
+            <Text>Atalhos do mouse[N][N]Clique direito num recurso atribuído: devolve-o à reserva.[N]Shift + clique direito: devolve todos os recursos do mesmo tipo naquele assentamento.[N][N]Shift ao atribuir, arrastando ou clicando: continua a encher o assentamento com recursos do mesmo tipo até não haver mais espaço.[N][N]Segure Shift e passe o cursor: todos os recursos daquele tipo aumentam, mostrando o que a ação acima afetaria.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="pt_BR">
+            <Text>Fábricas primeiro</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="pt_BR">
+            <Text>Coloca os recursos de fábrica antes de tudo. Um assentamento só pode ter um tipo de recurso de fábrica, mas qualquer número de cópias dele, então cada fábrica começa pelo tipo de que você tem mais e depois é preenchida com ele. Assentamentos abaixo de zero de felicidade continuam a ser tratados primeiro. Só na era moderna, e ativo a menos que você desligue.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="pt_BR">
+            <Text>aeronaves</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="pt_BR">
+            <Text>cavalaria</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="pt_BR">
+            <Text>naus pesadas</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_INFANTRY" Language="pt_BR">
+            <Text>infantaria</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_LIGHT" Language="pt_BR">
+            <Text>naus leves</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_NAVAL" Language="pt_BR">
+            <Text>todas as naus</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_RANGED" Language="pt_BR">
+            <Text>à distância</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_SIEGE" Language="pt_BR">
+            <Text>de cerco</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES" Language="pt_BR">
+            <Text>Recursos de cidade e bônus</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE" Language="pt_BR">
+            <Text>Recursos do Império</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE" Language="pt_BR">
+            <Text>Recursos do Império e do Tesouro</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE" Language="pt_BR">
+            <Text>Assentamentos do tesouro</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="pt_BR">
+            <Text>Recursos de fábrica</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="pt_BR">
+            <Text>Em fábricas</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING_EMPTY" Language="pt_BR">
+            <Text>Nenhum recurso de fábrica está atribuído em lugar algum, então nenhum deles faz nada.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE" Language="pt_BR">
+            <Text>Não atribuídos</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_EMPTY" Language="pt_BR">
+            <Text>Todos os recursos de fábrica que você tem estão numa fábrica.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE" Language="pt_BR">
+            <Text>Onde estão agora não dão nada. Os números acima são o que acrescentariam depois de atribuídos a um assentamento com uma Fábrica.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP" Language="pt_BR">
+            <Text>PIB dos recursos de fábrica</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="pt_BR">
+            <Text>{1_Rate} de PIB por turno para cada recurso de fábrica colocado numa fábrica, e você tem {2_Count} atribuídos. É nisto que a trilha de legado econômica da era moderna é pontuada. Alguns bairros únicos, como o Parque Industrial americano, rendem mais além disto e não são contados aqui.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="pt_BR">
+            <Text>Cerca de {1_Amount} dos {3_Net} de {2_Yield} que seu império produz por turno vem daqui. É uma estimativa: bônus percentuais de outras fontes a deslocam.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="pt_BR">
+            <Text>Atribuí-los acrescentaria cerca de {1_Amount} por turno aos {3_Net} de {2_Yield} que seu império já produz. É uma estimativa: bônus percentuais de outras fontes a deslocam.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="pt_BR">
+            <Text>Em fábricas</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_BUILDINGS" Language="pt_BR">
+            <Text>construções</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WONDERS" Language="pt_BR">
+            <Text>maravilhas</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_LAND_UNITS" Language="pt_BR">
+            <Text>unidades terrestres</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_SEA_UNITS" Language="pt_BR">
+            <Text>unidades navais</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GROWTH" Language="pt_BR">
+            <Text>taxa de crescimento</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_HEAL" Language="pt_BR">
+            <Text>cura por turno</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL" Language="pt_BR">
+            <Text>Rotas comerciais</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_SLOTS_FREE" Language="pt_BR">
+            <Text>ainda livres: {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_USED" Language="pt_BR">
+            <Text>Rotas comerciais em uso: {1_Used} de {2_Total}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OPEN_NOW" Language="pt_BR">
+            <Text>Você pode abrir uma agora com:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OUT_OF_REACH" Language="pt_BR">
+            <Text>Ainda há espaço, mas nada deles está ao alcance:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_FULL" Language="pt_BR">
+            <Text>Todas as rotas comerciais que você pode manter estão em uso.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_NOBODY" Language="pt_BR">
+            <Text>Você ainda não conheceu ninguém com quem comerciar.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK" Language="pt_BR">
+            <Text>O que um clique faz aqui</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP" Language="pt_BR">
+            <Text>Clicar no nome de um assentamento, num de seus recursos ou na bandeira do comboio move o mapa até lá, mas esta tela continua aberta, então você só verá depois de fechá-la. O clique não atribui, não move nem gasta nada.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="pt_BR">
+            <Text>Pago por comboio, assim que ele descarrega na sua pátria.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="pt_BR">
+            <Text>Só o limite de rotas comerciais atrapalha</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_RANGE" Language="pt_BR">
+            <Text>Fora do alcance comercial</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA" Language="pt_BR">
+            <Text>Rota comercial marítima</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_LAND" Language="pt_BR">
+            <Text>Rota comercial terrestre</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING" Language="pt_BR">
+            <Text>Contado uma vez para o império - cópias adicionais não somam a isto.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_INCOME" Language="pt_BR">
+            <Text>Renda dos recursos do império</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ONE" Language="pt_BR">
+            <Text>Um</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ALL" Language="pt_BR">
+            <Text>Todos</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY" Language="pt_BR">
+            <Text>Só durante uma celebração, portanto não é contado na renda acima.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CAPPED" Language="pt_BR">
+            <Text>O jogo limita este bônus, então as cópias além do limite não acrescentam nada.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION" Language="pt_BR">
+            <Text>Os recursos de fábrica de todo o seu império.</Text>
+        </Row>
+
+        <!--
+            Blanking a base-game string, not adding one of ours: the "Treasure Resources"
+            heading repeated on every convoy card. One row per language - a locale without
+            this row keeps the heading. See text/en_us/InGameText.xml for the full note.
+        -->
+        <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="pt_BR">
+            <Text></Text>
+        </Replace>
+    </LocalizedText>
+</Database>

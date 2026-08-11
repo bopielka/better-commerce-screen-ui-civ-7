@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL" Language="ja_JP">
+            <Text>すべて割り当て</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_BUSY" Language="ja_JP">
+            <Text>割り当て中...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="ja_JP">
+            <Text>既存の割り当てを保ったまま、未割り当ての資源をすべて割り当てます。幸福度がマイナスの居住地が最優先で、最も悪いものから1つずつ、すべてが0以上になるまで処理します。その後はラクダ、次に居住地条件の強い方を満たす資源、次に単一の産出を持つ資源、最後に複数の産出を持つ資源の順です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="ja_JP">
+            <Text>すべて再割り当て</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_BUSY" Language="ja_JP">
+            <Text>再割り当て中...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_TOOLTIP" Language="ja_JP">
+            <Text>割り当て済みの資源をすべて解除し、同じ順序で最初から割り当て直します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL" Language="ja_JP">
+            <Text>すべて解除</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY" Language="ja_JP">
+            <Text>解除中...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP" Language="ja_JP">
+            <Text>帝国内の割り当て済み資源をすべて未割り当てに戻します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="ja_JP">
+            <Text>この居住地で優先する産出を選びます。「バランス」はその居住地で最も低い産出を狙います。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="ja_JP">
+            <Text>優先: {1_Priority}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_OPTION_TOOLTIP" Language="ja_JP">
+            <Text>この居住地で{1_Priority}を優先します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED" Language="ja_JP">
+            <Text>バランス</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="ja_JP">
+            <Text>バランス重視で割り当て、この居住地で最も低い産出を優先します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="ja_JP">
+            <Text>クイック割り当て</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="ja_JP">
+            <Text>既存の割り当てを保ったまま、未割り当ての資源をこの居住地だけに割り当てます。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="ja_JP">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="ja_JP">
+            <Text>資源を自動で割り当てる</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="ja_JP">
+            <Text>タイルの整備や交易路によって資源を得たとき、商業画面を開かずに何をするかを決めます。「すべて割り当て」と同じ順序を使います。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="ja_JP">
+            <Text>何もしない</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_NEW" Language="ja_JP">
+            <Text>新しい資源だけを配置</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_ALL" Language="ja_JP">
+            <Text>未割り当てをすべて配置</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="ja_JP">
+            <Text>割り当てをすべて作り直す</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="ja_JP">
+            <Text>マウス操作</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="ja_JP">
+            <Text>マウス操作[N][N]割り当て済み資源を右クリック - 未割り当てに戻します。[N]Shift + 右クリック - その居住地にある同じ種類の資源をすべて戻します。[N][N]割り当て中にShift（ドラッグでもクリックでも） - 空きがなくなるまで、その居住地に同じ種類の資源を入れ続けます。[N][N]Shiftを押しながらカーソルを重ねる - その種類の資源がすべて拡大し、上の操作が何に影響するかを示します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="ja_JP">
+            <Text>工場を優先</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="ja_JP">
+            <Text>工場資源を何よりも先に配置します。1つの居住地に置ける工場資源は1種類だけですが、同じ種類なら何個でも置けます。そのため各工場は最も多く持っている種類から始め、その種類で埋めていきます。幸福度が0未満の居住地は引き続き最優先です。現代のみで、オフにしない限り有効です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="ja_JP">
+            <Text>航空</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="ja_JP">
+            <Text>騎乗</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="ja_JP">
+            <Text>重装艦</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_INFANTRY" Language="ja_JP">
+            <Text>歩兵</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_LIGHT" Language="ja_JP">
+            <Text>軽装艦</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_NAVAL" Language="ja_JP">
+            <Text>すべての艦船</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_RANGED" Language="ja_JP">
+            <Text>遠隔</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_SIEGE" Language="ja_JP">
+            <Text>攻城</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES" Language="ja_JP">
+            <Text>都市資源とボーナス資源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE" Language="ja_JP">
+            <Text>帝国資源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE" Language="ja_JP">
+            <Text>帝国資源と財宝資源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE" Language="ja_JP">
+            <Text>財宝の居住地</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="ja_JP">
+            <Text>工場資源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="ja_JP">
+            <Text>工場内</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING_EMPTY" Language="ja_JP">
+            <Text>工場資源がどこにも割り当てられていないため、どれも効果を発揮していません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE" Language="ja_JP">
+            <Text>未割り当て</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_EMPTY" Language="ja_JP">
+            <Text>所有している工場資源はすべて工場に入っています。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE" Language="ja_JP">
+            <Text>今の状態では何の効果もありません。上の数値は、工場のある居住地に割り当てた場合に加わる分です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP" Language="ja_JP">
+            <Text>工場資源によるGDP</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="ja_JP">
+            <Text>工場に入っている工場資源1つにつき1ターンあたりGDP{1_Rate}、現在{2_Count}個を割り当て済みです。現代の経済レガシーパスはこれで採点されます。アメリカの工業団地など一部の固有地区はこれに加えてさらに稼ぎますが、ここには含まれていません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="ja_JP">
+            <Text>帝国が1ターンに生み出す{2_Yield}{3_Net}のうち、およそ{1_Amount}がここから来ています。これは概算です。他の要因による割合ボーナスで前後します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="ja_JP">
+            <Text>これらを割り当てると、帝国がすでに生み出している{2_Yield}{3_Net}に1ターンあたりおよそ{1_Amount}が加わります。これは概算です。他の要因による割合ボーナスで前後します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="ja_JP">
+            <Text>工場内</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_BUILDINGS" Language="ja_JP">
+            <Text>建造物</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WONDERS" Language="ja_JP">
+            <Text>遺産</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_LAND_UNITS" Language="ja_JP">
+            <Text>陸上ユニット</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_SEA_UNITS" Language="ja_JP">
+            <Text>海上ユニット</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GROWTH" Language="ja_JP">
+            <Text>成長率</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_HEAL" Language="ja_JP">
+            <Text>1ターンあたりの回復</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL" Language="ja_JP">
+            <Text>交易路</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_SLOTS_FREE" Language="ja_JP">
+            <Text>残り{1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_USED" Language="ja_JP">
+            <Text>使用中の交易路: {2_Total}のうち{1_Used}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OPEN_NOW" Language="ja_JP">
+            <Text>今すぐ結べる相手:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OUT_OF_REACH" Language="ja_JP">
+            <Text>枠は残っているが、範囲内に相手の都市がない:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_FULL" Language="ja_JP">
+            <Text>維持できる交易路はすべて使用中です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_NOBODY" Language="ja_JP">
+            <Text>交易できる相手にまだ出会っていません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK" Language="ja_JP">
+            <Text>ここでクリックすると何が起きるか</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP" Language="ja_JP">
+            <Text>居住地の名前、その資源、または船団の旗をクリックすると、マップがそこへ移動します。ただしこの画面は開いたままなので、自分で閉じるまで見えません。クリックしても資源が割り当てられたり、動いたり、消費されたりすることはありません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="ja_JP">
+            <Text>船団1つにつき、本国で荷を降ろした時点で支払われます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="ja_JP">
+            <Text>交易路の上限だけが妨げになっている</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_RANGE" Language="ja_JP">
+            <Text>交易路の範囲外</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA" Language="ja_JP">
+            <Text>海上交易路</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_LAND" Language="ja_JP">
+            <Text>陸上交易路</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING" Language="ja_JP">
+            <Text>帝国全体で1回だけ数えられます。2個目以降は加算されません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_INCOME" Language="ja_JP">
+            <Text>帝国資源による収入</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ONE" Language="ja_JP">
+            <Text>1個</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ALL" Language="ja_JP">
+            <Text>全部</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY" Language="ja_JP">
+            <Text>祝祭中のみ有効なため、上の収入には含まれていません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CAPPED" Language="ja_JP">
+            <Text>このボーナスには上限があるため、上限を超えた分は加算されません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION" Language="ja_JP">
+            <Text>帝国全体の工場資源。</Text>
+        </Row>
+
+        <!--
+            Blanking a base-game string, not adding one of ours: the "Treasure Resources"
+            heading repeated on every convoy card. One row per language - a locale without
+            this row keeps the heading. See text/en_us/InGameText.xml for the full note.
+        -->
+        <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="ja_JP">
+            <Text></Text>
+        </Replace>
+    </LocalizedText>
+</Database>

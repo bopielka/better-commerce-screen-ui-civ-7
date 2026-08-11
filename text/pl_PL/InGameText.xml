@@ -1,6 +1,269 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
 <Database>
-    <EnglishText>
-        <!-- Polskie napisy moda trafiaja tutaj. -->
-    </EnglishText>
+    <LocalizedText>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL" Language="pl_PL">
+            <Text>Przypisz wszystkie</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_BUSY" Language="pl_PL">
+            <Text>Przypisywanie...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="pl_PL">
+            <Text>Przypisuje wszystkie nieprzydzielone zasoby, zachowując dotychczasowe przydziały. Najpierw osady z ujemnym zadowoleniem, po jednej — najgorsza najpierw — dopóki żadna nie jest poniżej zera. Potem wielbłądy, następnie zasoby, których mocniejszy warunek jest w danej osadzie spełniony, potem zasoby jednodochodowe, a na końcu wielodochodowe.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="pl_PL">
+            <Text>Przypisz od nowa</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_BUSY" Language="pl_PL">
+            <Text>Przypisywanie od nowa...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_TOOLTIP" Language="pl_PL">
+            <Text>Cofa wszystkie przydzielone zasoby, po czym układa przydziały od zera w tej samej kolejności.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL" Language="pl_PL">
+            <Text>Cofnij wszystkie</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY" Language="pl_PL">
+            <Text>Cofanie...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP" Language="pl_PL">
+            <Text>Zwraca do puli wszystkie zasoby przydzielone w całym imperium.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="pl_PL">
+            <Text>Wybierz dochód, który ta osada ma dostawać w pierwszej kolejności. Zrównoważony celuje w jej najsłabsze dochody.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="pl_PL">
+            <Text>Priorytet: {1_Priority}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_OPTION_TOOLTIP" Language="pl_PL">
+            <Text>Priorytet: {1_Priority} w tej osadzie.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED" Language="pl_PL">
+            <Text>Zrównoważony</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="pl_PL">
+            <Text>Przydzielaj w sposób zrównoważony, celując w najsłabsze dochody tej osady.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="pl_PL">
+            <Text>Szybkie przypisanie</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="pl_PL">
+            <Text>Przypisuje nieprzydzielone zasoby wyłącznie do tej osady, zachowując dotychczasowe przydziały.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="pl_PL">
+            <Text>Lepszy widok zasobów Najane</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="pl_PL">
+            <Text>Automatycznie przypisuj zasoby</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="pl_PL">
+            <Text>Co zrobić po zdobyciu zasobu — ulepszeniem pola albo szlakiem handlowym — bez otwierania ekranu Handlu. Używa tej samej kolejności co „Przypisz wszystkie".</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="pl_PL">
+            <Text>Nigdy</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_NEW" Language="pl_PL">
+            <Text>Przypisz nowy zasób</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_ALL" Language="pl_PL">
+            <Text>Przypisz wszystkie nieprzydzielone</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="pl_PL">
+            <Text>Ułóż wszystkie przydziały od nowa</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="pl_PL">
+            <Text>Skróty myszy</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="pl_PL">
+            <Text>Skróty myszy[N][N]PPM na przypisanym zasobie - cofa go do puli nieprzydzielonych.[N]Shift + PPM - cofa wszystkie zasoby tego samego rodzaju z tej osady.[N][N]Shift podczas przypisywania, przeciągnięciem albo kliknięciem - dokłada do tej osady kolejne zasoby tego samego rodzaju, aż skończy się miejsce.[N][N]Przytrzymany Shift i najechanie na cokolwiek - wszystkie zasoby tego rodzaju powiększają się, pokazując, czego dotyczyłaby powyższa akcja.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="pl_PL">
+            <Text>Najpierw fabryczne</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="pl_PL">
+            <Text>Przypisuje zasoby fabryczne przed wszystkim innym. Osada może prowadzić tylko jeden rodzaj zasobu fabrycznego, ale dowolną liczbę jego kopii — więc każda fabryka zaczyna od rodzaju, którego masz najwięcej, i zostaje nim zapełniona. Osady z ujemnym zadowoleniem nadal mają pierwszeństwo. Tylko w epoce nowożytnej; włączone, dopóki tego nie wyłączysz.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="pl_PL">
+            <Text>lotnicze</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="pl_PL">
+            <Text>kawaleria</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="pl_PL">
+            <Text>ciężkie okręty</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_INFANTRY" Language="pl_PL">
+            <Text>piechota</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_LIGHT" Language="pl_PL">
+            <Text>lekkie okręty</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_NAVAL" Language="pl_PL">
+            <Text>wszystkie okręty</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_RANGED" Language="pl_PL">
+            <Text>dystansowe</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_SIEGE" Language="pl_PL">
+            <Text>oblężnicze</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING" Language="pl_PL">
+            <Text>Liczone raz na imperium — kolejne sztuki tego nie zwiększają.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_INCOME" Language="pl_PL">
+            <Text>Dochody z surowców imperialnych</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ONE" Language="pl_PL">
+            <Text>Jeden</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ALL" Language="pl_PL">
+            <Text>Wszystkie</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="pl_PL">
+            <Text>Blokuje tylko limit szlaków handlowych</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_RANGE" Language="pl_PL">
+            <Text>Poza zasięgiem szlaku handlowego</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES" Language="pl_PL">
+            <Text>Zasoby miejskie i dodatkowe</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE" Language="pl_PL">
+            <Text>Zasoby imperialne</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE" Language="pl_PL">
+            <Text>Zasoby imperialne i skarbowe</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE" Language="pl_PL">
+            <Text>Miasta skarbowe</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="pl_PL">
+            <Text>Zasoby fabryczne</Text>
+        </Row>
+
+        <!-- Zakładka zasobów fabrycznych -->
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="pl_PL">
+            <Text>W fabrykach</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING_EMPTY" Language="pl_PL">
+            <Text>Żaden zasób fabryczny nie jest nigdzie przypisany, więc żaden nic nie daje.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE" Language="pl_PL">
+            <Text>Nieprzypisane</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_EMPTY" Language="pl_PL">
+            <Text>Wszystkie zasoby fabryczne, które masz, siedzą w fabrykach.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE" Language="pl_PL">
+            <Text>Tam, gdzie są teraz, nie dają nic. Liczby powyżej to tyle, ile dołożyłyby po wpięciu do osady z fabryką.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP" Language="pl_PL">
+            <Text>PKB z zasobów fabrycznych</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="pl_PL">
+            <Text>{1_Rate} PKB na turę za każdy zasób fabryczny wpięty do fabryki, a masz ich wpiętych {2_Count}. Na tym punktowana jest nowożytna ścieżka ekonomiczna. Niektóre unikalne dzielnice, jak amerykański Park Przemysłowy, dokładają do tego więcej i nie są tu wliczone.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="pl_PL">
+            <Text>Z {3_Net} {2_Yield}, które twoje imperium robi na turę, mniej więcej {1_Amount} bierze się stąd. To szacunek — premie procentowe z innych źródeł to przesuwają.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="pl_PL">
+            <Text>Wpięcie tych sztuk dołożyłoby mniej więcej {1_Amount} na turę do {3_Net} {2_Yield}, które twoje imperium już robi. To szacunek — premie procentowe z innych źródeł to przesuwają.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="pl_PL">
+            <Text>W fabrykach</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_BUILDINGS" Language="pl_PL">
+            <Text>budynki</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WONDERS" Language="pl_PL">
+            <Text>cuda</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_LAND_UNITS" Language="pl_PL">
+            <Text>jednostki lądowe</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_SEA_UNITS" Language="pl_PL">
+            <Text>okręty</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GROWTH" Language="pl_PL">
+            <Text>tempo wzrostu</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_HEAL" Language="pl_PL">
+            <Text>leczenie na turę</Text>
+        </Row>
+
+        <!-- Podsumowanie szlaków handlowych nad zakładkami -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL" Language="pl_PL">
+            <Text>Szlaki handlowe</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_SLOTS_FREE" Language="pl_PL">
+            <Text>wolnych miejsc: {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_USED" Language="pl_PL">
+            <Text>Wykorzystane szlaki handlowe: {1_Used} z {2_Total}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OPEN_NOW" Language="pl_PL">
+            <Text>Szlak możesz otworzyć od razu z:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OUT_OF_REACH" Language="pl_PL">
+            <Text>Limit jeszcze jest, ale nic w zasięgu:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_FULL" Language="pl_PL">
+            <Text>Wszystkie dostępne szlaki handlowe są wykorzystane.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_NOBODY" Language="pl_PL">
+            <Text>Nie poznałeś jeszcze nikogo, z kim można handlować.</Text>
+        </Row>
+
+        <!-- Zakładka konwojów skarbowych -->
+        <!--
+            Blanking a base-game string, not adding one of ours.
+
+            "Treasure Resources" is written above the icons on every convoy card, on a
+            screen whose every card is a treasure convoy. The card already says which
+            settlement it is; the heading only costs a line.
+
+            The card renders it as a bare text node, so no CSS selector can reach it -
+            but the key is used in exactly one place in the whole game, so emptying it
+            here removes the heading and nothing else. One row per language: a locale
+            without this row keeps the heading.
+        -->
+        <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="pl_PL">
+            <Text></Text>
+        </Replace>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK" Language="pl_PL">
+            <Text>Co robi kliknięcie</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP" Language="pl_PL">
+            <Text>Kliknięcie nazwy osady, jej zasobu albo flagi konwoju przesuwa mapę na to miejsce — ale ten ekran zostaje otwarty, więc zobaczysz to dopiero po jego zamknięciu. Kliknięcie niczego nie przypisuje, nie przesuwa i nie wydaje.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="pl_PL">
+            <Text>Tyle dostaniesz za konwój po jego rozładowaniu w ojczyźnie.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA" Language="pl_PL">
+            <Text>Morski szlak handlowy</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_LAND" Language="pl_PL">
+            <Text>Lądowy szlak handlowy</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY" Language="pl_PL">
+            <Text>Tylko podczas obchodów, więc nie jest wliczane do dochodów powyżej.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CAPPED" Language="pl_PL">
+            <Text>Gra ogranicza ten bonus, więc kopie ponad limit już go nie zwiększają.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION" Language="pl_PL">
+            <Text>Zasoby fabryczne w całym imperium.</Text>
+        </Row>
+    </LocalizedText>
 </Database>
