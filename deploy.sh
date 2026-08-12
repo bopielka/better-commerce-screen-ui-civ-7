@@ -115,6 +115,24 @@ done < <(
 )
 [[ $stray -eq 0 ]] || die "$stray stray backtick(s) - the mod would fail to load. Use quotes in CSS comments."
 
+# --- check: the Steam description has a hard 6000-character limit -------------
+#
+# Steam truncates the Workshop description field at 6000 characters. It does not warn -
+# the tail is simply gone, and the first thing lost is whatever sits at the bottom, which
+# is where the credits and the source link live.
+#
+# Checked here rather than trusted to memory: the description grows a line at a time as
+# features land, and nobody counts characters while writing one.
+DESCRIPTION="$SRC_DIR/steam-description.bbcode"
+DESCRIPTION_LIMIT=6000
+if [[ -f "$DESCRIPTION" ]]; then
+    size=$(wc -c < "$DESCRIPTION" | tr -d '[:space:]')
+    if [[ "$size" -gt "$DESCRIPTION_LIMIT" ]]; then
+        die "steam-description.bbcode is $size characters; Steam allows $DESCRIPTION_LIMIT. Trim it."
+    fi
+    say "steam description: $size/$DESCRIPTION_LIMIT characters"
+fi
+
 # --- deploy ------------------------------------------------------------------
 rm -rf "$DEST_DIR"
 mkdir -p "$DEST_DIR"

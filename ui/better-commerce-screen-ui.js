@@ -11,10 +11,12 @@ import './screen/factory-tab.js';
 // Wraps the trade route card, which is its own tab and its own mount.
 import './screen/trade-routes.js';
 
-// Runs with the screen closed, so it starts here rather than from a component.
+// Both run with the screen closed, so they start here rather than from a component.
 import { startAutoAssign } from './planner/auto-assign.js';
+import { startAssignNotification } from './screen/assign-notification.js';
 
 import { log } from './support/diagnostics.js';
 
 startAutoAssign();
+startAssignNotification();
 log('loaded');

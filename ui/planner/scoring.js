@@ -3,16 +3,16 @@
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * ORIGIN: this is a port of the assignment engine from the Steam Workshop mod
- * **Resource+** (`brads-assign-all-resources`, id 3756000777) by **Brad**, at the
+ * **Resource+** (`brads-assign-all-resources`, id 3756000777) by **Br4d**, at the
  * request of this mod's author, so that the buttons here behave identically to that
  * mod's. The scoring constants, the ordering rules, the conditional-bonus table and
- * the overall shape of `bestAssignment` are Brad's work, not ours.
+ * the overall shape of `bestAssignment` are Br4d's work, not ours.
  *
- * Brad has given permission for this port.
+ * Br4d has given permission for this port.
  * ─────────────────────────────────────────────────────────────────────────────
  *
  * What it does, in order of preference:
- *   0. rescue unhappiness first - see rescueScore. This tier is NOT Brad's; it sits
+ *   0. rescue unhappiness first - see rescueScore. This tier is NOT Br4d's; it sits
  *      above everything below and it is the whole reason this file diverges;
  *   0b. factory resources into the factories that can be filled with them, when
  *      "factories first" is switched on for the age - see factoryFirstScore;

@@ -4,9 +4,7 @@
  *   1. the tab strip gets wider and shorter, so "Trade Routes" fits on one line;
  *   2. the standing instruction line above the panel is dropped, keeping one gap's
  *      worth of breathing room where it used to be;
- *   3. the unassigned-resource yield totals become badges, the same rounded translucent
- *      pills Drongo's Top Panel puts around the yields in the top-left corner;
- *   4. the filter and sort dropdowns lose a third of their height.
+ *   3. the filter and sort dropdowns lose a third of their height.
  *
  * Two stylesheets, on purpose. The tab strip belongs to the whole screen, so its rules
  * are attached once and scoped by the `screen-resource-allocation` element - which only
@@ -14,40 +12,23 @@
  * Resources tab and is attached and removed with it, which keeps the other three tabs
  * untouched by construction rather than by selector.
  *
- * Marks are applied by JavaScript rather than written as selectors on the game's utility
- * classes wherever the structure allows it, because those classes are layout, not
- * identity, and change without warning. `data-name` attributes are the exception - the
- * game sets them deliberately.
+ * ⚠️ The unassigned-resource yield totals used to be restyled as badges here. Removed:
+ * the row they live in is built from `getUnassignedResourceYieldBonus`, which is zero for
+ * every yield unless something specifically pays you for leaving resources unassigned. For
+ * almost every game the row is empty, so the styling had nothing to apply to and the
+ * feature was invisible - it was not broken, there was simply nothing there.
  */
-import { Icon } from '/core/ui/utilities/utilities-image.js';
-
-import { getCommerceModel } from '../model/screen-model.js';
 import { log, warn } from '../support/diagnostics.js';
 import { ensureStyle } from '../support/dom.js';
 
 const SCREEN = 'screen-resource-allocation';
 const SCREEN_STYLE_ID = 'najane-commerce-screen-style';
 const TAB_STYLE_ID = 'najane-commerce-tab-style';
-const BADGE_CLASS = 'najane-yield-badge';
 const FILTER_SLOT_SELECTOR = '[data-name="filter-and-sort"]';
 
 /** The tab's instruction line. Utility classes, so verified at runtime - see checkDescription. */
 const DESCRIPTION_SELECTOR = `${SCREEN} .text-base.w-full.text-center.my-4`;
 
-/**
- * Lifted from Drongo's Top Panel (ui/diplo-ribbon/css-constants.js) so the badges here
- * read as the same object as the ones up there. Its geometry is the game's own min-h-8,
- * 1.7777rem; the tints are that mod's.
- */
-const YIELD_TINTS = {
-    YIELD_GOLD: 'rgba(255, 235, 75, 0.3)',
-    YIELD_HAPPINESS: 'rgba(253, 175, 50, 0.3)',
-    YIELD_SCIENCE: 'rgba(50, 151, 255, 0.3)',
-    YIELD_CULTURE: 'rgba(197, 75, 255, 0.3)',
-    YIELD_PRODUCTION: 'rgba(204, 118, 52, 0.34)',
-    YIELD_DIPLOMACY: 'rgba(88, 192, 231, 0.3)',
-};
-const DEFAULT_TINT = 'rgba(228, 228, 228, 0.3)';
 
 /**
  * The tab strip.
@@ -97,34 +78,13 @@ ${DESCRIPTION_SELECTOR} + div {
 }
 `;
 
-function buildTabContentStyle() {
-    const tints = Object.entries(YIELD_TINTS)
-        .map(([type, colour]) => `.${BADGE_CLASS}--${type} { background-color: ${colour}; }`)
-        .join('\n');
-
-    return `
-.${BADGE_CLASS} {
-    box-sizing: border-box;
-    align-items: center;
-    height: 1.7777777778rem;
-    min-height: 1.7777777778rem;
-    border-radius: 0.4444444444rem;
-    padding-left: 0.3333333333rem;
-    padding-right: 0.5555555556rem;
-    margin: 0.1666666667rem;
-    color: #FFFFFF;
-    background-color: ${DEFAULT_TINT};
-    background-clip: padding-box;
-}
-
-${tints}
-
 /*
  * Dropdown height comes from three places at once: the class the screen passes in
  * (min-h-14, 3.1111rem), the component's own min-h-10 on the same element, and the
- * open-arrow's min-h-12. Overriding only the first one left them nearly as tall, so
- * all three are pinned to min-h-8 - the height of the badges above.
+ * open-arrow's min-h-12. Overriding only the first one left them nearly as tall, so all
+ * three are pinned to the game's own min-h-8.
  */
+const TAB_CONTENT_STYLE = `
 ${FILTER_SLOT_SELECTOR} .dropdown__container {
     min-height: 1.7777777778rem;
 }
@@ -132,56 +92,9 @@ ${FILTER_SLOT_SELECTOR} .dropdown__open-arrow {
     min-height: 1.7777777778rem;
 }
 `;
-}
 
 let styleElement = null;
 let observer = null;
-let headerBar = null;
-
-/** iconSrc back to the yield it came from, using the game's own icon lookup. */
-function yieldTypeByIconSrc() {
-    const map = new Map();
-    GameInfo.Yields.forEach((yieldDefinition) => {
-        map.set(`url(${Icon.getYieldIcon(yieldDefinition.YieldType)})`, yieldDefinition.YieldType);
-    });
-    return map;
-}
-
-/**
- * The row of unassigned-yield totals.
- *
- * Found structurally from the filter slot rather than by class: the header bar is that
- * slot's parent, its first block is the "unassigned" column, and the totals are the last
- * thing in it. See the headerBar prop in commerce-screen-resources-tab.tsx.
- */
-function findBonusRow() {
-    const leftBlock = headerBar?.firstElementChild;
-    return leftBlock?.lastElementChild ?? null;
-}
-
-function applyBadges() {
-    const model = getCommerceModel();
-    const bonuses = model?.data?.resourceTabData?.unslottedBonuses ?? [];
-    const row = findBonusRow();
-    if (!row || bonuses.length === 0) {
-        return;
-    }
-
-    const byIcon = yieldTypeByIconSrc();
-    const entries = Array.from(row.children);
-    if (entries.length !== bonuses.length) {
-        // The row is mid-rebuild; the observer will call again once it settles.
-        return;
-    }
-
-    entries.forEach((element, index) => {
-        const yieldType = byIcon.get(bonuses[index].iconSrc);
-        element.classList.add(BADGE_CLASS);
-        if (yieldType) {
-            element.classList.add(`${BADGE_CLASS}--${yieldType}`);
-        }
-    });
-}
 
 function checkDescription() {
     const matches = document.querySelectorAll(DESCRIPTION_SELECTOR).length;
@@ -193,30 +106,24 @@ function checkDescription() {
 }
 
 /**
- * Narrows the observer onto the header bar once it exists.
+ * Waits for the tab's header bar to exist, then checks the one selector that is guesswork.
  *
- * The header bar cannot be found in onMount: `CommerceScreenBaseTabContent` renders the
- * tab's content inside a `ThrobberSuspense`, so at mount time it is still a placeholder.
- * The first attempt at this looked once, found nothing, and logged "could not find the
- * header bar" every time. So the search runs from a broad observer and narrows down when
+ * It cannot be found in onMount: `CommerceScreenBaseTabContent` renders the tab's content
+ * inside a `ThrobberSuspense`, so at mount time it is still a placeholder. Looking once
+ * found nothing every time, so the search runs from a broad observer and stops as soon as
  * it succeeds.
+ *
+ * Everything this module does is CSS; the only thing that needs the DOM is confirming
+ * that the instruction line's selector still matches exactly one element, since that one
+ * is built from the game's utility classes rather than a `data-name`.
  */
 function tryAttachToHeaderBar() {
-    const filterSlot = document.querySelector(FILTER_SLOT_SELECTOR);
-    if (!filterSlot?.parentElement) {
+    if (!document.querySelector(FILTER_SLOT_SELECTOR)?.parentElement) {
         return false;
     }
-    headerBar = filterSlot.parentElement;
-
     observer?.disconnect();
+    observer = null;
     checkDescription();
-    applyBadges();
-
-    // childList only, and applyBadges only ever adds classes - an attribute mutation.
-    // That is what keeps this from feeding itself; see the note in trade-routes.js about
-    // what happens when an observer's callback mutates childList on every pass.
-    observer = new MutationObserver(() => applyBadges());
-    observer.observe(headerBar, { childList: true, subtree: true });
     log('layout adjustments applied');
     return true;
 }
@@ -238,7 +145,7 @@ export function startLayout() {
         return;
     }
     ensureScreenLayout();
-    styleElement = ensureStyle(SCREEN_STYLE_ID, buildTabContentStyle());
+    styleElement = ensureStyle(SCREEN_STYLE_ID, TAB_CONTENT_STYLE);
 
     if (tryAttachToHeaderBar()) {
         return;
@@ -252,7 +159,6 @@ export function startLayout() {
 export function stopLayout() {
     observer?.disconnect();
     observer = null;
-    headerBar = null;
     styleElement?.remove();
     styleElement = null;
 }

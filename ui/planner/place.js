@@ -30,7 +30,7 @@
  * previous one left behind; that is what makes the happiness rescue level out and the
  * factories fill one kind at a time.
  */
-import { canAssign, requestAssign } from '../engine/operations.js';
+import { assignRefusalReasons, canAssign, requestAssign } from '../engine/operations.js';
 import {
     buildAvailableResources,
     buildHeadlessModel,
@@ -38,6 +38,8 @@ import {
     forgetSettlementBuildings,
 } from '../model/headless-model.js';
 import { bestAssignment, forgetEligibility } from './scoring.js';
+import { isFactoryFirstEnabled } from './factory-first-setting.js';
+import { resourceClassOf, resourceType } from './facts.js';
 import { log, warn } from '../support/diagnostics.js';
 
 /**
@@ -88,6 +90,11 @@ function awaitAssignment(cityID, resourceValue) {
  */
 const MAX_PLACEMENTS = 300;
 
+/** How many refusals to spell out when a pass places nothing; the rest repeat. */
+const EXPLAIN_SAMPLE = 8;
+
+const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
+
 /**
  * Places as much as it can, best first.
  *
@@ -104,6 +111,8 @@ export async function placeResources({ scope = null, targetCityID = null, label 
     // A pair the engine refuses is set aside rather than retried, or the loop would
     // choose it again every pass and never finish.
     const refused = new Set();
+
+    logFactoryState();
 
     const startedAt = Date.now();
     let boardMs = 0;
@@ -158,6 +167,9 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         waitingMs += Date.now() - mark;
     }
 
+    if (placed === 0) {
+        explainWhyNothingFits(scope, refused);
+    }
     if (placed >= MAX_PLACEMENTS) {
         warn(`stopped after ${MAX_PLACEMENTS} assignments in one pass; anything left is still unassigned`);
     }
@@ -177,5 +189,95 @@ function settlementName(cityID) {
         return Locale.compose(Cities.get(cityID)?.name ?? '');
     } catch (error) {
         return '';
+    }
+}
+
+/**
+ * Says, per resource, why the engine will not take it anywhere.
+ *
+ * ⚠️ Diagnostics only, and only when a pass placed NOTHING - which is the case worth
+ * explaining. "nothing could be placed" on its own says the pass failed but not what the
+ * player is supposed to do about it, and that is the same gap the game's own notification
+ * leaves: it insists resources can be assigned while every settlement refuses them.
+ *
+ * One settlement per resource is enough. The reasons are properties of the pair, but the
+ * common ones - no room, wrong class, not connected - repeat across every settlement, and
+ * asking all of them would multiply the most expensive call in this mod by the size of
+ * the empire for the sake of a log line.
+ */
+function explainWhyNothingFits(scope, refused) {
+    try {
+        const settlements = buildSettlements();
+        const available = buildAvailableResources(settlements).filter(
+            (resource) => scope === null || scope.has(resource.resourceValue),
+        );
+        if (available.length === 0) {
+            log('nothing to place: the pool is empty');
+            return;
+        }
+
+        const withRoom = settlements.filter((settlement) => settlement.availableSlots?.length);
+        log(
+            `nothing could be placed: ${available.length} in the pool, ` +
+                `${withRoom.length} of ${settlements.length} settlement(s) have room` +
+                (refused.size ? `, ${refused.size} set aside after the engine refused them` : ''),
+        );
+
+        if (withRoom.length === 0) {
+            // Nothing to ask about: with no room anywhere, every refusal is the same one
+            // and listing the pool would say it once per resource.
+            log('  every settlement is at capacity - no algorithm can place any of these');
+            return;
+        }
+
+        const target = withRoom[0];
+        const where = settlementName(target.cityID);
+        // A handful is a sample, not a census: the reasons repeat, and the pool can hold
+        // over a hundred resources.
+        const sample = available.slice(0, EXPLAIN_SAMPLE);
+        for (const resource of sample) {
+            const reasons = assignRefusalReasons(target.cityID, resource.resourceValue);
+            log(`  ${resource.resourceType} -> ${where}: ${reasons.join(' | ') || 'no reason given'}`);
+        }
+        if (available.length > sample.length) {
+            log(`  ...and ${available.length - sample.length} more`);
+        }
+    } catch (error) {
+        warn(`could not explain why nothing fits: ${error}`);
+    }
+}
+
+/**
+ * One line on the state of the factories, at the start of a run.
+ *
+ * ⚠️ Diagnostics only. "Factories first placed nothing" has three quite different causes -
+ * no factory resources in the pool, no settlement with a factory, or every such settlement
+ * already full - and from the outside they look identical. Printing the three counts costs
+ * one pass over the board and tells them apart at a glance.
+ */
+function logFactoryState() {
+    if (!isFactoryFirstEnabled()) {
+        return;
+    }
+    try {
+        const settlements = buildSettlements();
+        const pool = buildAvailableResources(settlements).filter(
+            (resource) => resourceClassOf(resource) === FACTORY_CLASS,
+        );
+        const withFactory = settlements.filter((s) => s.factoryResourceData?.hasFactory);
+        const withRoom = withFactory.filter((s) => s.availableSlots?.length);
+
+        const kinds = new Map();
+        for (const resource of pool) {
+            const type = resourceType(resource);
+            kinds.set(type, (kinds.get(type) ?? 0) + 1);
+        }
+        log(
+            `factories first: ${pool.length} factory resource(s) in the pool ` +
+                `(${[...kinds].map(([type, n]) => `${type} x${n}`).join(', ') || 'none'}), ` +
+                `${withFactory.length} settlement(s) with a factory, ${withRoom.length} of those with room`,
+        );
+    } catch (error) {
+        warn(`could not summarise the factory state: ${error}`);
     }
 }

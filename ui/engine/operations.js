@@ -60,6 +60,37 @@ function send(args, what) {
     }
 }
 
+/**
+ * WHY the engine would refuse an assignment, in its own words.
+ *
+ * `canStart` answers with `{ Success, FailureReasons }`, and the reasons are localisation
+ * keys the game shows elsewhere as tooltips. Only used for diagnostics - the placement
+ * loop needs the yes/no and nothing more - but when a resource cannot go anywhere, this
+ * is the difference between "nothing could be placed" and knowing what to do about it.
+ */
+export function assignRefusalReasons(cityID, resourceValue) {
+    try {
+        const result = Game.PlayerOperations.canStart(
+            GameContext.localPlayerID,
+            ASSIGN(),
+            assignArgs(cityID, resourceValue),
+            false,
+        );
+        if (result.Success) {
+            return [];
+        }
+        return (result.FailureReasons ?? []).map((reason) => {
+            try {
+                return Locale.compose(reason);
+            } catch (error) {
+                return reason;
+            }
+        });
+    } catch (error) {
+        return [`could not ask: ${error}`];
+    }
+}
+
 /** Sends only if the engine agrees, so a refusal is reported rather than swallowed. */
 function checkedSend(args, what) {
     return canStart(args, what) && send(args, what);

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    UKRAINIAN, filed under ru_RU.
+
+    Deliberate, not a mistake and not a mislabelled file: the game ships no Ukrainian
+    locale, so ru_RU is the only slot these strings can occupy. Anyone playing the game in
+    Russian gets Ukrainian text from this mod.
+
+    ⚠️ Do not "fix" this by translating the file into Russian. If a Ukrainian locale is
+    ever added to the game, move this file to it verbatim and give ru_RU its own text.
+-->
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_NAME" Language="ru_RU">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_MOD_NAJANE_COMMERCE_DESCRIPTION" Language="ru_RU">
+            <Text>Покращує екран торгівлі — місце, де керують ресурсами та торговими шляхами. Правий клік на призначеному ресурсі повертає його до запасу, Shift + правий клік повертає всі ресурси того самого виду.</Text>
+        </Row>
+    </LocalizedText>
+</Database>

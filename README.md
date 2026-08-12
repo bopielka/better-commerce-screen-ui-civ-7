@@ -6,136 +6,263 @@ screen where resources are assigned to settlements and trade routes are reviewed
 No game rules, values or balance are changed, and saved games are unaffected
 (`AffectsSavedGames = 0`).
 
-Status: **0.1 — first feature written, not yet confirmed in game.**
+Status: **0.1 — feature-complete, in testing.**
 
-## Features
+The Steam Workshop page carries a short overview; the full description lives here, under
+[What the mod does](#what-the-mod-does). The two are kept apart on purpose: a store page
+is read in ten seconds, and everything that does not survive that cut belongs somewhere a
+reader can choose to go.
 
-**Right-click an assigned resource** to send it back to the unassigned pool.
-**Shift + right-click** sends back every resource of that same kind assigned to *that*
-settlement; the rest of the empire keeps theirs.
+## What the mod does
 
-**Assign with Shift held** — by dragging or by clicking — and the settlement keeps
-taking resources of that same kind out of the unassigned pool until it runs out of room
-or out of resources.
+This is the long version. The Steam page carries a short one; everything below is the
+same content written out in full, so a reader who wants to know exactly what changes has
+somewhere to find it.
 
-**Hold Shift and hover** any resource and every resource of that kind in the same group
-enlarges, exactly the way the game already enlarges the one under the cursor. Over a
-settlement that previews what Shift + right-click would release; over the unassigned
-pool it previews what Shift-assigning would send in.
+### The mouse does more
 
-Right-clicking anywhere else on the screen keeps its normal meaning (closing the
-screen) — only clicks that land on an assigned resource are intercepted.
+- **Right-click** an assigned resource to send it straight back to the unassigned pool.
+  No selecting, no dragging it back.
+- **Shift + right-click** returns every resource of that same kind in that settlement at
+  once. The rest of the empire keeps theirs.
+- Hold **Shift** and hover anything, and every resource of that kind lights up the same
+  way the game already highlights whatever is under your cursor. You see what you are
+  about to affect before you commit to it.
+- Hold **Shift while assigning** — dragging or clicking, either works — and the settlement
+  keeps taking resources of that kind out of the pool until it runs out of room or you run
+  out of resources.
 
-A **?** beside the three buttons carries all of the above in its tooltip; none of it is
-discoverable by looking.
+Right-clicking anywhere else still closes the screen, exactly as before.
 
-**Assign All / Reassign All**, to the left of the tab strip, and three controls on every
-settlement card: a **priority picker** (remembered across reloads), **quick assign** and
-**unassign** — the last one
-being the game's own return button, moved up from the far side of the card.
+None of that is discoverable by looking, so there is a **?** beside the buttons at the top
+that spells it out.
 
-**Unassign All** is the third button in that row, replacing the game's own button at the
-bottom of the settlement column — same action, without the scroll and without the
-confirmation prompt.
+### Camels stop being a puzzle
 
-**Assign All puts happiness first.** Before anything else it looks for settlements sitting
-on negative happiness and feeds them happiness resources — the most unhappy one first,
-only until it stops being the most unhappy, then the next. The aim is zero, not a maximum,
-so three settlements at −10 / −20 / −30 are levelled rather than one of them being
-rescued outright. **Cities come before towns as a class**: while any city is below zero,
-no town is considered, however deep its own hole. A camel will be spent on opening slots
-in a full unhappy settlement when that is what stands in the way.
+Camels carry two extra resource slots with them, so pulling one out of a full settlement
+means something else has to leave first. The mod works out how much room is actually
+needed and frees exactly that much — taken from the end of the settlement's list, and not
+one resource more than the situation demands.
 
-Resources whose purpose is cheaper **units** — military, civilian or religious — go last,
-after everything else. Recognised from their modifiers (any `ADJUST_UNIT_PRODUCTION`
-effect), not from a list of names.
+That applies to dragging one out by hand as well. Normally the game simply refuses the
+move and nothing happens; here the room is made and the camel goes where you dropped it.
 
-When nothing left in the pool serves a city's chosen priority, **production comes next** —
-ahead of a resource whose situational bonus merely happens to apply there. Towns fall back
-differently, since production in a town becomes gold rather than buildings.
+### Assign your whole empire
 
-A **city** with no priority chosen counts as wanting **production**; a **town** counts as
-wanting **food**, since a town turns its production into gold rather than building with
-it. Either can be overridden by picking a priority.
+Three buttons sit above the tabs:
 
-**Turtles and silk are gathered into one city** — whichever makes the most culture on its
-own — and **jade into another**, whichever makes the most gold, never the culture one. If
-the intended city fills up, the next best by that same yield takes over. This happens only
-once a settlement has taken everything matching its own priority.
+| Button | What it does |
+|---|---|
+| **Assign All** | Places every unassigned resource, keeping what is already assigned. |
+| **Reassign All** | Clears everything and lays it out again from scratch. |
+| **Unassign All** | Empties every settlement. The game's own version of this button is buried at the very bottom of the settlement list; this one is where you can reach it. |
 
-Resources whose bonus **scales with warehouses** (clay, crabs, turtles) are steered to the
-settlement that has the most of them — recognised from the data, not from a list of names.
+Every settlement card also gets three controls of its own, next to its name:
 
-What a resource is worth in a settlement is read from the **modifier tables, including
-each modifier's requirements** — so a bonus that only fires in a city, a capital, distant
-lands or a settlement with a given building is not counted anywhere else. This matters
-more than it sounds: 29 resource modifiers are gated on having a build queue, which is
-the game's way of saying "cities only", and that covers Jade, Silk, Lapis Lazuli, Cloves
-and Incense.
+- **A priority picker** — tell this settlement which yield it should be fed first. What
+  you pick is remembered, so it is still there after you reload.
+- **Quick assign** — fill this one settlement from the pool, leaving the rest alone.
+- **Unassign** — empty it again.
 
-A resource that carries **production** is nudged away from towns, since a town turns
-production into gold rather than building with it: cotton (+2 food, +2 production) goes to
-a city rather than a town, even though a town wants the food. And how much of a priority a
-resource actually serves is the dominant term in the ordering, so llamas (+1 production
-beside +3 happiness) are only reached for once everything with more production is placed.
+### How Assign All thinks
 
-> The three assignment buttons and the settlement controls reproduce the behaviour of
-> the Workshop mod **Resource+** (`brads-assign-all-resources`, id 3756000777) by
-> **Brad**, whose permission the author has. The scoring and ordering in
-> `ui/planner/scoring.js` are a port of Brad's work. Resource+'s per-resource locks are
-> not ported, so "Reassign All" clears everything.
+**Unhappiness comes first**, ahead of everything else. Any settlement sitting below zero
+Happiness is fed happiness resources until it is back at zero — not maximised, just out of
+trouble. Cities are rescued before towns, as a class: while any city is unhappy, no town
+is considered. And the help is spread rather than dumped, so three settlements at -10, -20
+and -30 are levelled out instead of one of them being rescued while the others stay in the
+red. If a full settlement is the problem, a camel will be spent on opening the slots.
 
-**A fifth tab, Factory Resources**, in the Modern age only — the game has none, and
-factory resources are otherwise scattered between a pool subsection and a per-settlement
-dropdown. The body is a placeholder for now; the tab is the part that is in.
+After that it works down in order: camels first, since they make room for everything else;
+then resources whose stronger situational bonus actually applies in that settlement; then
+single-yield resources; then multi-yield ones. Resources that do nothing but make units
+cheaper to build are placed last of all.
 
-> This is the one feature that **replaces** `CommerceScreen` rather than wrapping it —
-> tabs are its children and nothing lets a mod add one from outside. `ui/screen/factory-tab.js`
-> is a line-for-line transcription of the game's component with one `Show` appended, so
-> it can be diffed against the original after a patch. It is also the first thing to
-> check if the screen ever breaks.
+When nothing left can serve a city's chosen priority, production is what it takes next —
+ahead of a resource whose situational bonus merely happens to apply there.
 
-**Factories first** — a checkbox after the "?" in the button bar, **Modern age only**, on
-by default.
-With it on, factory resources are placed before anything else: each factory is started on
-the kind with the most copies waiting and then filled with it, because the game allows only
-one kind of factory resource per settlement but any number of copies of that kind. Unhappy settlements
-are still dealt with first.
+A city with no priority chosen is treated as wanting production, and a town as wanting
+food: a town turns its production into gold rather than building with it, so growth is
+what it can actually use.
 
-**Layout**: the tabs carry icons instead of words, with the label moved to the tooltip —
-a resource leaf, the trade arrows, the empire hexagon and the treasure chest, all the
-game's own art. On the Resources tab the standing instruction line above the panel is
-dropped, the unassigned-yield totals are drawn as badges matching the ones Drongo's Top
-Panel puts in the top-left corner, and the filter and sort dropdowns lose a third of
-their height.
+What a resource is actually worth somewhere is read from the game's own data,
+**conditions included** — a bonus that only applies in a city, in your capital, in distant
+lands or in a settlement with the right building is not counted anywhere it would not
+happen. Jade's gold, Silk's culture and Lapis Lazuli's production all need a city; they
+will not be dropped into a town where they do nothing.
 
-**Moving** a slot-carrying resource out of a settlement works the same way. The game
-refuses that move outright unless the old settlement already has room to lose the two
-slots, which is why dragging a camel out of a full settlement did nothing at all; now the
-companions are released first and the move goes through.
+Turtles and silk are gathered into whichever city makes the most culture by itself, and
+jade into a different one that makes the most gold, so those bonuses stack somewhere
+instead of being sprinkled about. If the intended city runs out of room, the next best
+city for that yield takes over.
 
-**Resources that carry slots** (camels grant a settlement two) may take companions with
-them: removing one shrinks the settlement's capacity, so other resources have to be
-released first — taken from the end of the settlement's list. How many is not computed
-in advance: companions are released one at a time and only for as long as the engine
-keeps refusing the resource that was actually clicked, so a settlement with room to
-spare loses nothing extra. Which resources carry slots comes from the
-`BonusResourceSlots` column, not from a hard-coded rule, so anything a DLC or another
-mod gives the property is handled too.
+Resources whose bonus grows with the number of warehouses in a settlement are steered to
+wherever those warehouses actually are. Resources that carry production lean towards
+cities rather than towns, and a resource that barely helps with a settlement's priority
+waits until everything that helps more has been placed.
 
-**Automatic assignment** — one setting under Options → Mods, four steps, **Never** by
-default:
+### Hands off, if you want it
 
-| | |
+One setting under **Options → Mods**, set to **Never** until you change it, deciding what
+happens when a resource arrives — by improving a tile, or over a trade route. Whatever you
+pick happens with the screen closed and without interrupting you, in the same order Assign
+All uses.
+
+| Setting | What happens on arrival |
 |---|---|
 | Never | the mod does nothing on its own |
-| Place the new resource | the resource just acquired is placed, nothing else is touched |
+| Place the new resource | just the one that arrived, nothing else touched |
 | Place everything unassigned | the arrival is a cue to tidy up the whole pool |
-| Rebuild every assignment | clears every settlement and lays the empire out again |
+| Rebuild every assignment | clears every settlement and starts again |
 
-Anything short of the last never moves a resource that is already assigned, and never
-touches one you deliberately left unassigned. All of it happens with the screen closed,
-using the same order as Assign All.
+Anything short of the last never moves a resource you have already placed, and never
+touches one you deliberately left out.
+
+### Factories first
+
+In the Modern age a checkbox appears after the **?** in the button row, on unless you
+clear it. With it on, factory resources are placed before anything else, and placed the
+way the game rewards: a settlement may only run one kind of factory resource at a time,
+but it may hold any number of copies of that kind. So each factory is started on the kind
+there are most of, and then filled with it, rather than every factory being committed to a
+different kind and most of your stock left with nowhere legal to go.
+
+Settlements below zero Happiness are still dealt with before anything.
+
+### Trade routes, at a glance
+
+A route card used to say where its goods were going in a sentence underneath the name, and
+how much gold the other leader made at the bottom. Now the title line says all of it:
+
+```
+(city) (sea)  MEKKA -> BOGDAN
+```
+
+Three cards to a row instead of one and a half, so a screen holds three times the routes.
+Both lines of prose are gone, and so is the standing instruction paragraph that opened
+every tab.
+
+Above the tabs, one line says how many routes you are running and how many you could — and
+its tooltip names every leader you still have room for, split into the ones you could sign
+with right now and the ones where the room is there but nothing of theirs is in range.
+That distinction is the whole question the tab used to make you answer card by card.
+
+The routes you cannot start yet are split into two collapsible groups, because they are
+different news: the ones where **nothing is wrong except your trade limit**, and the ones
+that are simply **out of range**. The first group is your shopping list for the next trade
+capacity you earn.
+
+### Treasure convoys, without the noise
+
+The "not generating" list used to hold every settlement in your empire that was not
+sending treasure — including all your homeland ones, which never could. They are gone from
+it now, so what is left is the handful you can actually do something about.
+
+Three cards to a row here as well. Each card drops the heading that repeated the name of
+the screen, and the sentence about what a convoy pays out becomes the two numbers it was
+hiding:
+
+```
++300 (gold)   +60 (gdp)
+```
+
+The condition — paid on unloading at home — moves into the tooltip, where it does not need
+re-reading on every card.
+
+Clicking a card here moves the map to that settlement without closing the screen, which is
+easy to mistake for nothing happening. A **?** beside the tabs says so.
+
+### Empire resources, worth in numbers
+
+The Empire tab told you what each resource does — "+1 Gold and Happiness in all
+settlements" — which reads the same whether you hold one settlement or twenty. It now
+tells you what that is worth to you:
+
+```
+(icon) GOLD [6]
+One:  +12 (gold)  +12 (happiness)
+All:  +72 (gold)  +72 (happiness)
+```
+
+One line for a single copy, one for everything you hold, and above the tabs a single total
+for the whole empire. Combat bonuses say which units they reach — and they say it in full,
+including the classes the game's own description leaves out. Resources whose bonus is
+capped, or that only pay during a Celebration, say so instead of quietly inflating the
+total.
+
+Four columns, with the combat resources gathered in the first one where the longer lines
+have room. The rule in the game's own words, and where every copy came from, move into the
+tooltip on the resource icon.
+
+### Factory resources, and what they are worth
+
+The Modern age adds a class of resource that pays nothing at all for being owned — it only
+does anything once it sits in a settlement with a Factory. The game has no screen for
+them: they appear as a subsection of the unassigned pool and as a dropdown on individual
+settlements, and nowhere can you see the lot together.
+
+This mod adds a fifth tab that does, in two halves:
+
+- **In factories** — every factory resource that is actually working, with the total it is
+  producing for your empire. Not "+5% per copy": the real figure for the copies you have
+  slotted, added up per section.
+- **Not assigned** — the ones sitting in the pool doing nothing, and exactly what they
+  would add the moment you place them.
+
+```
+In factories    +20% (prod) Buildings, Wonders    +9% (sci)
+Not assigned    +15% (prod) Land Units
+```
+
+Where a percentage multiplies a yield you can read off the top panel — Tea's Science,
+Kaolin's Culture, Cocoa's Happiness — the card also shows roughly what that is in whole
+numbers. Above the tabs, one line totals the GDP your slotted resources earn towards the
+Modern economic legacy path.
+
+The tooltip on each resource carries the game's own wording, which settlements hold the
+copies, and where they came from.
+
+### A screen with room to breathe
+
+- The tabs carry icons instead of words, with the full name in the tooltip.
+- The standing line of instructions above the panel is gone. It said the same thing every
+  turn.
+- The filter and sort boxes are a third shorter.
+- The "Resource Assignments Available" prompt no longer takes over the turn button when
+  every settlement is full and nothing new can go anywhere. It is a HIGH severity
+  notification that does not expire at end of turn, so it stood between you and ending
+  the turn, every turn, for a situation that rarely has anything worth doing about it.
+
+  Not that nothing *can* be done: you can always open the screen and rearrange what is
+  already assigned, swapping one resource for another. That is why the prompt is only
+  held back when no unassigned resource can be placed anywhere — the case where the
+  rearranging would be for its own sake.
+
+  Nothing is dismissed and no game state is touched: the notification still exists as far
+  as the game is concerned, and the hold on the turn was the panel's own — `canEndTurn` is
+  a UI method reading a UI-facing query — so declining to present it lets the turn end
+  normally. It returns the moment something becomes placeable.
+
+### Languages
+
+Every language the game ships in: English, German, Spanish, French, Italian, Japanese,
+Korean, Polish, Portuguese, Simplified and Traditional Chinese — and Ukrainian.
+
+The game has no Ukrainian locale, so those strings sit in the Russian one. That is a
+deliberate choice, noted in `text/ru_RU/InGameText.xml` and in the `.modinfo`, not a
+mislabelled file.
+
+The wording for things like empire, treasure and factory resources is taken from the
+game's own translation files, so it matches the rest of the interface rather than reading
+like a separate mod — including which terms take a capital, which differs by language.
+
+### Compatibility
+
+Saved games are unaffected and no game rules, values or balance are touched. Safe to add
+or remove mid-game.
+
+⚠️ **Not compatible with Resource+.** Both mods replace the same screen, so they cannot
+run together — enable one or the other.
 
 ## What this screen actually is
 
@@ -197,7 +324,7 @@ ui/                                 JavaScript loaded by the game's UI
     assign-all-buttons.js             Assign All / Reassign All / Unassign All / "?"
     settlement-controls.js            per-settlement priority picker + quick assign
     factory-first.js                  the "factories first" checkbox
-    layout.js                         description, yield badges, dropdown height
+    layout.js                         tab strip, description line, dropdown height
     tab-icons.js                      icons instead of words on the tab strip
     hover-highlight.js                Shift + hover preview
     bulk-assign.js                    Shift-assign, by wrapping slotSelectedResource
@@ -268,6 +395,10 @@ Game logs are the first place to look when something does not appear:
 `console.log` never reaches `UI.log` — use `console.error` for diagnostics.
 
 ## Licence and origin
+
+The automatic assignment logic is a port of **Resource+** (`brads-assign-all-resources`)
+by **Br4d**, used with permission. See the attribution note at the top of
+`ui/planner/scoring.js` for what is theirs and what is not.
 
 Generated by **Opus 5**, a model by **Anthropic**. Anyone may reuse it freely as a basis
 for their own mods.

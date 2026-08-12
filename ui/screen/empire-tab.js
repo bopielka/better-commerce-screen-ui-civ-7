@@ -67,13 +67,21 @@ const STYLE = `
     width: 100%;
 }
 /*
- * Four columns, but not four equal ones.
+ * Two areas, and the first one sizes itself.
  *
- * The first is a third of the width and holds every resource whose bonus is combat
- * strength - those carry a list of unit classes and need the room. The remaining two
- * thirds are split three ways for the rest, which are a number and an icon and fit in far
- * less. Keeping the first column at exactly the width it had means the longest lines on
- * screen did not get any tighter when the fourth column arrived.
+ * The first holds every resource whose bonus is combat strength - those carry a list of
+ * unit classes and need the room. The rest are a number and an icon and fit in far less,
+ * so they share what is left, three to a row.
+ *
+ * ⚠️ The first area used to be a flat 33.3%, which was wrong in both directions: with one
+ * short combat resource it reserved a third of the screen for a line of text a quarter
+ * that wide, and with none at all it left a third of the screen blank. A flex basis of
+ * auto with no width set makes its base size the widest thing in it - which is the whole
+ * point, since what is IN it varies by age, by civilisation and by language.
+ *
+ * The bounds are what keep that honest: never so narrow that a card reads as a scrap,
+ * never so wide that it starves the other three columns, and a shrink factor of 1 so a
+ * very long unit-class list gives way rather than overflowing.
  *
  * The padding is the gap between cards - there is no gap property to set here - so it is
  * half of it on each side of every card.
@@ -82,7 +90,9 @@ const STYLE = `
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    width: 33.3333%;
+    flex: 0 1 auto;
+    min-width: 17rem;
+    max-width: 45%;
 }
 .${CLASS}-rest {
     box-sizing: border-box;
@@ -90,7 +100,9 @@ const STYLE = `
     flex-direction: row;
     flex-wrap: wrap;
     align-content: flex-start;
-    width: 66.6667%;
+    /* Takes whatever the first area did not; the zero minimum lets it actually shrink. */
+    flex: 1 1 0;
+    min-width: 0;
 }
 .${CLASS}-combat > .${CLASS}-card { width: 100%; }
 .${CLASS}-rest > .${CLASS}-card { width: 33.3333%; }
@@ -113,10 +125,48 @@ const STYLE = `
     flex: 1 1 auto;
     padding: 0.6rem 0.7rem 0.7rem 0.7rem;
 }
+/*
+ * Everything in a card is centred, head to legend - but the figures are centred as a PAIR
+ * rather than a row at a time. See the note in cardFor for why.
+ */
+.${CLASS}-card__figures {
+    display: flex;
+    /* A row OF COLUMNS - one per figure, plus the labels. See figuresBlock. */
+    flex-direction: row;
+    align-items: flex-start;
+    /* Sizes to its columns and centres that, instead of filling the card. */
+    align-self: center;
+    max-width: 100%;
+    margin-top: 0.5rem;
+    color: #ffffff;
+    font-size: 1.05rem;
+}
+.${CLASS}-card__figures-col {
+    display: flex;
+    flex-direction: column;
+    /* Never shrinks: its width IS the alignment, and a squeezed column breaks it. */
+    flex: 0 0 auto;
+}
+/*
+ * Every cell is the same height and centres what is in it.
+ *
+ * ⚠️ Without this the columns drift apart vertically, because each cell was only as tall
+ * as its own content: a figure carries a 1.5rem icon, a label carries text, and the "all"
+ * row is bold - three different heights across a block that has to read as two straight
+ * lines. The height is the icon's, so the tallest thing in a row sets it and everything
+ * beside it centres against that instead of sitting at the top of the band.
+ */
+.${CLASS}-card__figures-col > * {
+    display: flex;
+    align-items: center;
+    min-height: 1.7rem;
+}
+.${CLASS}-card__figures-col + .${CLASS}-card__figures-col { margin-left: 0.9rem; }
 .${CLASS}-card__head {
     display: flex;
     flex-direction: row;
     align-items: center;
+    justify-content: center;
 }
 .${CLASS}-card__icon {
     position: relative;
@@ -145,34 +195,19 @@ const STYLE = `
     color: #e5d2ac;
     font-size: 1.15rem;
     text-transform: uppercase;
+    text-align: center;
 }
 
 /*
- * Flush with the card, not indented under the title. The indent lined the numbers up with
- * the resource name, which looked tidy and cost 3.3rem of a column that is now a third of
- * the screen - and the wrapping it caused did far more damage than the alignment repaid.
+ * One copy's worth reads as the smaller fact; the empire's total is the answer.
  *
- * One line, always: nowrap here, and the words that follow each number truncate rather
- * than push the row onto a second line. See totalElement for the tooltip that carries
- * whatever gets cut.
+ * ⚠️ Emphasis only - no margins here. The two rows used to carry different top margins,
+ * which on its own was enough to stop the label lining up with the figures beside it. The
+ * gap between the rows belongs to the row, not to how loudly it is written.
  */
-.${CLASS}-card__totals {
-    display: flex;
-    flex-direction: row;
-    /*
-     * Wraps rather than clips. Everything left on this row is a number - the words moved
-     * to the legend below - so there is nothing here that may be dropped, and a second
-     * line costs less than a figure the player cannot read.
-     */
-    flex-wrap: wrap;
-    align-items: center;
-    margin-top: 0.5rem;
-    color: #ffffff;
-    font-size: 1.05rem;
-}
-/* One copy's worth reads as the smaller fact; the empire's total is the answer. */
-.${CLASS}-card__totals--one { opacity: 0.75; font-size: 0.98rem; margin-top: 0.35rem; }
-.${CLASS}-card__totals--all { font-weight: bold; margin-top: 0.2rem; }
+.${CLASS}-cell--one { opacity: 0.75; font-size: 0.98rem; }
+.${CLASS}-cell--all { font-weight: bold; }
+.${CLASS}-card__figures-col > * + * { margin-top: 0.25rem; }
 /*
  * What each number is FOR, on its own line under the numbers.
  *
@@ -194,6 +229,7 @@ const STYLE = `
     display: flex;
     flex-direction: row;
     align-items: flex-start;
+    justify-content: center;
     margin-top: 0.15rem;
     color: #b39e80;
     font-size: 0.92rem;
@@ -209,15 +245,23 @@ const STYLE = `
     background-size: contain;
 }
 /* Without this a flex item refuses to shrink below its content, and nothing wraps. */
-.${CLASS}-card__legend-text { min-width: 0; }
+.${CLASS}-card__legend-text { min-width: 0; text-align: center; }
 .${CLASS}-card__note {
     margin-top: 0.3rem;
     color: #8d7f6a;
     font-size: 0.88rem;
+    text-align: center;
 }
+/*
+ * Fixed width, text at its left edge: that is what makes "One" and "All" start together
+ * AND the figures after them line up, without either row knowing about the other.
+ */
+/*
+ * No fixed width any more: the label sits in a column of its own, and the column is
+ * already exactly as wide as the longer of the two labels. Pinning it as well would only
+ * pad the block out to a width nothing in it needs.
+ */
 .${CLASS}-card__label {
-    min-width: 5.6rem;
-    margin-right: 0.3rem;
     color: #b39e80;
     font-weight: normal;
 }
@@ -232,6 +276,10 @@ const STYLE = `
 }
 /* The number itself never shrinks; it is the whole point of the line. */
 .${CLASS}-total > div:first-child { flex: 0 0 auto; }
+/* Separation between totals, not after the last one - that would shift the row left. */
+.${CLASS}-total:last-child { margin-right: 0; }
+/* Inside a card the gap belongs to the column, so the figure itself carries none. */
+.${CLASS}-card__figures .${CLASS}-total { margin-right: 0; }
 .${CLASS}-total__icon {
     width: 1.5rem;
     height: 1.5rem;
@@ -252,6 +300,7 @@ const STYLE = `
     margin-top: 0.4rem;
     color: #b39e80;
     font-size: 0.95rem;
+    text-align: center;
 }
 
 /*
@@ -415,18 +464,57 @@ function totalElement(total, useOneCopy) {
 }
 
 /** One line of totals, optionally labelled and read as a single copy's worth. */
-function totalsRow(computed, useOneCopy, labelKey) {
-    const row = makeElement('div', `${CLASS}-card__totals`);
-    if (labelKey) {
-        row.classList.add(useOneCopy ? `${CLASS}-card__totals--one` : `${CLASS}-card__totals--all`);
-        const label = makeElement('div', `${CLASS}-card__label`);
-        label.textContent = `${Locale.compose(labelKey)}:`;
-        row.appendChild(label);
+/**
+ * The figures, built as COLUMNS rather than as two rows.
+ *
+ * ⚠️ This is the whole trick, and it is not decoration: laid out as rows, the second
+ * figure starts wherever the first one happened to end, so "+18" above "+144" pushed
+ * everything after it out of line and no two plus signs sat under each other.
+ *
+ * A column per figure fixes it by construction. Each column is as wide as its widest
+ * cell, both cells start at the column's left edge, and the plus signs line up whatever
+ * the numbers are - no measuring, no guessed widths, nothing to re-tune when a bonus
+ * reaches four digits.
+ *
+ * CSS grid would express this directly. Deliberately not used: `display: grid` appears
+ * nowhere in the entire shipped game, so nothing says this renderer implements it, and
+ * this layout is not the place to find out.
+ */
+function figuresBlock(computed, scales) {
+    const block = makeElement('div', `${CLASS}-card__figures`);
+    const lines = scales
+        ? [
+              { useOneCopy: true, labelKey: 'LOC_NAJANE_COMMERCE_EMPIRE_ONE' },
+              { useOneCopy: false, labelKey: 'LOC_NAJANE_COMMERCE_EMPIRE_ALL' },
+          ]
+        : [{ useOneCopy: false, labelKey: null }];
+
+    // One copy's worth reads as the smaller fact; the empire's total is the answer.
+    const emphasis = (line) =>
+        line.labelKey ? ` ${CLASS}-cell--${line.useOneCopy ? 'one' : 'all'}` : '';
+
+    if (lines[0].labelKey) {
+        const labels = makeElement('div', `${CLASS}-card__figures-col`);
+        for (const line of lines) {
+            const label = makeElement('div', `${CLASS}-card__label${emphasis(line)}`);
+            label.textContent = `${Locale.compose(line.labelKey)}:`;
+            labels.appendChild(label);
+        }
+        block.appendChild(labels);
     }
+
     for (const total of computed) {
-        row.appendChild(totalElement(total, useOneCopy));
+        const column = makeElement('div', `${CLASS}-card__figures-col`);
+        for (const line of lines) {
+            const cell = totalElement(total, line.useOneCopy);
+            for (const name of emphasis(line).trim().split(' ').filter(Boolean)) {
+                cell.classList.add(name);
+            }
+            column.appendChild(cell);
+        }
+        block.appendChild(column);
     }
-    return row;
+    return block;
 }
 
 /**
@@ -505,12 +593,11 @@ function cardFor(resource, settlements, computed) {
      */
     const scales = computed.some((total) => total.scales);
     appendAll(inner, head);
-    if (scales) {
-        inner.appendChild(totalsRow(computed, true, 'LOC_NAJANE_COMMERCE_EMPIRE_ONE'));
-        inner.appendChild(totalsRow(computed, false, 'LOC_NAJANE_COMMERCE_EMPIRE_ALL'));
-    } else if (computed.length) {
-        inner.appendChild(totalsRow(computed, false, null));
-        if (resource.amount > 1) {
+    if (computed.length) {
+        // The whole block is centred as one; see figuresBlock for how the columns inside
+        // keep the plus signs under each other.
+        inner.appendChild(figuresBlock(computed, scales));
+        if (!scales && resource.amount > 1) {
             // Why this card has one line where its neighbours have two. Worth saying: it
             // is the difference between a resource worth stockpiling and one that is not.
             const note = makeElement('div', `${CLASS}-card__note`);

@@ -26,9 +26,17 @@
  *
  * When it runs
  * ------------
- * There is no "resource acquired" engine event, so several cheap ones are watched and the
- * question - has the set grown? - is asked on each. `LocalPlayerTurnBegin` is the safety
- * net that catches anything the others miss.
+ * There is no "resource acquired" engine event - checked against the engine's own event
+ * names, the closest are `ResourceAddedToMap` (a resource appearing on the MAP, not in your
+ * hands) and `ResourceAssigned`. So several cheap events are watched and the question - has
+ * the set grown? - is asked on each. `LocalPlayerTurnBegin` is the safety net.
+ *
+ * ⚠️ The trigger fires BEFORE the resource is in your hands.
+ * `ConstructibleBuildCompleted` announces that the improvement finished; the resource shows
+ * up in `player.Resources.getResources()` a moment later. A single debounced look therefore
+ * finds nothing new and, without the retries below, the pass would sit out until the next
+ * `LocalPlayerTurnBegin` - i.e. next turn. A player who improves a tile and immediately
+ * opens the screen sees nothing happen and reasonably concludes the option is broken.
  */
 import { settlementHappiness } from './scoring.js';
 import { forgetPriorityMemory } from './priorities.js';
@@ -52,14 +60,50 @@ const TRIGGER_EVENTS = [
 /** Events arrive in bursts; one pass per burst is enough. */
 const DEBOUNCE_MS = 400;
 
+/**
+ * How long to keep looking after a trigger that found nothing new.
+ *
+ * Covers the gap between "the improvement finished" and "the resource is in your hands"
+ * without polling all turn: a few cheap set comparisons, then it gives up and leaves the
+ * next trigger to it.
+ */
+const LATE_ARRIVAL_DELAYS_MS = [600, 1500, 3000];
+
 /** How long to keep trying to read the player's resources after the UI loads. */
 const SEED_RETRY_MS = 1000;
 const SEED_ATTEMPTS = 30;
 
 let known = null;
 let running = false;
+
+/**
+ * Whether a pass is in flight, or about to be.
+ *
+ * Read by the action-icon filter, and the reason it can hide the icon BEFORE it is ever
+ * drawn rather than a second afterwards: if a pass is coming, whatever is unassigned right
+ * now says nothing about what will be unassigned when it finishes.
+ *
+ * ⚠️ `lastTriggerAt` is here because of event ORDER. The engine raises the notification and
+ * the events this watcher listens for in the same burst, and nothing promises which lands
+ * first - so "is a pass scheduled" can still be false at the moment the notification is
+ * offered. Treating a trigger from the last moment as pending closes that window; the
+ * penalty for being wrong is one late re-check, which happens anyway.
+ */
+const TRIGGER_GRACE_MS = 1500;
+
+export function isAutoAssignRunning() {
+    return running;
+}
+
+export function isAutoAssignPending() {
+    if (CommerceOptions.autoAssignMode === AutoAssignMode.Off) {
+        return false;
+    }
+    return running || scheduled !== null || Date.now() - lastTriggerAt < TRIGGER_GRACE_MS;
+}
 let scheduled = null;
 let attached = false;
+let lastTriggerAt = 0;
 
 function currentResourceValues() {
     const player = Players.get(GameContext.localPlayerID);
@@ -116,7 +160,7 @@ function logHappinessState() {
     );
 }
 
-async function check(trigger) {
+async function check(trigger, isRetry = false) {
     if (running) {
         return;
     }
@@ -148,16 +192,25 @@ async function check(trigger) {
                 fresh.add(value);
             }
         }
-        known = current;
 
         if (fresh.size === 0) {
-            log(`${trigger}: nothing new (${current.size} resources owned)`);
+            log(`${trigger}: nothing new yet (${current.size} resources owned)`);
+            // ⚠️ `known` is deliberately NOT updated here. It already equals `current`,
+            // and leaving it alone keeps the retry below comparing against the same
+            // baseline.
+            // ⚠️ Only a real trigger arms these. A retry that armed more retries would
+            // never stop - three become nine become twenty-seven, all turn long.
+            if (!isRetry) {
+                scheduleLateArrivalChecks(trigger);
+            }
             return;
         }
+        clearLateArrivalChecks();
         logHappinessState();
 
         if (mode === AutoAssignMode.RebuildEverything) {
             log(`${trigger}: ${fresh.size} newly acquired resource(s) - rebuilding the whole empire`);
+            known = current;
             await reassignEverything();
             return;
         }
@@ -167,7 +220,20 @@ async function check(trigger) {
             `${trigger}: ${fresh.size} newly acquired resource(s)` +
                 (everything ? ' - placing everything unassigned' : ''),
         );
-        await placeResources({ scope: everything ? null : fresh, label: 'auto assign' });
+        const placed = await placeResources({ scope: everything ? null : fresh, label: 'auto assign' });
+
+        /*
+         * ⚠️ Only now, and only if something landed.
+         *
+         * Updating it before the work meant a pass that placed nothing still swallowed the
+         * arrival: the next trigger saw no new resources and did nothing, so one badly
+         * timed event could cost the player the whole feature until their next acquisition.
+         */
+        if (placed > 0) {
+            known = current;
+        } else {
+            log(`${trigger}: nothing could be placed, leaving the arrival for the next pass`);
+        }
     } catch (error) {
         warn(`auto-assign pass failed: ${error}`);
     } finally {
@@ -176,8 +242,32 @@ async function check(trigger) {
 }
 
 let pendingTrigger = '';
+let lateArrivalTimers = [];
+
+/**
+ * Looks again shortly after a trigger that found nothing.
+ *
+ * Not a poll: a fixed handful of follow-ups, cancelled the moment anything is found, and
+ * cancelled again by the next real trigger. Each one costs a set comparison over the
+ * player's resources, which is the same work the trigger itself does.
+ */
+function scheduleLateArrivalChecks(trigger) {
+    clearLateArrivalChecks();
+    lateArrivalTimers = LATE_ARRIVAL_DELAYS_MS.map((delay) =>
+        setTimeout(() => check(`${trigger} (+${delay}ms)`, true), delay),
+    );
+}
+
+function clearLateArrivalChecks() {
+    for (const timer of lateArrivalTimers) {
+        clearTimeout(timer);
+    }
+    lateArrivalTimers = [];
+}
 
 function scheduleCheck(trigger) {
+    clearLateArrivalChecks();
+    lastTriggerAt = Date.now();
     pendingTrigger = trigger;
     if (scheduled !== null) {
         return;

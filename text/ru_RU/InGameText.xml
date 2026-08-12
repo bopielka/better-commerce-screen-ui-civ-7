@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    UKRAINIAN, filed under ru_RU.
+
+    Deliberate, not a mistake and not a mislabelled file: the game ships no Ukrainian
+    locale, so ru_RU is the only slot these strings can occupy. Anyone playing the game in
+    Russian gets Ukrainian text from this mod.
+
+    ⚠️ Do not "fix" this by translating the file into Russian. If a Ukrainian locale is
+    ever added to the game, move this file to it verbatim and give ru_RU its own text.
+-->
+<!-- Non-English text: <LocalizedText> with Language, never <EnglishText>. -->
+<Database>
+    <LocalizedText>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL" Language="ru_RU">
+            <Text>Призначити все</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_BUSY" Language="ru_RU">
+            <Text>Призначення...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="ru_RU">
+            <Text>Призначає всі непризначені ресурси, зберігаючи наявні призначення. Спершу йдуть поселення з від'ємною Задоволеністю, по одному, починаючи з найгіршого, доки жодне не буде нижче нуля. Далі: верблюди, потім ресурси, чия сильніша умова поселення виконана, потім ресурси з одним видом прибутку, і насамкінець ті, що дають кілька.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="ru_RU">
+            <Text>Перепризначити все</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_BUSY" Language="ru_RU">
+            <Text>Перепризначення...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL_TOOLTIP" Language="ru_RU">
+            <Text>Знімає всі призначені ресурси, а потім розставляє їх наново в тому самому порядку.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL" Language="ru_RU">
+            <Text>Зняти всі призначення</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY" Language="ru_RU">
+            <Text>Знімання...</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP" Language="ru_RU">
+            <Text>Повертає до запасу всі призначені ресурси імперії.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="ru_RU">
+            <Text>Оберіть прибуток, якому це поселення надаватиме перевагу. «Збалансовано» націлюється на найнижчі відповідні прибутки поселення.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="ru_RU">
+            <Text>Пріоритет: {1_Priority}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_OPTION_TOOLTIP" Language="ru_RU">
+            <Text>Надавати перевагу: {1_Priority} у цьому поселенні.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED" Language="ru_RU">
+            <Text>Збалансовано</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="ru_RU">
+            <Text>Призначає збалансовано, надаючи перевагу найнижчим відповідним прибуткам цього поселення.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="ru_RU">
+            <Text>Швидке призначення</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="ru_RU">
+            <Text>Призначає непризначені ресурси лише цьому поселенню, зберігаючи наявні призначення.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="ru_RU">
+            <Text>Better Commerce Screen UI by Najane</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="ru_RU">
+            <Text>Призначати ресурси автоматично</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="ru_RU">
+            <Text>Що робити, коли надходить ресурс — через покращення клітинки або торговим шляхом — не відкриваючи екран торгівлі. Використовує той самий порядок, що й «Призначити все».</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="ru_RU">
+            <Text>Ніколи</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_NEW" Language="ru_RU">
+            <Text>Розмістити новий ресурс</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_ALL" Language="ru_RU">
+            <Text>Розмістити все непризначене</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="ru_RU">
+            <Text>Перебудувати всі призначення</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="ru_RU">
+            <Text>Дії мишею</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="ru_RU">
+            <Text>Дії мишею[N][N]Правий клік на призначеному ресурсі — повертає його до запасу.[N]Shift + правий клік — повертає всі ресурси того самого виду в цьому поселенні.[N][N]Shift під час призначення, перетягуванням або кліком — заповнює поселення ресурсами того самого виду, доки є місце.[N][N]Утримуйте Shift і наведіть курсор — усі ресурси того виду збільшаться, показуючи, чого стосуватиметься дія вище.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="ru_RU">
+            <Text>Спершу фабрики</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="ru_RU">
+            <Text>Розміщує фабричні ресурси попереду всього іншого. Поселення може мати лише один вид фабричного ресурсу, але будь-яку кількість його копій, тож кожна фабрика починається з того виду, якого у вас найбільше, і ним же заповнюється. Поселення з від'ємною Задоволеністю все одно обробляються першими. Лише в сучасну добу, і ввімкнено, доки ви не вимкнете.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="ru_RU">
+            <Text>авіація</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="ru_RU">
+            <Text>кіннота</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="ru_RU">
+            <Text>важкі кораблі</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_INFANTRY" Language="ru_RU">
+            <Text>піхота</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_LIGHT" Language="ru_RU">
+            <Text>легкі кораблі</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_NAVAL" Language="ru_RU">
+            <Text>усі кораблі</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_RANGED" Language="ru_RU">
+            <Text>дальнього бою</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_SIEGE" Language="ru_RU">
+            <Text>облогові</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES" Language="ru_RU">
+            <Text>Міські та бонусні ресурси</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE" Language="ru_RU">
+            <Text>Ресурси імперії</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE" Language="ru_RU">
+            <Text>Ресурси імперії та скарбів</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE" Language="ru_RU">
+            <Text>Поселення зі скарбами</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="ru_RU">
+            <Text>Фабричні ресурси</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="ru_RU">
+            <Text>На фабриках</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING_EMPTY" Language="ru_RU">
+            <Text>Жоден фабричний ресурс ніде не призначений, тож жоден нічого не дає.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE" Language="ru_RU">
+            <Text>Не призначені</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_EMPTY" Language="ru_RU">
+            <Text>Усі фабричні ресурси, які ви маєте, стоять на Фабриках.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE" Language="ru_RU">
+            <Text>Там, де вони зараз, вони не дають нічого. Числа вище — це те, що вони додали б після призначення до поселення з Фабрикою.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP" Language="ru_RU">
+            <Text>ВВП із фабричних ресурсів</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="ru_RU">
+            <Text>{1_Rate} ВВП за хід за кожен фабричний ресурс на Фабриці, а ви призначили їх {2_Count}. Саме за цим оцінюється економічний шлях спадку сучасної доби. Деякі унікальні квартали, як-от американський Промисловий парк, дають понад це і тут не враховані.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="ru_RU">
+            <Text>Приблизно {1_Amount} із {3_Net} {2_Yield}, які ваша імперія дає щоходу, походить звідси. Це оцінка: відсоткові бонуси з інших джерел її зміщують.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="ru_RU">
+            <Text>Їхнє призначення додало б приблизно {1_Amount} за хід до {3_Net} {2_Yield}, які ваша імперія вже дає. Це оцінка: відсоткові бонуси з інших джерел її зміщують.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="ru_RU">
+            <Text>На фабриках</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_BUILDINGS" Language="ru_RU">
+            <Text>будівлі</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WONDERS" Language="ru_RU">
+            <Text>дива</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_LAND_UNITS" Language="ru_RU">
+            <Text>сухопутні загони</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_SEA_UNITS" Language="ru_RU">
+            <Text>морські загони</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GROWTH" Language="ru_RU">
+            <Text>темп зростання</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_HEAL" Language="ru_RU">
+            <Text>зцілення за хід</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL" Language="ru_RU">
+            <Text>Торгові шляхи</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_SLOTS_FREE" Language="ru_RU">
+            <Text>ще вільно: {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_USED" Language="ru_RU">
+            <Text>Використані торгові шляхи: {1_Used} із {2_Total}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OPEN_NOW" Language="ru_RU">
+            <Text>Шлях можна відкрити просто зараз із:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_OUT_OF_REACH" Language="ru_RU">
+            <Text>Місце є, але нічого їхнього немає в межах досяжності:</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_FULL" Language="ru_RU">
+            <Text>Усі торгові шляхи, які ви можете утримувати, зайняті.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_TOOLTIP_NOBODY" Language="ru_RU">
+            <Text>Ви ще не зустріли нікого, з ким можна торгувати.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK" Language="ru_RU">
+            <Text>Що робить клік тут</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP" Language="ru_RU">
+            <Text>Клік на назві поселення, на одному з його ресурсів або на прапорці конвою пересуває туди карту — але цей екран лишається відкритим, тож ви побачите це аж коли закриєте його самі. Клік нічого не призначає, не переміщує і не витрачає.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="ru_RU">
+            <Text>Виплачується за конвой, щойно він розвантажиться на батьківщині.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="ru_RU">
+            <Text>Заважає лише ліміт торгових шляхів</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_RANGE" Language="ru_RU">
+            <Text>Поза межами торгового шляху</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA" Language="ru_RU">
+            <Text>Морський торговий шлях</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_LAND" Language="ru_RU">
+            <Text>Сухопутний торговий шлях</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING" Language="ru_RU">
+            <Text>Рахується один раз на всю імперію — наступні копії нічого не додають.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_INCOME" Language="ru_RU">
+            <Text>Прибуток із ресурсів імперії</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ONE" Language="ru_RU">
+            <Text>Один</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_ALL" Language="ru_RU">
+            <Text>Усі</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY" Language="ru_RU">
+            <Text>Лише під час Святкування, тож у прибутку вище це не враховано.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CAPPED" Language="ru_RU">
+            <Text>Гра обмежує цей бонус, тож копії понад межу нічого до нього не додають.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION" Language="ru_RU">
+            <Text>Фабричні ресурси по всій вашій імперії.</Text>
+        </Row>
+
+        <!--
+            Blanking a base-game string, not adding one of ours: the "Treasure Resources"
+            heading repeated on every convoy card. One row per language - a locale without
+            this row keeps the heading. See text/en_us/InGameText.xml for the full note.
+        -->
+        <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="ru_RU">
+            <Text></Text>
+        </Replace>
+    </LocalizedText>
+</Database>

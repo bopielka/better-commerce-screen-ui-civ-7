@@ -5,8 +5,9 @@
  * a resource's rule matters far less than what it is worth to you right now - with two
  * differences the mechanic forces:
  *
- *   1. Three equal columns. The Empire tab gives its first column a third of the width to
- *      itself because combat bonuses list unit classes; nothing here does.
+ *   1. Four equal columns. The Empire tab sizes its first column to its widest card,
+ *      because combat bonuses list unit classes and need the room; nothing here does, so
+ *      the cards are narrower and one more fits across.
  *   2. No "one copy / all copies" pair. A factory resource pays nothing for being held, so
  *      one copy's worth is not a number the player can act on. What matters is the total
  *      from the copies IN factories, and - separately - what the ones in the pool would
@@ -89,7 +90,7 @@ const STYLE = `
 }
 
 /*
- * Three equal columns. The padding is the gap between cards - there is no gap property to
+ * Four equal columns. The padding is the gap between cards - there is no gap property to
  * set here - so it is half of it on each side of every card.
  */
 .${CLASS}-cards {
@@ -103,7 +104,7 @@ const STYLE = `
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    width: 33.3333%;
+    width: 25%;
     padding: 0.35rem 0.4rem;
 }
 .${CLASS}-card__inner {
@@ -121,10 +122,18 @@ const STYLE = `
 }
 /* Idle stock is not a loss yet, but it is not working either - drawn as the quieter card. */
 .${CLASS}-card--idle .${CLASS}-card__inner { opacity: 0.78; }
+/*
+ * Everything in a card is centred, head to legend - as on the Empire tab.
+ *
+ * ⚠️ No wrapper around the figures here, and none needed: a factory resource has ONE row
+ * of them rather than a "one copy / all copies" pair, so there is no second row for it to
+ * line up with. That wrapper exists on the Empire tab for exactly that reason.
+ */
 .${CLASS}-card__head {
     display: flex;
     flex-direction: row;
     align-items: center;
+    justify-content: center;
 }
 .${CLASS}-card__icon {
     position: relative;
@@ -153,6 +162,7 @@ const STYLE = `
     color: #e5d2ac;
     font-size: 1.15rem;
     text-transform: uppercase;
+    text-align: center;
 }
 /*
  * One line, always: the words after each number truncate rather than push the row onto a
@@ -168,6 +178,7 @@ const STYLE = `
      */
     flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     margin-top: 0.5rem;
     color: #ffffff;
     font-size: 1.05rem;
@@ -183,6 +194,8 @@ const STYLE = `
 }
 /* The number itself never shrinks; it is the whole point of the line. */
 .${CLASS}-total > div:first-child { flex: 0 0 auto; }
+/* Separation between totals, not after the last one - that would shift the row left. */
+.${CLASS}-total:last-child { margin-right: 0; }
 .${CLASS}-total__icon {
     width: 1.4rem;
     height: 1.4rem;
@@ -218,6 +231,7 @@ const STYLE = `
     display: flex;
     flex-direction: row;
     align-items: flex-start;
+    justify-content: center;
     margin-top: 0.15rem;
     color: #b39e80;
     font-size: 0.92rem;
@@ -233,7 +247,7 @@ const STYLE = `
     background-size: contain;
 }
 /* Without this a flex item refuses to shrink below its content, and nothing wraps. */
-.${CLASS}-card__legend-text { min-width: 0; }
+.${CLASS}-card__legend-text { min-width: 0; text-align: center; }
 
 /*
  * The GDP line sits in the tab row, to the left of the tabs - the same anchor the Empire
@@ -268,6 +282,7 @@ const STYLE = `
 
 /* Plain-text tooltips render into a bare div, which collapses newlines like any HTML. */
 ${TOOLTIP_TEXT_SELECTOR} { white-space: pre-wrap; }
+
 `;
 
 /**
@@ -497,17 +512,32 @@ function tooltipFor(holding) {
         }
     }
 
-    // A leader per line, that leader's settlements indented beneath - the same shape the
-    // Empire tab uses, because a run of names separated by commas stops being readable at
-    // about three.
+    /*
+     * A leader per block: their name and total, then their settlements indented beneath.
+     *
+     * ⚠️ TEXT, not HTML. `Locale.stylize` STRIPS elements - it is a markup translator, not
+     * a pass-through - so a `<div>` per leader vanished and took its line breaks with it,
+     * running the whole list into one paragraph. What it does understand is the game's own
+     * markup, so the emphasis comes from [B] and the separation from a blank line.
+     */
     const origins = [];
     for (const [leaderId, byCity] of holding.origins ?? new Map()) {
         const leader = Players.get(leaderId);
         if (!leader) {
             continue;
         }
-        origins.push(`${Locale.compose(leader.name)}:`);
-        for (const city of byCity.values()) {
+        /*
+         * The leader's own total, so the heading answers the question the list under it
+         * only implies. With eight settlements listed, "how many do I get from this one
+         * leader" is arithmetic the reader should not have to do.
+         */
+        const cities = [...byCity.values()];
+        const fromLeader = cities.reduce((sum, city) => sum + city.count, 0);
+        if (origins.length) {
+            origins.push('');
+        }
+        origins.push(`[B]${Locale.compose(leader.name)}: ${fromLeader}[/B]`);
+        for (const city of cities) {
             origins.push(
                 `        ${Locale.compose('LOC_COMMERCE_EMPIRE_ORIGIN_CITY_CONTRIBUTION_COUNTER', city.count, city.name)}`,
             );

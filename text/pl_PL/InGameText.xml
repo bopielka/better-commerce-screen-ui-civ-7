@@ -9,7 +9,7 @@
             <Text>Przypisywanie...</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="pl_PL">
-            <Text>Przypisuje wszystkie nieprzydzielone zasoby, zachowując dotychczasowe przydziały. Najpierw osady z ujemnym zadowoleniem, po jednej — najgorsza najpierw — dopóki żadna nie jest poniżej zera. Potem wielbłądy, następnie zasoby, których mocniejszy warunek jest w danej osadzie spełniony, potem zasoby jednodochodowe, a na końcu wielodochodowe.</Text>
+            <Text>Przypisuje wszystkie nieprzydzielone zasoby, zachowując dotychczasowe przydziały. Najpierw osady z ujemnym Zadowoleniem, po jednej — najgorsza najpierw — dopóki żadna nie jest poniżej zera. Potem wielbłądy, następnie zasoby, których mocniejszy warunek jest w danej osadzie spełniony, potem zasoby jednodochodowe, a na końcu wielodochodowe.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="pl_PL">
             <Text>Przypisz od nowa</Text>
@@ -86,7 +86,7 @@
             <Text>Najpierw fabryczne</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="pl_PL">
-            <Text>Przypisuje zasoby fabryczne przed wszystkim innym. Osada może prowadzić tylko jeden rodzaj zasobu fabrycznego, ale dowolną liczbę jego kopii — więc każda fabryka zaczyna od rodzaju, którego masz najwięcej, i zostaje nim zapełniona. Osady z ujemnym zadowoleniem nadal mają pierwszeństwo. Tylko w epoce nowożytnej; włączone, dopóki tego nie wyłączysz.</Text>
+            <Text>Przypisuje zasoby fabryczne przed wszystkim innym. Osada może prowadzić tylko jeden rodzaj zasobu fabrycznego, ale dowolną liczbę jego kopii — więc każda fabryka zaczyna od rodzaju, którego masz najwięcej, i zostaje nim zapełniona. Osady z ujemnym Zadowoleniem nadal mają pierwszeństwo. Tylko w epoce nowożytnej; włączone, dopóki tego nie wyłączysz.</Text>
         </Row>
 
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="pl_PL">
@@ -159,16 +159,16 @@
             <Text>Nieprzypisane</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_EMPTY" Language="pl_PL">
-            <Text>Wszystkie zasoby fabryczne, które masz, siedzą w fabrykach.</Text>
+            <Text>Wszystkie zasoby fabryczne, które masz, siedzą w Fabrykach.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE" Language="pl_PL">
-            <Text>Tam, gdzie są teraz, nie dają nic. Liczby powyżej to tyle, ile dołożyłyby po wpięciu do osady z fabryką.</Text>
+            <Text>Tam, gdzie są teraz, nie dają nic. Liczby powyżej to tyle, ile dołożyłyby po wpięciu do osady z Fabryką.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP" Language="pl_PL">
             <Text>PKB z zasobów fabrycznych</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="pl_PL">
-            <Text>{1_Rate} PKB na turę za każdy zasób fabryczny wpięty do fabryki, a masz ich wpiętych {2_Count}. Na tym punktowana jest nowożytna ścieżka ekonomiczna. Niektóre unikalne dzielnice, jak amerykański Park Przemysłowy, dokładają do tego więcej i nie są tu wliczone.</Text>
+            <Text>{1_Rate} PKB na turę za każdy zasób fabryczny wpięty do Fabryki, a masz ich wpiętych {2_Count}. Na tym punktowana jest nowożytna ścieżka ekonomiczna. Niektóre unikalne dzielnice, jak amerykański Park Przemysłowy, dokładają do tego więcej i nie są tu wliczone.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="pl_PL">
             <Text>Z {3_Net} {2_Yield}, które twoje imperium robi na turę, mniej więcej {1_Amount} bierze się stąd. To szacunek — premie procentowe z innych źródeł to przesuwają.</Text>
@@ -256,7 +256,7 @@
         </Row>
 
         <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY" Language="pl_PL">
-            <Text>Tylko podczas obchodów, więc nie jest wliczane do dochodów powyżej.</Text>
+            <Text>Tylko podczas Święta, więc nie jest wliczane do dochodów powyżej.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_EMPIRE_CAPPED" Language="pl_PL">
             <Text>Gra ogranicza ten bonus, więc kopie ponad limit już go nie zwiększają.</Text>
