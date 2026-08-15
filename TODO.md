@@ -1,0 +1,1 @@
+For AI agents: Don't edit this file unless asked.
