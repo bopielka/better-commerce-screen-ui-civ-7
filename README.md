@@ -66,7 +66,9 @@ Every settlement card also gets three controls of its own, next to its name:
 
 ### How Assign All thinks
 
-**Unhappiness comes first**, ahead of everything else. Any settlement sitting below zero
+**Unhappiness comes first**, ahead of everything else — unless you say otherwise. It is the
+single largest thing the mod does to a layout, so **Options → Mods** decides how far it goes:
+never, cities only, or all settlements. Any settlement sitting below zero
 Happiness is fed happiness resources until it is back at zero — not maximised, just out of
 trouble. Cities are rescued before towns, as a class: while any city is unhappy, no town
 is considered. And the help is spread rather than dumped, so three settlements at -10, -20
@@ -81,9 +83,10 @@ cheaper to build are placed last of all.
 When nothing left can serve a city's chosen priority, production is what it takes next —
 ahead of a resource whose situational bonus merely happens to apply there.
 
-A city with no priority chosen is treated as wanting production, and a town as wanting
-food: a town turns its production into gold rather than building with it, so growth is
-what it can actually use.
+**Balanced** — which every settlement is until you say otherwise — means production in a
+city and food in a town: a town turns its production into gold rather than building with
+it, so growth is what it can actually use. It does *not* mean "whatever it has least of",
+which is what it meant in Resource+.
 
 What a resource is actually worth somewhere is read from the game's own data,
 **conditions included** — a bonus that only applies in a city, in your capital, in distant
@@ -91,10 +94,16 @@ lands or in a settlement with the right building is not counted anywhere it woul
 happen. Jade's gold, Silk's culture and Lapis Lazuli's production all need a city; they
 will not be dropped into a town where they do nothing.
 
-Turtles and silk are gathered into whichever city makes the most culture by itself, and
-jade into a different one that makes the most gold, so those bonuses stack somewhere
-instead of being sprinkled about. If the intended city runs out of room, the next best
-city for that yield takes over.
+Nor is the **weaker half of an either/or bonus** mistaken for a good fit. The game writes
+those as two conditions — Fish pays 8 Food with a Port and 4 without — and both read as
+"a condition is met", which had Fish at +4 outranking Sugar at a flat +8 and going to
+portless towns. See [`knowledge-base/27-resources.md`](../knowledge-base/27-resources.md)
+for every resource this shape applies to, per age.
+
+**Everything paying culture** is gathered into whichever city makes the most culture by
+itself, and **everything paying gold** into a different one, so those bonuses stack
+somewhere instead of being sprinkled about. When the city holding a role fills up, the
+next best takes it over. Both piles are switchable in **Options → Mods**, on by default.
 
 Resources whose bonus grows with the number of warehouses in a settlement are steered to
 wherever those warehouses actually are. Resources that carry production lean towards
@@ -116,7 +125,14 @@ All uses.
 | Rebuild every assignment | clears every settlement and starts again |
 
 Anything short of the last never moves a resource you have already placed, and never
-touches one you deliberately left out.
+touches one you deliberately left out. Nothing happens unless something actually happens
+in your game — loading a save assigns nothing.
+
+Resources arrive in more ways than improving a tile, so the watcher listens for a spread
+of events — trade routes, captured settlements, wonders and buildings that carry slots —
+and, behind all of them, **looks again every fifteen seconds**. The engine's event surface
+is not documented and the list turned out to be incomplete three times; the events make it
+feel instant, the sweep makes it correct.
 
 ### Factories first
 
@@ -128,6 +144,25 @@ there are most of, and then filled with it, rather than every factory being comm
 different kind and most of your stock left with nowhere legal to go.
 
 Settlements below zero Happiness are still dealt with before anything.
+
+### Imports first
+
+A second switch, in **every** age and **off** by default, for one victory condition only.
+Towards the Economic Victory a resource in a city is worth +1 GDP a turn and an imported
+one — reached you over a trade route from another leader — is worth +1 more on top, twice
+as much as your own. Neither pays anything in a town, so imports are never sent to one.
+
+It outranks every settlement's own priority, which is the point and also the cost: until
+the last import is placed, your cities take whatever the trade network supplies. Chasing
+culture, science or a military win, leave it off.
+
+### What it is all earning
+
+Beside the switches, a figure with the economic victory-point icon: roughly what your
+assigned resources pay per turn. Its tooltip breaks that into resources in cities, the
+extra from imported ones, factory resources, and gold buildings — the last counted only
+for the **current age**, since a Market stops paying once Exploration begins, except the
+ageless ones which always count. It updates as you assign.
 
 ### Trade routes, at a glance
 
@@ -219,8 +254,10 @@ Kaolin's Culture, Cocoa's Happiness — the card also shows roughly what that is
 numbers. Above the tabs, one line totals the GDP your slotted resources earn towards the
 Modern economic legacy path.
 
-The tooltip on each resource carries the game's own wording, which settlements hold the
-copies, and where they came from.
+The tooltip on each resource is the game's own framed one — the class header, the resource
+in its frame, its name and description — with **a card per leader** underneath: their
+portrait, how many copies came from them, and which of their settlements. The Empire tab's
+cards do the same.
 
 ### A screen with room to breathe
 
@@ -315,7 +352,12 @@ ui/                                 JavaScript loaded by the game's UI
     priorities.js                     per-settlement priority, in memory
     priority-store.js                 the same, kept between sessions
     factory-first-setting.js          whether factory resources go first
-    auto-assign.js                    places new resources with the screen closed
+    imports-first-setting.js          whether trade-route resources jump the queue
+    happiness-setting.js              how far the happiness rescue goes
+    hoard-setting.js                  whether the culture and gold settlements are built
+    gdp.js                            what the assigned resources earn per turn
+    factory-effects.js                what a factory resource is worth where it sits
+    auto-assign.js                    decides WHEN to run with the screen closed
   screen/                           the DOM this mod puts on the Commerce screen
     resources-tab.js                  the component wrapper; right-click unassign
     factory-tab.js                    the screen itself, plus the Modern-age Factory tab
@@ -323,15 +365,23 @@ ui/                                 JavaScript loaded by the game's UI
     trade-routes.js                   the Trade Routes tab: titles, columns, grouping
     assign-all-buttons.js             Assign All / Reassign All / Unassign All / "?"
     settlement-controls.js            per-settlement priority picker + quick assign
-    factory-first.js                  the "factories first" checkbox
+    assign-switches.js                the "imports first" / "factories first" checkboxes
+    resource-tooltip.js               the game's framed resource tooltip, plus leader cards
+    framed-tooltip.js                 the same framed style for this mod's own controls
+    factory-resources.js              the Factory Resources tab body
+    treasure-tab.js                   the tidied treasure convoys
+    trade-summary.js                  routes running / possible, above the tabs
+    assign-notification.js            hides the end-turn nag when nothing can be placed
+    help-mark.js                      the shared round "?"
     layout.js                         tab strip, description line, dropdown height
     tab-icons.js                      icons instead of words on the tab strip
     hover-highlight.js                Shift + hover preview
     bulk-assign.js                    Shift-assign, by wrapping slotSelectedResource
     shift-click.js                    left-clicking at all while Shift is held
   options/najane-commerce-options.js  mod options (Options -> Mods)
-text/<locale>/                      every on-screen string (en_us, pl_PL for now)
-deploy.sh                           copies a build into the game's mod folder
+    support/                          dom helpers and diagnostics
+text/<locale>/                      every on-screen string (12 languages)
+deploy.sh / deploy-on-mac.sh        copies a build into the game's mod folder
 ```
 
 ### Which way dependencies point
