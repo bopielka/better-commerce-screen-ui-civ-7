@@ -2,6 +2,10 @@
 #
 # Deploys "Better Commerce Screen UI by Najane" into Civilization VII's mod folder.
 #
+# This is the Windows (Git Bash) script; deploy-on-mac.sh is its macOS counterpart
+# and differs only in the default install path. The two are otherwise identical -
+# keep them in sync if the deploy/check logic changes.
+#
 # This repository is the source of truth; the game folder is treated as build
 # output and rebuilt from scratch on every run, so files deleted here also
 # disappear there instead of lingering as stale leftovers.
@@ -141,6 +145,30 @@ cp "$SRC_DIR/$MOD_ID.modinfo" "$DEST_DIR/"
 for dir in "${CONTENT_DIRS[@]}"; do
     [[ -d "$SRC_DIR/$dir" ]] && cp -r "$SRC_DIR/$dir" "$DEST_DIR/"
 done
+
+# --- stamp the build ----------------------------------------------------------
+#
+# The game loads the mod's scripts ONCE, at startup or on returning to the main menu.
+# Deploying while a session is running changes the files on disk and nothing else - the
+# game keeps running the build it loaded. There is no sign of this from inside the game,
+# and it has already cost a full round of debugging a fix that was on disk and not running.
+#
+# So every deploy writes its own timestamp, and the mod prints it on load. One line in
+# Logs/UI.log then answers "is the running game actually running this build?".
+#
+# Generated, never edited by hand, and not in git - see .gitignore. That last part is why
+# this block cannot be skipped on either platform: ui/better-commerce-screen-ui.js imports
+# this file, so a deploy that does not write it ships a mod that fails to load.
+BUILD_STAMP=$(date '+%Y-%m-%d %H:%M:%S')
+cat > "$DEST_DIR/ui/support/build-stamp.js" <<EOF
+/** Generated at deploy time. Not the source of truth for anything. */
+export const BUILD_STAMP = '$BUILD_STAMP';
+EOF
+# The source tree needs the file too, or the import fails when running from source.
+[[ -f "$SRC_DIR/ui/support/build-stamp.js" ]] || cat > "$SRC_DIR/ui/support/build-stamp.js" <<EOF
+/** Generated at deploy time. Not the source of truth for anything. */
+export const BUILD_STAMP = 'not deployed';
+EOF
 
 # --- verify: every file the .modinfo references must exist in the target ------
 missing=0
