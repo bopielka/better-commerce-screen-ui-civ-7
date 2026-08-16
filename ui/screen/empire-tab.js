@@ -28,6 +28,7 @@ import { useCommerceScreenContext } from '/base-standard/ui-next/screens/commerc
 
 import { empireEffectTotals, forgetEmpireEffects } from '../planner/empire-effects.js';
 import { buildSettlements } from '../model/headless-model.js';
+import { appendWithResourceTooltip, resourceTooltipProps } from './resource-tooltip.js';
 import { appendAll, clearChildren, ensureStyle, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -391,14 +392,19 @@ function yieldIcon(yieldType) {
  * ready-made `tooltips`, because those were already stylised into one blob per leader -
  * fine where the game puts them, unusable once they have to be laid out differently.
  */
-function tooltipFor(resource) {
-    const lines = [];
-    for (const key of resource.description ?? []) {
-        lines.push(Locale.compose(key));
-    }
+function descriptionFor(resource) {
+    return (resource.description ?? []).map((key) => Locale.compose(key));
+}
 
-    // A leader per line, that leader's settlements indented beneath - a run of names
-    // separated by commas stops being readable at about three.
+/**
+ * Where the copies came from: a leader per line, that leader's settlements indented
+ * beneath - a run of names separated by commas stops being readable at about three.
+ *
+ * Returned as lines rather than a string because the two tooltips need different
+ * separators: the game's component stylises its text, so it wants the game's own `[N]`,
+ * while the plain-text fallback needs a real newline. See TOOLTIP_TEXT_SELECTOR.
+ */
+function originLines(resource) {
     const origins = [];
     for (const originData of resource.resourceOriginData ?? []) {
         const leader = Players.get(originData.leaderId);
@@ -416,12 +422,46 @@ function tooltipFor(resource) {
             );
         }
     }
+    return origins;
+}
 
+/**
+ * One card per leader for the tooltip: their face, their total, and their settlements.
+ *
+ * The same data `originLines` lays out as text, shaped for the framed tooltip instead - the
+ * leader's own total in the heading, because with eight settlements listed "how many come
+ * from this one leader" is arithmetic the reader should not have to do.
+ */
+function originGroups(resource) {
+    const groups = [];
+    for (const originData of resource.resourceOriginData ?? []) {
+        const leader = Players.get(originData.leaderId);
+        if (!leader) {
+            continue;
+        }
+        const cities = Object.values(originData.resourceOriginCities ?? {});
+        const total = cities.reduce((sum, city) => sum + (city.contributionCount ?? 0), 0);
+        groups.push({
+            leaderId: originData.leaderId,
+            title: `${Locale.compose(leader.name)}: ${total}`,
+            lines: cities.map((city) =>
+                Locale.compose(
+                    'LOC_COMMERCE_EMPIRE_ORIGIN_CITY_CONTRIBUTION_COUNTER',
+                    city.contributionCount,
+                    city.localisedName,
+                ),
+            ),
+        });
+    }
+    return groups;
+}
+
+/** The plain-text tooltip, used only when the game's own component will not mount. */
+function tooltipFor(resource) {
+    const lines = descriptionFor(resource);
+    const origins = originLines(resource);
     if (origins.length) {
-        lines.push('');
-        lines.push(`${Locale.compose('LOC_COMMERCE_EMPIRE_RESOURCES_ORIGIN_TITLE')}:`);
-        lines.push('');
-        lines.push(...origins);
+        lines.push('', `${Locale.compose('LOC_COMMERCE_EMPIRE_RESOURCES_ORIGIN_TITLE')}:`, '', ...origins);
     }
     return lines.join('\n');
 }
@@ -558,9 +598,7 @@ function cardFor(resource, settlements, computed) {
     const inner = makeElement('div', `${CLASS}-card__inner card-frame-bg`);
 
     const head = makeElement('div', `${CLASS}-card__head`);
-    const icon = makeElement('div', `${CLASS}-card__icon`, {
-        'data-tooltip-content': tooltipFor(resource),
-    });
+    const icon = makeElement('div', `${CLASS}-card__icon`);
     if (resource.iconSrc) {
         icon.style.backgroundImage = resource.iconSrc;
     }
@@ -579,7 +617,20 @@ function cardFor(resource, settlements, computed) {
     // whatever a second element happened to inherit.
     const title = makeElement('div', `${CLASS}-card__title font-title`);
     title.textContent = `${Locale.compose(resource.title)} [${resource.amount}]`;
-    appendAll(head, icon, title);
+    /*
+     * The game's own framed tooltip, so a resource looks the same object here as it does in
+     * the unassigned pool. The origins go into its "Origin:" line, which is the one free
+     * text slot it has - the game puts a single city name there, and there is more to say
+     * about a pile gathered from several leaders.
+     */
+    appendWithResourceTooltip(
+        head,
+        icon,
+        resourceTooltipProps(resource.type, { description: descriptionFor(resource).join('[N]') }),
+        tooltipFor(resource),
+        originGroups(resource),
+    );
+    head.appendChild(title);
 
     /*
      * Both readings whenever the bonus grows with copies - including at one copy, where

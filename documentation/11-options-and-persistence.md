@@ -1,11 +1,16 @@
 # 11 — Options and persistence
 
-Three separate things are remembered between sessions, all through the same channel, none of
+Eight separate things are remembered between sessions, all through the same channel, none of
 them in the save file.
 
 | What | Module | Key |
 |---|---|---|
 | Automatic assignment mode | `ui/options/najane-commerce-options.js` | `better-commerce-screen-ui.autoAssignMode` |
+| Skip the assignment prompt | `ui/options/najane-commerce-options.js` | `better-commerce-screen-ui.skipAssignPrompt` |
+| Happiness priority | `ui/planner/happiness-setting.js` | `better-commerce-screen-ui.happinessPriorityMode` |
+| Build a culture settlement | `ui/planner/hoard-setting.js` | `better-commerce-screen-ui.gatherCulture` |
+| Build a gold settlement | `ui/planner/hoard-setting.js` | `better-commerce-screen-ui.gatherGold` |
+| "Imports first" | `ui/planner/imports-first-setting.js` | `better-commerce-screen-ui.importsFirstChoice` |
 | "Factories first" | `ui/planner/factory-first-setting.js` | `better-commerce-screen-ui.factoryFirstChoice` |
 | Per-settlement priority | `ui/planner/priority-store.js` | `better-commerce-screen-ui.priority.<gameSeed>.<cityKey>` |
 
@@ -32,17 +37,33 @@ zero. Two modules work around this in the same way — by **offsetting the store
 that `0`, `null` and `undefined` all mean "never chosen":
 
 - `priority-store.js`: stores `index + 1` into `CODES`, so index 0 (Balanced) is stored as 1;
-- `factory-first-setting.js`: `STORED_OFF = 1`, `STORED_ON = 2`, and 0 means untouched.
+- `factory-first-setting.js`: `STORED_OFF = 1`, `STORED_ON = 2`, and 0 means untouched;
+- `happiness-setting.js`: `STORED_OFFSET = 1`, so `Never` (0) stores as 1 and 0 means untouched;
+- `hoard-setting.js`: `STORED_OFF = 1`, `STORED_ON = 2`, both defaulting to on;
+- `najane-commerce-options.js`: `SKIP_PROMPT_OFF = 1`, `SKIP_PROMPT_ON = 2`, defaulting to on —
+  ⚠️ `autoAssignMode` in the same file gets away with a **raw** value only because its default
+  happens to be `0` as well;
+- `imports-first-setting.js`: the same 1/2, even though its default is **off** and it would
+  therefore survive a plain 0/1 — storing 0 for "off" is exactly the shape that broke when
+  factories-first later changed its default, and the cost of writing it safely now is one
+  constant.
 
 This only started to matter for factories-first when its default became **on** — with a default of
 "off", "never touched" and "switched off" were the same thing. ⚠️ It also uses a **different option
 name** from the old 0/1 one, so an old value cannot be read as a new one.
 
+⚠️ The happiness dropdown is the sharpest case of the trap: its "never touched" default is
+`AllSettlements` and its **first** item is `Never`, so without the offset every player who had
+not opened the options screen would have had the rescue tier switched off.
+
 ---
 
 ## `ui/options/najane-commerce-options.js`
 
-The only module in `ui/options/`, and it imports **nothing of this mod's**. It is listed in **both**
+The only module in `ui/options/`. It imports **nothing of this mod's except leaf settings modules**
+under `ui/planner/`, each of which imports nothing but diagnostics. The dependency runs one way —
+options write to the planner, the planner never reads the options screen — which is what lets the
+assignment engine answer these questions with the Commerce screen closed. It is listed in **both**
 action groups (`game` and `shell`) because the options screen exists in the main menu as well as in
 game — registered in only one scope, the dropdown disappears from the other.
 
@@ -105,7 +126,69 @@ window.dispatchEvent(new CustomEvent(CommerceOptionsChangedEventName));
 Dispatched on every write. (`factory-first-setting.js` mirrors the pattern with
 `FactoryFirstChangedEventName`.)
 
-### Adding another option
+### ⚠️ Order in the group is registration order
+
+The options screen lays a group out in the order `Options.addOption` is called, so the happiness
+dropdown is registered **before** automatic assignment to sit above it. There is no sort key.
+
+---
+
+## `ui/planner/happiness-setting.js`
+
+```js
+HappinessPriorityMode          // { Never: 0, CitiesOnly: 1, AllSettlements: 2 }
+happinessPriorityMode()
+isHappinessRescueEnabled()     // → mode !== Never
+townsMayBeRescued()            // → mode === AllSettlements
+setHappinessPriorityMode(value)
+HappinessPriorityChangedEventName
+```
+
+The rescue tier sits above every other consideration in `scoring.js` — above factories, above
+camels, above a settlement's own priority — so it is the single largest thing this mod does to a
+layout, and it used to be unconditional. Default **all settlements**: an empire in revolt is the
+one situation where overriding what the player asked each settlement for is worth it, so the
+setting is there to opt out, not to opt in.
+
+Two convenience predicates rather than one enum getter, so `scoring.js` never has to know the
+mode's shape — see how `isFactoryFirstEnabled()` folds the age check in for the same reason.
+
+---
+
+## `ui/planner/hoard-setting.js`
+
+```js
+isCultureGatheringEnabled()   /  setCultureGatheringEnabled(value)
+isGoldGatheringEnabled()      /  setGoldGatheringEnabled(value)
+HoardSettingChangedEventName
+```
+
+Two switches, not one, because the two piles are independent: gathering culture is worth doing
+whether or not gold is being gathered, and the gold pile deliberately avoids the culture pile's
+settlement, which only matters when both are on. Both default **on**.
+
+---
+
+## `ui/planner/imports-first-setting.js`
+
+```js
+isImportsFirstEnabled()  /  setImportsFirstEnabled(value)
+ImportsFirstChangedEventName
+```
+
+⚠️ **Not age-gated**, unlike factories-first: imported resources exist in every age, and so does
+the tracker that pays for them.
+
+Default **off**, which is the opposite of factories-first and deliberate. This is a bet on one
+victory condition — towards the Economic Victory a resource slotted in a city is worth +1 GDP a
+turn (`VICTORY_TRACKER_SLOTTED_BONUS` / `VICTORY_TRACKER_SLOTTED_CITY`) and an imported one is
+worth +1 more on top (`VICTORY_TRACKER_IMPORTED_RESOURCES`), so double. Chasing any other victory,
+the same rule just hands your cities whatever the trade network happens to supply. The tooltip
+says so, in as many words.
+
+---
+
+## Adding another option
 
 ```js
 Options.addInitCallback(() => {
@@ -137,7 +220,7 @@ setFactoryFirstEnabled(value)
 FactoryFirstChangedEventName
 ```
 
-⚠️ The setting lives here and the checkbox lives in `ui/screen/factory-first.js`. They started as
+⚠️ The setting lives here and the checkbox lives in `ui/screen/assign-switches.js`. They started as
 one module, which meant the **planner imported a UI widget to ask a yes/no question** — so nothing
 in the assignment engine could be reasoned about without the screen, and the automatic path (which
 runs with the screen closed) pulled in the whole button bar behind it.

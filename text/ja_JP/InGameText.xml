@@ -9,7 +9,7 @@
             <Text>割り当て中...</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="ja_JP">
-            <Text>既存の割り当てを保ったまま、未割り当ての資源をすべて割り当てます。幸福度がマイナスの居住地が最優先で、最も悪いものから1つずつ、すべてが0以上になるまで処理します。その後はラクダ、次に居住地条件の強い方を満たす資源、次に単一の産出を持つ資源、最後に複数の産出を持つ資源の順です。</Text>
+            <Text>未割り当てプールから空きスロットをすべて埋めます。配置済みのものは動かしません。[N][N]その後、各集落は設定した優先度のものを受け取ります。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="ja_JP">
             <Text>すべて再割り当て</Text>
@@ -30,7 +30,7 @@
             <Text>帝国内の割り当て済み資源をすべて未割り当てに戻します。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="ja_JP">
-            <Text>この居住地で優先する産出を選びます。「バランス」はその居住地で最も低い産出を狙います。</Text>
+            <Text>この集落が優先して受け取る産出を選びます。バランスは、都市なら生産力、町なら食料を意味します。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="ja_JP">
             <Text>優先: {1_Priority}</Text>
@@ -42,7 +42,7 @@
             <Text>バランス</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="ja_JP">
-            <Text>バランス重視で割り当て、この居住地で最も低い産出を優先します。</Text>
+            <Text>バランス型：独自の専門化なし。都市なら生産力、町なら食料が優先されます。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="ja_JP">
             <Text>クイック割り当て</Text>
@@ -71,17 +71,75 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="ja_JP">
             <Text>割り当てをすべて作り直す</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="ja_JP">
+            <Text>割り当て先がないときは通知を出さない</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION" Language="ja_JP">
+            <Text>ゲームは、資源が手持ちに加わったとき、または集落に空きスロットができたときに「資源を割り当て可能」を表示します。優先度が高くターン終了で消えないため、対応するまでターン終了ボタンを占有します——できることが何もない場合でも。[N][N]オンにすると、手持ちのどれもどこにも正当に配置できない間は表示されません。残りが工場資源だけで、空きスロットのある集落に工場がない場合も含みます。状況が変われば即座に戻ります。何も破棄せず、ターン進行の阻止にも触れず、描画だけを見送ります。[N][N]自動割り当てが有効であることも必要です。無効ならmodは何も配置しないので、その通知は対応すべき本物です。</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS" Language="ja_JP">
+            <Text>幸福度を優先する</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION" Language="ja_JP">
+            <Text>何よりも先に、幸福度がマイナスの集落を最も悪いものから順に立て直そうとします。工場、ラクダ、各集落の優先度よりも上位に位置するため、配置に最も大きく影響します。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_NEVER" Language="ja_JP">
+            <Text>しない</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_CITIES" Language="ja_JP">
+            <Text>都市のみ</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_ALL" Language="ja_JP">
+            <Text>すべての集落</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE" Language="ja_JP">
+            <Text>文化に特化した集落を自動で育てる</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION" Language="ja_JP">
+            <Text>文化を生む資源（カメ、絹、マンゴー、亜麻、ワイン、香など、その時代にあるもの全て）を分散させず、もともと最も文化を産出している都市ひとつに集めます。多くは割合ボーナスであり、大きな数値への割合は小さな数値六つへの同じ割合に勝ります。独自の優先度を設定した集落が先に処理され、残った分だけが集められます。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD" Language="ja_JP">
+            <Text>ゴールドに特化した集落を自動で育てる</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="ja_JP">
+            <Text>ゴールドも同様に、翡翠、子安貝、ルビー、銀、丁子などを、もともと最もゴールドを産出している都市に集めます。文化の都市とは意図的に別の都市を選ぶため、二つの山が同じスロットを奪い合いません。独自の優先度を設定した集落が先に処理されます。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="ja_JP">
             <Text>マウス操作</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="ja_JP">
-            <Text>マウス操作[N][N]割り当て済み資源を右クリック - 未割り当てに戻します。[N]Shift + 右クリック - その居住地にある同じ種類の資源をすべて戻します。[N][N]割り当て中にShift（ドラッグでもクリックでも） - 空きがなくなるまで、その居住地に同じ種類の資源を入れ続けます。[N][N]Shiftを押しながらカーソルを重ねる - その種類の資源がすべて拡大し、上の操作が何に影響するかを示します。</Text>
+            <Text>割り当て済み資源を[B]右クリック[/B] — 未割り当てプールに戻します。[N][N][B]Shift + 右クリック[/B] — その集落にある同種の資源をすべて戻します。[N][N][B]割り当て時にShift[/B]（ドラッグでもクリックでも）— 空きがなくなるまで、その集落に同種の資源を入れ続けます。[N][N][B]Shiftを押しながらホバー[/B] — 同種の資源がすべて拡大し、上の操作が及ぶ範囲を示します。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="ja_JP">
+            <Text>毎ターンのGDP（概算）</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="ja_JP">
+            <Text>[B]+{1_Amount}[/B] — 都市に割り当てた資源から。町では何も生みません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS" Language="ja_JP">
+            <Text>[B]+{1_Amount}[/B] — 交易路で届いたものから追加で。都市の輸入資源は二倍の価値です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS" Language="ja_JP">
+            <Text>[B]+{1_Amount}[/B] — ゴールド系の建造物から。場所は問いません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES" Language="ja_JP">
+            <Text>[B]+{1_Amount}[/B] — 工場資源から。都市でも町でも同じです。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="ja_JP">
             <Text>工場を優先</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="ja_JP">
-            <Text>工場資源を何よりも先に配置します。1つの居住地に置ける工場資源は1種類だけですが、同じ種類なら何個でも置けます。そのため各工場は最も多く持っている種類から始め、その種類で埋めていきます。幸福度が0未満の居住地は引き続き最優先です。現代のみで、オフにしない限り有効です。</Text>
+            <Text>工場資源を何よりも先に配置します。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST" Language="ja_JP">
+            <Text>輸入品を優先</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST_TOOLTIP" Language="ja_JP">
+            <Text>他の指導者から交易路で届いた資源を、自国の資源より先に、都市にのみ割り当てます。[N][N]利点：[B]経済的勝利[/B]では、都市に配置した資源は毎ターン+1 GDP、輸入品はさらに+1 ——自国産の二倍です。町ではどちらも何も生まないため、輸入品が町に送られることはありません。[N][N][B]経済的勝利以外では勧めません。[/B]各集落の優先度より上位に立つため、最後の輸入品が置かれるまで、都市は指定した専門分野ではなく交易網が供給するものを受け取ります。文化・科学・軍事勝利を狙うならオフのままに。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="ja_JP">
             <Text>航空</Text>

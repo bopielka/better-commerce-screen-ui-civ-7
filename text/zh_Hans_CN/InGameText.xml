@@ -9,7 +9,7 @@
             <Text>正在分配……</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="zh_Hans_CN">
-            <Text>在保留现有分配的前提下，分配所有未分配的资源。幸福值为负的定居地优先处理，每次一个、从最差的开始，直到没有低于零的为止。之后依次是：骆驼、满足较强定居地条件的资源、单一产出资源，最后是多产出资源。</Text>
+            <Text>用未分配池填满所有空槽。已放置的一律不动。[N][N]随后各定居地获得你为其设定的优先项。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="zh_Hans_CN">
             <Text>全部重新分配</Text>
@@ -30,7 +30,7 @@
             <Text>把帝国内所有已分配的资源退回未分配区。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="zh_Hans_CN">
-            <Text>选择这个定居地优先获得的产出。“均衡”会针对该定居地最低的相关产出。</Text>
+            <Text>选择这座定居地应优先获得的产出。均衡表示城市优先生产力、城镇优先食物。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="zh_Hans_CN">
             <Text>优先：{1_Priority}</Text>
@@ -42,7 +42,7 @@
             <Text>均衡</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="zh_Hans_CN">
-            <Text>按均衡方式分配，优先补足这个定居地最低的相关产出。</Text>
+            <Text>均衡：没有自定的专精。该定居地若为城市则优先生产力，若为城镇则优先食物。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="zh_Hans_CN">
             <Text>快速分配</Text>
@@ -71,17 +71,75 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="zh_Hans_CN">
             <Text>重建全部分配</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="zh_Hans_CN">
+            <Text>无处可放时跳过分配提示</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>当有资源进入你的资源池，或某个定居地新增了槽位时，游戏会弹出「可分配资源」。它优先级高且不会在回合结束时消失，因此会一直占用结束回合按钮，直到你处理它——哪怕你其实无事可做。[N][N]开启后，只要你手上没有任何资源能够合法地放到任何地方，该提示就不会绘制，包括只剩工厂资源、而有空槽的定居地都没有工厂的情况。情况一变它立刻回来。不会忽略任何东西，也不触碰回合阻挡，只是不去绘制。[N][N]还需要自动分配处于开启状态：关闭时模组不会替你放置，那条提示确实需要你处理。</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS" Language="zh_Hans_CN">
+            <Text>优先处理幸福度</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>在其他一切之前，分配会先设法让幸福度为负的定居地回升，从最差的开始。其优先级高于工厂、骆驼以及定居地自身的优先项，因此对布局的影响最大。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_NEVER" Language="zh_Hans_CN">
+            <Text>从不</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_CITIES" Language="zh_Hans_CN">
+            <Text>仅城市</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_ALL" Language="zh_Hans_CN">
+            <Text>所有定居地</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE" Language="zh_Hans_CN">
+            <Text>自动打造文化定居地</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有产出文化的资源——海龟、丝绸、芒果、亚麻、葡萄酒、香料以及该时代的其他资源——都会集中到本身文化产出最高的那座城市，而不是四处分散。其中不少是百分比加成，对一个大数值取百分比远胜于对六个小数值取相同百分比。你已指定优先项的定居地会先得到满足，只有剩余的才会被集中。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD" Language="zh_Hans_CN">
+            <Text>自动打造金币定居地</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>金币同理：翡翠、贝币、红宝石、白银、丁香等会集中到本身金币产出最高的城市，并且刻意避开文化城市，以免两堆资源争抢同样的槽位。你已指定优先项的定居地会先得到满足。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="zh_Hans_CN">
             <Text>鼠标快捷操作</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="zh_Hans_CN">
-            <Text>鼠标快捷操作[N][N]右键点击已分配的资源——把它退回未分配区。[N]Shift + 右键——把该定居地内同类的资源全部退回。[N][N]分配时按住 Shift（拖动或点击均可）——持续用同类资源填满该定居地，直到没有空位。[N][N]按住 Shift 并悬停——该类资源会全部放大，显示上面的操作会影响到哪些。</Text>
+            <Text>[B]右键点击[/B]已分配的资源——将其退回未分配池。[N][N][B]Shift + 右键[/B]——退回该定居地中所有同类资源。[N][N][B]分配时按住 Shift[/B]（拖拽或点击均可）——持续向该定居地填入同类资源，直到没有空位。[N][N][B]按住 Shift 并悬停[/B]任意资源——所有同类资源都会放大，显示上述操作会影响哪些。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="zh_Hans_CN">
+            <Text>每回合 GDP（估算）</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="zh_Hans_CN">
+            <Text>[B]+{1_Amount}[/B] 来自分配到城市的资源。城镇不产生任何点数。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS" Language="zh_Hans_CN">
+            <Text>[B]+{1_Amount}[/B] 额外来自经贸易路线运来的资源——城市中的进口资源价值翻倍。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS" Language="zh_Hans_CN">
+            <Text>[B]+{1_Amount}[/B] 来自与金币相关的建筑，无论位于何处。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES" Language="zh_Hans_CN">
+            <Text>[B]+{1_Amount}[/B] 来自工厂资源，城市与城镇同等计入。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="zh_Hans_CN">
             <Text>工厂优先</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="zh_Hans_CN">
-            <Text>先于其他一切放置工厂资源。一个定居地同时只能运作一种工厂资源，但同一种可以放任意多份，因此每座工厂都从你数量最多的那一种开始，并用它填满。幸福值低于零的定居地仍然最先处理。仅限现代，除非关闭否则默认启用。</Text>
+            <Text>先于其他一切放置工厂资源。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST" Language="zh_Hans_CN">
+            <Text>进口优先</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST_TOOLTIP" Language="zh_Hans_CN">
+            <Text>把经由贸易路线从其他领袖处运来的资源，优先于你自己的资源分配，并且只分配给城市。[N][N]为何划算：在[B]经济胜利[/B]中，分配到城市的资源每回合价值 +1 GDP，进口资源还要再 +1——是自产资源的两倍。两者在城镇都不产生任何点数，因此进口资源绝不会被送往城镇。[N][N][B]只有走经济胜利才值得开启。[/B]它的优先级高于每个定居地自身的优先项：在最后一件进口资源安置完毕之前，你的城市拿到的是贸易网恰好供应的东西，而不是你指定的专精。若追求文化、科技或军事胜利，请保持关闭。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="zh_Hans_CN">
             <Text>空军</Text>

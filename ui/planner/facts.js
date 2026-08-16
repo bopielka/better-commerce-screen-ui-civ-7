@@ -198,6 +198,77 @@ export function resourceClassOf(resource) {
     return resourceClassCache.get(type);
 }
 
+/**
+ * Classes that never go into a settlement slot at all.
+ *
+ * ⚠️ An empire resource pays its bonus for being HELD and a treasure resource turns into
+ * treasure fleets; neither is ever assigned anywhere. The game's own Commerce screen drops
+ * both before it builds the unassigned pool - `commerce-screen-model.ts`, same two class
+ * names, no age logic:
+ *
+ *     if (playerResource.ResourceClassType == "RESOURCECLASS_EMPIRE" ||
+ *         playerResource.ResourceClassType == "RESOURCECLASS_TREASURE") return;
+ *
+ * ⚠️ Which resources those ARE changes with the age, and that is exactly why this is a class
+ * check and not a list. Gold is `EMPIRE` in Antiquity and `TREASURE` in Exploration; Ivory is
+ * `EMPIRE` in Antiquity and `BONUS` in Exploration; Marble becomes `EMPIRE` only in Modern.
+ * Each age's `resources.xml` rewrites the column with `<Update>` rows, so reading
+ * `ResourceClassType` out of the loaded database already gives the answer for the age being
+ * played.
+ *
+ * ⚠️ Written as an exclusion rather than an allow-list, matching the game: a class a patch or
+ * a DLC adds is then offered for assignment rather than silently vanishing from the pool.
+ */
+const UNASSIGNABLE_CLASSES = new Set(['RESOURCECLASS_EMPIRE', 'RESOURCECLASS_TREASURE']);
+
+/** Can this resource go into a settlement at all? */
+export function isAssignableToSettlement(resource) {
+    return !UNASSIGNABLE_CLASSES.has(resourceClassOf(resource));
+}
+
+/**
+ * Did this copy arrive over a trade route from another leader?
+ *
+ * ⚠️ The game's own test, copied from `getResourcePropsFromDefinition` in
+ * commerce-screen-model.ts - it is what draws the foreign leader's flag on the resource
+ * icon:
+ *
+ *     if (originCity.owner !== GameContext.localPlayerID) { ...import flag... }
+ *
+ * The CURRENT owner, not `originalOwner`. The model reads `originalOwner` too, but only to
+ * pick the colours of the flag; a city you have since captured stops being an import.
+ *
+ * ⚠️ This is a property of the COPY, not of the resource type - your own Silk and a Silk
+ * bought from a neighbour are the same type and a different thing. That is why
+ * `groupByResourceType` has to key on this as well; see the note there.
+ *
+ * Cached for the length of a placement run, keyed by resource value. A city changing hands
+ * changes the answer, which cannot happen while resources are being assigned, and the cache
+ * is dropped at the start of every run.
+ */
+const importOriginCache = new Map();
+
+export function forgetImportOrigins() {
+    importOriginCache.clear();
+}
+
+export function isImportedResource(resource) {
+    const key = String(resource.resourceValue);
+    let imported = importOriginCache.get(key);
+    if (imported === undefined) {
+        try {
+            const originCity = Cities.get(Game.Resources.getOriginCity(resource.resourceValue));
+            imported = !!originCity && originCity.owner !== GameContext.localPlayerID;
+        } catch (error) {
+            // Cannot tell: treat it as ours. Over-reporting imports would promote a
+            // resource a whole tier on a guess.
+            imported = false;
+        }
+        importOriginCache.set(key, imported);
+    }
+    return imported;
+}
+
 const warehouseScalingCache = new Map();
 
 /**
@@ -230,21 +301,69 @@ export function scalesWithWarehouses(resource) {
 }
 
 /**
+ * The largest amount this resource can pay for one yield ANYWHERE, per effect group.
+ *
+ * Read with no settlement in mind: every variant counts, including the ones gated on a
+ * condition this settlement does not meet. It is the yardstick `conditionalBoostStrength`
+ * measures a settlement against - "is this the good branch, or the consolation one".
+ *
+ * Keyed the same way `computeYieldBoosts` groups its effects (`yieldType:effectType`), so
+ * the two can be compared entry by entry. Percentages are compared as rates: a 10% and a
+ * 15% variant of the same effect differ by the number in the data, which is what the
+ * branch is choosing between.
+ */
+const bestBoostCache = new Map();
+
+function bestBoostsAnywhere(resource) {
+    const type = resourceType(resource);
+    if (!type) {
+        return new Map();
+    }
+    const cacheKey = `${String(Game.age)}:${type}`;
+    let best = bestBoostCache.get(cacheKey);
+    if (best === undefined) {
+        best = new Map();
+        for (const effect of resourceYieldEffects(resource)) {
+            const key = `${effect.yieldType}:${effect.effectType}`;
+            best.set(key, Math.max(best.get(key) ?? -Infinity, effect.amount));
+        }
+        bestBoostCache.set(cacheKey, best);
+    }
+    return best;
+}
+
+/**
  * How strongly a resource's *conditional* bonus applies in this settlement.
  *
- * 0 means the resource brings nothing here that it would not bring anywhere; anything
- * higher means this settlement meets a condition the resource rewards, and the bigger
- * the number the better the fit.
+ * 0 means this settlement is not a place the resource is especially rewarded in; anything
+ * higher means it is, and the bigger the number the better the fit. Scoring lifts a
+ * resource onto its own tier when this is above zero, so it has to mean "this is the good
+ * branch" and nothing weaker.
  *
  * Resource+ answered this from a hand-written table of resource names per age, and the
  * table disagreed with the data: it returned "conditions met" for gypsum, kaolin and
  * pearls when a settlement was NOT the capital, while the game gates those bonuses on
  * REQUIREMENT_CITY_IS_CAPITAL - the opposite. The same inversion ran through the
  * distant-lands entries for spices, sugar, tea and cocoa, and 31 conditional resources
- * were missing from the table altogether.
+ * were missing from the table altogether. So the question is put to the data instead.
  *
- * So the question is put to the data instead: does this resource have a gated bonus that
- * this settlement actually satisfies?
+ * ⚠️ But "has a gated bonus this settlement satisfies" is not enough on its own, and
+ * asking only that is what sent Fish to portless towns. The game writes an either/or
+ * bonus as TWO gated modifiers, one of them the inverse of the other:
+ *
+ *     MOD_FISH_PORT_FOOD      +8 Food   requires BUILDING_PORT
+ *     MOD_FISH_NON_PORT_FOOD  +4 Food   requires NOT BUILDING_PORT
+ *
+ * A settlement without a port therefore satisfies a gated bonus - the consolation one -
+ * and Fish was lifted onto the conditional tier there just as it is in a port city. In a
+ * food-hungry town that put Fish at +4 above Sugar at a flat +8, which is the wrong way
+ * round by a factor of two. The same shape covers Furs, Pearls, Silk, Tobacco and
+ * Truffles in Modern, and Tin, Wild Game, Gypsum and Kaolin earlier on; see
+ * knowledge-base/27-resources.md for the full list per age.
+ *
+ * So the test is: a gated bonus applies here AND what this settlement gets out of it is
+ * the best that resource can pay for that yield anywhere. The consolation branch scores
+ * on its actual amount like any ordinary resource, which is all it ever deserved.
  */
 export function conditionalBoostStrength(resource, settlement) {
     // Warehouse-scaling resources are worth one multiple of their bonus per warehouse,
@@ -253,8 +372,22 @@ export function conditionalBoostStrength(resource, settlement) {
         return settlement.settlementNameData?.warehouseCount ?? 0;
     }
 
+    const best = bestBoostsAnywhere(resource);
+    const hereByGroup = new Map();
+    const gatedHere = new Set();
     for (const effect of resourceYieldEffects(resource)) {
-        if (effect.modifierId && modifierIsConditional(effect.modifierId) && modifierApplies(effect.modifierId, settlement)) {
+        if (!effect.modifierId || !modifierApplies(effect.modifierId, settlement)) {
+            continue;
+        }
+        const key = `${effect.yieldType}:${effect.effectType}`;
+        hereByGroup.set(key, Math.max(hereByGroup.get(key) ?? -Infinity, effect.amount));
+        if (modifierIsConditional(effect.modifierId)) {
+            gatedHere.add(key);
+        }
+    }
+
+    for (const key of gatedHere) {
+        if ((hereByGroup.get(key) ?? -Infinity) >= (best.get(key) ?? Infinity)) {
             return 1;
         }
     }

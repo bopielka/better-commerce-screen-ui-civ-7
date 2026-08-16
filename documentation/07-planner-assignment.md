@@ -1,17 +1,20 @@
 # 07 — `ui/planner/` — the assignment engine
 
-Deciding what goes where, and doing it. Seven of the eleven files in `ui/planner/`; the other
+Deciding what goes where, and doing it. Ten of the fourteen files in `ui/planner/`; the other
 four are covered in [planner: valuation](08-planner-valuation.md).
 
 | File | Lines | Purpose |
 |---|---|---|
 | `effects.js` | 259 | reading the modifier tables |
-| `facts.js` | 262 | what a resource **is** and **does** |
-| `scoring.js` | 729 | the tiers and `bestAssignment` |
+| `facts.js` | 395 | what a resource **is** and **does** |
+| `scoring.js` | 964 | the tiers and `bestAssignment` |
 | `place.js` | 283 | the placement loop, shared by both paths |
-| `run.js` | 119 | what the buttons do — framing around `place.js` |
-| `auto-assign.js` | 326 | placing new resources with the screen closed |
-| `priorities.js` | 82 | per-settlement priority, in memory |
+| `run.js` | 129 | every entry point — one guard around `place.js` |
+| `auto-assign.js` | 344 | deciding **when** to run with the screen closed |
+| `priorities.js` | 112 | per-settlement priority, in memory |
+| `happiness-setting.js` | 89 | how far the rescue tier goes |
+| `hoard-setting.js` | 84 | whether the culture and gold piles are built |
+| `imports-first-setting.js` | 69 | whether trade-route resources jump the queue |
 
 ## ⚠️ Attribution
 
@@ -99,6 +102,9 @@ effectiveResourceYieldTypes(resource, settlement)
 resourceYieldEffects(resource)               // [{ modifierId, yieldType, amount, percent, effectType }]
 givesUnitProductionBonus(resource)
 resourceClassOf(resource)
+isAssignableToSettlement(resource)           // false for empire and treasure resources
+isImportedResource(resource)                 // came over a trade route from another leader
+forgetImportOrigins()                        // called at the start of a placement run
 scalesWithWarehouses(resource)
 conditionalBoostStrength(resource, settlement)
 yieldTypeFromIcon(iconSource)
@@ -131,6 +137,24 @@ UnitTag  = UNIT_CLASS_RELIGIOUS   → missionaries      (Incense)
 ⚠️ The first attempt *required* a qualifier and missed Truffles and Salt entirely, which is
 how a truffle kept beating jade to a slot.
 
+### `isAssignableToSettlement`
+
+⚠️ An **empire** resource pays its bonus for being held and a **treasure** resource turns into
+treasure fleets — neither is ever assigned to a settlement, and the game's own Commerce screen
+drops both before it builds the unassigned pool.
+
+⚠️ **Which resources those are changes with the age**, which is exactly why this is a class check
+and not a list of names: Gold is `EMPIRE` in Antiquity and `TREASURE` in Exploration, Ivory is
+`EMPIRE` then `BONUS`, Marble becomes `EMPIRE` only in Modern. Each age's `resources.xml`
+rewrites the column with `<Update>` rows, so reading `ResourceClassType` out of the loaded
+database already answers for the age being played.
+
+Written as an **exclusion** rather than an allow-list, matching the game: a class a patch or a
+DLC adds is then offered for assignment rather than silently vanishing from the pool.
+
+Used by [`buildAvailableResources`](06-model.md), by `auto-assign.js` when deciding what counts
+as a new arrival, and by `assign-notification.js`.
+
 ### `scalesWithWarehouses`
 
 `EFFECT_CITY_ADJUST_CONSTRUCTIBLE_YIELD_PER_RESOURCE` modifiers carrying `Tag = WAREHOUSE`.
@@ -139,12 +163,14 @@ how a truffle kept beating jade to a slot.
 
 ### `conditionalBoostStrength(resource, settlement)`
 
-0 means the resource brings nothing here it would not bring anywhere; higher means this
-settlement meets a condition the resource rewards, and bigger is a better fit.
+0 means this settlement is not a place the resource is especially rewarded in; higher means it
+is, and bigger is a better fit. Scoring lifts a resource a whole tier on this, so it has to
+mean "this is the good branch" and nothing weaker.
 
 - Warehouse-scaling resources return the **warehouse count**, which both measures the fit and
   steers them where the warehouses are.
-- Otherwise 1 if any conditional modifier of the resource applies here.
+- Otherwise 1 when a gated bonus applies here **and** what this settlement gets out of it is
+  the most that resource can pay for that yield anywhere.
 
 ⚠️ Resource+ answered this from a hand-written table of resource names per age, **and the table
 disagreed with the data**: it returned "conditions met" for gypsum, kaolin and pearls when a
@@ -152,6 +178,26 @@ settlement was **not** the capital, while the game gates those on
 `REQUIREMENT_CITY_IS_CAPITAL` — the opposite. The same inversion ran through the distant-lands
 entries for spices, sugar, tea and cocoa, and **31 conditional resources were missing from the
 table altogether.** So the question is put to the data instead.
+
+⚠️ **But "a gated bonus applies here" is not enough on its own, and asking only that is what
+sent Fish to portless towns.** The game writes an either/or bonus as two gated modifiers, the
+second the inverse of the first:
+
+```
+MOD_FISH_PORT_FOOD      +8 Food   requires BUILDING_PORT
+MOD_FISH_NON_PORT_FOOD  +4 Food   requires NOT BUILDING_PORT
+```
+
+A settlement **without** a port satisfies a gated bonus — the consolation one — so Fish was
+lifted onto the conditional tier there just as it is in a port city. In a food-hungry town
+that put Fish at +4 (tier 850 000 000) above Sugar at a flat +8 (tier 700 000 000): the wrong
+way round by a factor of two, which is the bug that prompted the rule above.
+
+The same shape covers **Furs, Pearls, Silk, Tobacco and Truffles** in Modern, **Tin, Wild Game,
+Gypsum, Kaolin and Pearls** in Antiquity, and **nine more** in Exploration. Note that the
+direction flips between ages — Antiquity pearls are better *outside* the capital, Modern pearls
+*inside* it — which is exactly why this is read from the data. The full per-age list is
+[`knowledge-base/27-resources.md`](../../knowledge-base/27-resources.md).
 
 ---
 
@@ -167,9 +213,10 @@ table altogether.** So the question is put to the data instead.
 | `HAPPINESS_RESCUE_BASE` | 10 000 000 000 | **not Br4d's** — the whole reason this file diverges |
 | `FACTORY_FIRST_SCORE_BASE` | 5 000 000 000 | factory resources into fillable factories, when the switch is on |
 | `CAMEL_SCORE_BASE` | 1 000 000 000 | slot-carriers first: they make room for everything after |
+| `IMPORT_FIRST_SCORE_BASE` | 900 000 000 | imported resources into **cities**, when the switch is on |
 | `SPECIALIZED_CONDITIONAL_SCORE_BASE` | 850 000 000 | serves the settlement's priority **and** a conditional bonus applies |
 | `SPECIALIZED_SCORE_BASE` | 700 000 000 | serves the settlement's priority |
-| `HOARD_SCORE_BASE` | 600 000 000 | gathering turtles/silk/jade — compared against, never chained |
+| `HOARD_SCORE_BASE` | 600 000 000 | gathering culture / gold — compared against, never chained |
 | `PRODUCTION_FALLBACK_SCORE_BASE` | 550 000 000 | nothing serves this city's priority, but this brings production |
 | `CONDITIONAL_SCORE_BASE` | 500 000 000 | a conditional bonus applies here |
 | `SINGLE_YIELD_SCORE_BASE` | 100 000 000 | one yield |
@@ -184,13 +231,27 @@ Modifiers within and across tiers:
 | `TOWN_PRODUCTION_PENALTY` | 500 000 | a town wanting a production-carrying resource is docked half a priority step. A nudge, not a ban |
 | `PRODUCTION_FALLBACK_WEIGHT` | 1 000 | inside `scorePair`; stays under the 100 000 a priority match is worth |
 | `FACTORY_CONTINUE_BONUS` | 3 000 000 000 | finishing a running factory beats opening another |
-| `FACTORY_STOCK_WEIGHT` | 10 000 000 | per spare copy when choosing what to start an empty factory on |
+| `FACTORY_STOCK_WEIGHT` | 10 000 000 | per copy that would actually **fit**, choosing what to start an empty factory on |
 | `FACTORY_STOCK_CAP` | 40 | past this more copies stop mattering; keeps the tier under the rescue |
+| `FACTORY_LEFTOVER_WEIGHT` | 1 000 | best fit: settles ties towards the snugger factory |
 | `HOARD_CULTURE_FIRST` | 10 000 000 | culture pile is settled before the gold pile |
 
 ### The happiness rescue — `rescueScore`
 
 Above everything, including camels. **No settlement should sit on negative happiness.**
+
+⚠️ **How far this goes is the player's** — see [`happiness-setting.js`](11-options-and-persistence.md#uiplannerhappiness-settingjs).
+It is the single largest thing the mod does to a layout and it used to be unconditional:
+
+| Mode | Effect |
+|---|---|
+| Never | the tier does not run; happiness is just another yield |
+| Cities only | cities are rescued, towns are left where they fall |
+| All settlements (default) | cities first as a class, then towns — the original behaviour |
+
+⚠️ In "cities only" a town's deficit is left out of the reading altogether rather than filtered
+later, so an empire with one permanently unhappy town does not walk the whole board every pass
+for a rescue it is going to refuse.
 
 - `deficit * 1000` dominates, so the most unhappy settlement is served first.
 - The tie-break is `min(boost, deficit) * 10` — credit for how much of the hole a resource
@@ -221,20 +282,140 @@ the pool becomes unplaceable.
 Instead: **keep feeding a factory that is already running**, and when starting an empty one,
 **start it on the kind with the most copies waiting** — the kind that can fill it.
 
+⚠️ **How many copies would actually LAND, not how many are waiting.** Weighing the raw stock
+left the choice of *settlement* to `scorePair`, which is about yields and priorities and knows
+nothing about how many slots are free — so the most plentiful kind could be started in the
+smallest factory. Two factories with 3 and 10 free slots, Coffee ×10 and Cocoa ×3: starting
+Coffee in the 3-slot one places 3, the 10-slot one then continues on Coffee for the remaining
+7, and Cocoa never goes anywhere — **10 placed where 13 would fit**. Scoring
+`min(stock, free slots)` sends Coffee to the roomy factory and leaves the small one for Cocoa.
+`FACTORY_LEFTOVER_WEIGHT` then settles ties towards the snugger fit.
+
+### Imports first — `importFirstScore`
+
+Off by default, offered in **every** age, and a bet on one victory condition. Towards the Economic
+Victory a resource slotted in a city is worth **+1 GDP a turn**, and an imported one is worth
+**+1 more on top** — double — while neither pays anything in a town:
+
+```
+VICTORY_TRACKER_SLOTTED_BONUS / _SLOTTED_CITY   Points=1   (city, not town)
+VICTORY_TRACKER_IMPORTED_RESOURCES              Points=1   additive
+```
+
+⚠️ **"Imported" is the game's own test**, copied from `getResourcePropsFromDefinition` in
+`commerce-screen-model.ts` — it is what draws the foreign leader's flag on the resource icon:
+
+```js
+originCity.owner !== GameContext.localPlayerID
+```
+
+The **current** owner, not `originalOwner`; the model reads that too, but only to pick the flag's
+colours. A city you have since captured stops being an import.
+
+The four ranks, best first. They decide the **order** imports are placed in, not whether they are
+placed, because every one of them outranks everything that is not an import:
+
+| Rank | Meaning |
+|---|---|
+| 3 | serves what the player told this city to make |
+| 2 | brings production — the second choice everywhere else in this file too |
+| 1 | the city has no specialisation of its own, so nothing is being displaced |
+| 0 | a specialised city, and this helps neither its priority nor its production |
+
+⚠️ Rank 3 is measured against the player's **explicit** choice, not `effectivePriority`. A
+settlement left on Balanced has not asked for anything, so an import landing there displaces no
+plan and belongs at rank 1 — that is what "fill the unspecialised cities next" means. Resolving
+Balanced to production here would collapse ranks 3, 2 and 1 into one for every city the player
+never touched.
+
+⚠️ **Above the priority tiers on purpose**, which is the point and also the cost. A culture city
+that has run out of imported culture must not start on *our* culture while an imported resource is
+still homeless elsewhere: the import is worth double wherever it lands and ours is worth the same
+wherever it lands, so ours can wait.
+
+⚠️ **Below camels.** A camel is not a priority and does not compete with this — it brings two slots
+with it, so placing one first can only mean *more* imports fit. That is also why the three are
+compared with `Math.max` rather than chained with `??`: `importFirst ?? ordinary` would have pushed
+an **imported camel** down off its own tier and cost the two slots it carries.
+
+⚠️ **Cities only.** An import in a town earns nothing towards the tracker, so there is nothing to
+promote and it falls back to the ordinary rules.
+
+#### ⚠️ It broke an invariant in `groupByResourceType`
+
+"Every copy of a resource scores identically" stopped being true of the **type** alone: your own
+Silk and a Silk bought from a neighbour are the same type and worth different amounts of GDP.
+Grouped on type alone, one representative would answer for both and every copy in the group would
+be scored as whatever the first one happened to be. The group key now carries the import flag, and
+the invariant holds again.
+
+`isImportedResource` is cached by resource **value** for the length of a run and dropped by
+`startPlacementRun()` — a city changing hands changes the answer, and that cannot happen while
+resources are being assigned.
+
 ### Gathering — `hoardScore`
 
-Turtles and silk into whichever city makes the most **culture** on its own; jade into a
-different city for **gold**, so the two piles do not compete for the same slots.
+Everything paying **culture** into whichever city makes the most culture on its own; everything
+paying **gold** into a different city, so the two piles do not compete for the same slots.
 
 - Below the priority tier: a settlement takes what it was told to prioritise first.
 - Above the conditional tier: gathering beats the generic "this bonus applies here" rule —
   including, deliberately, the warehouse rule that would otherwise scatter turtles.
 - ⚠️ Compared against the ordinary score with `Math.max`, **not chained**, so it never
   overrides a settlement's own priority.
-- The settlement's own yield is part of the score rather than a hard target, so if the intended
-  city fills up, the next best by the same measure takes over **without any special case**.
-- ⚠️ Unlike everything else in this file, `HOARD_TARGETS` is **resource names**, because that is
-  what was asked for: a judgement about three specific resources, not a property of the data.
+- ⚠️ "Pays the yield" is asked of **this settlement**, not of the resource in the abstract: silk
+  pays culture in a city and nothing in a town, and a resource contributing nothing here has no
+  business being gathered here.
+- Cities only.
+
+#### ⚠️ Exactly one settlement holds each role — and the role can move on
+
+The gold pile used to have no target at all: it scored **every** city that was not the culture
+city, weighted by that city's own gold. That is "spread gold around, richest first", not "build a
+gold settlement", and it cost a slot in play — Jade reached the gathering tier (600 000 000) in
+the **capital** while Silk, which was not the capital's pile, could only reach the conditional
+tier (500 000 000) there and stayed in the pool.
+
+⚠️ **When the settlement holding a role fills up, the next-best city takes it over.** A culture
+city with two free slots would otherwise take two culture resources and let the remaining twelve
+scatter under the ordinary rules — the very thing the option exists to prevent, merely delayed by
+two slots.
+
+⚠️ The gold role skips whichever settlement **currently** holds the culture role, not the one
+picked at the start — so handing the culture role on also frees the city it left.
+
+#### ⚠️ The ranking is settled once per run; only "who has room" moves
+
+`hoardRanking` orders the cities by `bareYield` on the first pass of a run and holds that order.
+`startPlacementRun()` — called by `place.js` next to `forgetEligibility()` — clears it.
+
+`bareYield` subtracts the estimated contribution of what is slotted, so the culture city's own
+bare culture **falls as its pile grows**, and with percentage resources the estimate is taken off
+a total those same resources inflated. Re-ranked every pass, the leader could hand the role to a
+rival partway through and leave the pile split between two settlements — the one outcome this
+tier exists to prevent. Fixing the order means the role only ever walks **down** a settled list.
+
+⚠️ **Only `cityKey`s are cached.** Settlement objects are rebuilt from the board before every
+pass, so anything held across passes must be a key and not an object.
+
+The log prints one line whenever the pair changes, so a handover is visible:
+
+```
+gathering: culture -> Yetakapewaki, gold -> Cilakofa
+gathering: culture -> Berlin, gold -> Cilakofa        ← Yetakapewaki filled up
+```
+
+⚠️ `bestAssignment` builds `scoreContext` and picks the targets from **every** settlement, and
+applies `targetCityID` only to the loop. Quick-assigning one settlement must not make that
+settlement the culture city by default, and a `scoreContext` missing a city reads as "contributes
+nothing", which would hand the pile to whichever city happened to be outside the filter.
+
+⚠️ This started as **three resource names** — turtles, silk, jade — because that is how it was
+first asked for. That left every other culture resource in the age out of the pile it obviously
+belonged in: mangos, flax, wine and incense all pay culture and were being scattered. It is now
+read from the data, so a patch or a DLC adding another one needs no maintenance here.
+
+Both piles are switchable; see [`hoard-setting.js`](11-options-and-persistence.md#uiplannerhoard-settingjs).
 
 `bareYield` is the settlement's yield minus the estimated contribution of what is slotted now
 — *not* the model's `baseYields`, which is a snapshot taken when the screen opened and still
@@ -243,13 +424,19 @@ includes whatever was assigned at the time.
 ### `scorePair` — ordering within a tier
 
 ```js
-priorityBonus            // 100000 serving the priority, 0 not, 10000 if no priority set
+priorityBonus            // 100000 serving the priority, 0 not
 + distributionScore      // -specializedLoad*100 if serving, else -weakestAffectedYield
 + productionFallback     // positive production boost * 1000, when the priority cannot be served
 + actualBoost * 10
 + (isTown ? 0.25 : 0)
 + openSlots * 0.001
 ```
+
+⚠️ **There is no "no priority" case.** `effectivePriority` resolves Balanced to production in a
+city and food in a town, so every settlement is always asking for something. The branch that
+used to sit here gave an unprioritised settlement a flat 10 000 and ordered its candidates by
+the settlement's **weakest** affected yield — the Resource+ reading of "balanced", which
+quietly pulled every such settlement towards whatever it happened to be worst at.
 
 Settlements matching their priority **share the actual yield gain as evenly as they can**, and
 how well a resource serves that priority is the dominant term — so a resource giving +1
@@ -316,6 +503,52 @@ waiting for the **screen** to catch up before it could plan again.
 So this talks to the engine and reads the engine back. The screen still redraws — it listens
 for the engine's events — but nothing here waits for it.
 
+### ⚠️ …but it must not outrun the screen either
+
+`letTheScreenCatchUp()` waits **one frame between placements, and only while the Commerce screen
+is open**.
+
+The screen updates **incrementally, and it can miss events.** `commerce-screen-model.ts` turns
+`ResourceAssigned` into a Solid signal with `createEngineEvent`, which is a plain
+`createSignal()` — it holds the **latest payload and nothing else** — and the effect reading it
+splices that one resource into its store. Two events delivered in the same tick therefore produce
+one splice, and the resource from the overwritten payload never appears on screen.
+
+This loop provokes exactly that: it confirms an assignment by **polling** the settlement every
+4 ms, so it moves on as soon as the game state changes, which is earlier than the event is
+delivered. At roughly fifteen placements a second the events arrive in clumps.
+
+⚠️ **The board is correct; the drawing is not.** Leaving the screen and coming back rebuilds it
+from scratch and shows the real layout — which is what makes this look like an assignment bug. It
+cost a round of investigating the scoring for a fault that was never there, which is why
+`verifyScreenMatchesEngine()` now reconciles the two afterwards.
+
+#### ⚠️ The two halves of the screen fail differently
+
+| | Repaired by | A missed event leaves |
+|---|---|---|
+| Settlement cards (right) | the handler re-reads `getAssignedResources()` and rewrites `availableSlots` and `yieldDeltas` from live state on **every** event | nothing — the next event heals it |
+| Unassigned pool (left) | nothing; a row is removed **only** by the event naming that exact resource | a **ghost row for as long as the screen stays open** |
+
+Checking only the assigned count therefore reported "all good" while the pool still showed a
+resource that had been placed — which is how the second round of this went. So
+`pruneAssignedFromPool` in [`screen-model.js`](06-model.md) **repairs** the pool by deleting rows
+for resources the game has slotted, and the cards are only *reported* on, since rebuilding those
+is the game's job and reopening the screen does it.
+
+⚠️ **Removal only, deliberately.** Deleting a row needs nothing but the resource value. Putting
+one *back* would mean building a `ResourceSlotData` complete with `resourceProps` and its
+`canSwapWithSelectedResource` memo — reimplementing the model's own builder, which would rot the
+first time it changes. That direction is not needed anyway: unassigning goes through the model's
+**update gate**, which accumulates its events in an array rather than a signal, so it does not
+drop them.
+
+⚠️ **There is no way to ask the screen to rebuild.** `updateSlottedResources()` does exactly that
+and is private; the model's only public reset, `resetResourceTab()`, merely clears the selection.
+So the answer is not to refresh afterwards but to not outrun it — hence the frame.
+
+With the screen shut there is no model to keep in step and the automatic path runs at full speed.
+
 ### ⚠️ Do not "optimise" this into a batch
 
 Each choice is made against the board the previous one left behind. That is what makes the
@@ -348,6 +581,21 @@ against a board that had not changed.
 Timing is logged in four parts — reading the board, choosing, waiting, per-resource — which is
 how the model-driven version's cost was found in the first place.
 
+### ⚠️ One log line per placement, naming the tier
+
+`bestAssignment` returns a `tier` string alongside the plan, and `place.js` prints it:
+
+```
+  RESOURCE_SILK [import] -> Yetakapewaki (imports first)
+  RESOURCE_TIN -> Yetakapewaki (production fallback (wanted YIELD_CULTURE))
+```
+
+Only the happiness rescue used to say anything, and that left every other outcome
+unexplainable from outside. "Why did Tin end up in my culture capital instead of Silk" has at
+least four possible answers — the import tier, the production fallback, a rescue, or the
+resource already sitting there before the run — and **the board looks identical in all of
+them**. Three rounds of reasoning from screenshots settled none of them; one line each does.
+
 ### Diagnostics
 
 - `explainWhyNothingFits(scope, refused)` — runs **only when a pass placed nothing**, which is
@@ -362,25 +610,40 @@ how the model-driven version's cost was found in the first place.
 
 ---
 
-## `run.js` — what the buttons do
+## `run.js` — every entry point
 
 ```js
-assignAll(model)                     // → Promise<boolean> (false if already running)
-reassignAll(model)                   // clear everything, then place
-quickAssignSettlement(model, cityID) // one settlement only
-isAssignmentInProgress()             // read by the buttons and by assign-notification.js
+assignAll(model?, { scope?, label? })   // → Promise<number placed | false>
+reassignAll(model?, { label? })         // clear everything, then place
+unassignAll(model?)                     // clear everything and stop there
+quickAssignSettlement(model, cityID)    // one settlement only
+isAssignmentInProgress()                // read by the buttons and by assign-notification.js
 ```
 
-`runExclusively` guards every entry point: **only one of these loops may run at a time**, and
-none may start while `model.isSlottingAvailable` is false. It deselects first and always clears
-the flag in `finally`.
+⚠️ They answer **how many resources landed**, and `false` only when the run refused to start.
+"Did it start" is not enough: `auto-assign.js` forgets a newly acquired resource only once
+something has actually been placed, so a run that started and placed nothing would otherwise look
+like success and swallow the arrival.
 
-`unassignEverything` prefers **one `Clear` per settlement** over one `Deactivate` per resource;
-the per-resource path is the fallback for when the engine refuses the bulk form. It reads the
-board from `buildSettlements()`, not from the screen, for the same reason as `place.js`.
+`runExclusively` guards every entry point: **only one of these may run at a time**, and none may
+start while `model.isSlottingAvailable` is false. It deselects first and always clears the flag
+in `finally`.
 
-`logHappinessState` prints the deficits the rescue tier is looking at, before and after, so a
-wrong reading shows up in the log rather than as a mysterious layout.
+⚠️ **`model` is optional.** The automatic path has no Commerce screen and therefore no model, and
+it used to keep **its own copy of this guard** — which meant an automatic pass could start while
+Reassign All was halfway through emptying the empire, and the two then planned against each
+other's half-finished board. There is nothing to deselect and nothing to wait for with the
+screen shut, so those two conditions are simply skipped.
+
+⚠️ **Emptying lives in [`engine/unassign.js`](05-engine.md), not here.** There were three
+implementations of "empty every settlement" — the Reassign All button, the automatic rebuild and
+the Unassign All button — and they had already drifted: one counted resources and one counted
+settlements, one had a per-resource fallback and one did not, and only two of them waited for the
+engine. Three answers to "did that work?" for one action.
+
+`logHappinessState` prints the deficits the rescue tier is looking at, before and after.
+⚠️ **Diagnostics only** — it is guarded by `DIAGNOSTICS` at the call site rather than inside
+`log`, because the walk over every settlement is the expensive part, not the printing.
 
 ---
 
@@ -391,6 +654,11 @@ startAutoAssign()        // called once from the entry point
 isAutoAssignRunning()    // a pass is in flight
 isAutoAssignPending()    // in flight, scheduled, or a trigger arrived < 1.5 s ago
 ```
+
+⚠️ **This module decides WHEN, and nothing else.** The work goes through `run.js` — the same
+entry points the buttons use. It used to call `placeResources` directly, keep its own
+"is a pass running" flag beside `run.js`'s, and carry its own copy of "empty every settlement";
+see the note in `run.js` above for what that cost.
 
 ### Only NEW resources are touched
 
@@ -408,16 +676,93 @@ the thing they were waiting to see work.
 
 ⚠️ **There is no "resource acquired" engine event.** Checked against the engine's own event
 names: the closest are `ResourceAddedToMap` (a resource appearing on the **map**, not in your
-hands) and `ResourceAssigned`. So several cheap events are watched and the question — has the
-set grown? — is asked on each:
+hands) and `ResourceAssigned`. So a spread of cheap events is watched and **two** questions are
+asked on each: has the set of resources grown, and has the empire's **room** for them?
 
 ```
-ConstructibleBuildCompleted   a tile improved onto a resource
-TradeRouteAddedToMap          a new route brings its payload
+ConstructibleBuildCompleted    something the production queue finished
+ConstructibleAddedToMap        an improvement that appeared without being built
+ConstructibleChanged
+TradeRouteAddedToMap           a new route brings its payload
 TradeRouteChanged
 ResourceCapChanged
-LocalPlayerTurnBegin          catch-all / safety net
+WonderCompleted                the Colossus and friends carry resource slots
+CityTransfered                 a settlement changing hands brings its resources with it
+ConqueredSettlementIntegrated
+CityAddedToMap
+PlayerSettlementCapChanged
+LocalPlayerTurnBegin           catch-all / safety net
 ```
+
+…plus a **periodic sweep every 15 seconds** (`SWEEP_MS`), and one quiet look once the game is
+readable — which finds nothing, because seeding has just recorded everything the player owns.
+⚠️ **Loading a save is not an event**: nothing happened in the game, and a pool the player left
+full is a pool they left full.
+
+### ⚠️ Why there is a sweep at all
+
+The event list above was **wrong three times running**, and each time it presented identically:
+the feature simply did nothing.
+
+| Missing | Why it was missed |
+|---|---|
+| trigger while the Commerce screen was open | dropped, never rescheduled |
+| `ResourceUnassigned`, loading a save | not events anyone thinks to listen for |
+| `ConstructibleAddedToMap` | `ConstructibleBuildCompleted` is the **production queue** finishing something; an improvement that appears because the city expanded onto the tile is never "built" |
+
+The engine's event surface is not documented and the names that exist are not the names one
+would guess. Chasing gaps one at a time is a losing game — each fix is right and the next gap is
+still out there. **The events make it feel instant; the sweep makes it correct.**
+
+It is cheap enough to justify: one walk over the player's resources and one over the cities, no
+`canStart` calls. Sweeps are **silent when they find nothing** (`quiet`), or the log would fill
+with them — and a sweep landing on top of a real event does not silence that event's report.
+
+### ⚠️ None of this needs the Commerce screen, and it never opens it
+
+The watcher attaches at load, before the screen has ever been mounted, and the whole path —
+`buildSettlements`, the scoring, the player operations — reads and writes the **game**, not the
+screen. The `the Commerce screen is open, waiting` lines mean the *player* had it open and the
+pass deferred to them; they are not the mod opening anything.
+
+⚠️ **The second half of that list was missing, and so was the capacity question.** A resource can
+arrive by taking an enemy settlement, and somewhere to put one can arrive by finishing a
+Marketplace or a wonder. Neither produced a trigger: a Colossus finished while the pool was full
+changed nothing until the next turn began, and a resource that had failed to place sat there
+with room now waiting for it.
+
+⚠️ **New room is a reason to run, but NOT in "the new resource only".** A Marketplace does not
+hand the player a resource, so in that mode there is genuinely nothing new and what sits in the
+pool is what the player left there. The other two modes are explicitly about the pool, so more
+room is exactly their cue. A resource that arrived and could not be placed is covered either
+way, because `known` is only advanced after a pass that placed something.
+
+⚠️ **Every mode still waits for something to actually happen.** What the modes differ in is
+**scope** — how much of the pool an arrival is a cue to tidy — not in *when* they run.
+
+"Place everything unassigned" briefly meant "any time anything is in the pool", added while
+chasing arrivals that were being missed. It was the wrong fix for the right complaint: those
+arrivals were being lost to gaps in the event list, and those gaps are fixed. What the change
+left behind was a mode that emptied the pool **on load and again every fifteen seconds** —
+neither of which is a cue, because nothing happened — and which quietly overrode *"a player who
+left something out did that on purpose"*, the one principle this module is built on.
+
+### ⚠️ A trigger that cannot be acted on yet is HELD, not dropped
+
+The Commerce screen being open, a button mid-run, or a pass already in flight all mean "not now".
+All three used to `return` — and the trigger was gone for good, because **closing the screen
+raises no engine event**. The next chance was the next acquisition or the next turn.
+
+That is the likeliest single reason for "automatic assignment does nothing at all", and the
+workflow that produces it is the ordinary one: the player is *in* the Commerce screen, empties the
+empire, improves a tile, and the arrival lands while the screen is still up.
+
+`retryWhenUnblocked` asks again every `BLOCKED_RETRY_MS` (1.5 s) until the way is clear. A real
+trigger supersedes a pending retry, and **only the first wait is logged** — a player can sit in
+the Commerce screen for a long time, and a line every second and a half would bury the log.
+
+⚠️ `isAutoAssignPending()` counts a held retry too: a pass waiting for the screen to close is
+still a pass that is coming, and the icon filter must not claim otherwise in the meantime.
 
 Debounced at 400 ms — events arrive in bursts and one pass per burst is enough.
 
@@ -455,11 +800,12 @@ become nine become twenty-seven, all turn long (`isRetry`).
 ## `priorities.js` — what each settlement should be fed first
 
 ```js
-PRIORITY_OPTIONS       // [{ type: null }, FOOD, PRODUCTION, HAPPINESS, CULTURE, SCIENCE, GOLD, DIPLOMACY]
-priorityLabel(type)    // 'Balanced' for null, else the yield's own translated name
-getPriority(cityID)
+PRIORITY_OPTIONS                     // [{ type: null }, FOOD, PRODUCTION, HAPPINESS, CULTURE, SCIENCE, GOLD, DIPLOMACY]
+priorityLabel(type)                  // 'Balanced' for null, else the yield's own translated name
+getPriority(cityID)                  // what the PLAYER chose — null for Balanced
+effectivePriority(cityID, isTown?)   // what the SCORING feeds first — never null
 setPriority(cityID, yieldType)
-cityKey(cityID)        // String(cityID.id) — used as a map key everywhere
+cityKey(cityID)                      // String(cityID.id) — used as a map key everywhere
 forgetPriorityMemory()
 DEFAULT_CITY_PRIORITY = 'YIELD_PRODUCTION'
 DEFAULT_TOWN_PRIORITY = 'YIELD_FOOD'
@@ -468,9 +814,22 @@ DEFAULT_TOWN_PRIORITY = 'YIELD_FOOD'
 Every yield already has a translated name in the game's data, so **only "Balanced" needs a
 string of ours** — one line of translation per language instead of eight.
 
-A **town defaults to food**, not production: it turns its production into gold rather than
-building with it, so production would be steering it nowhere while food is what a town grows
-on.
+### ⚠️ Two functions, because the picker and the scoring want different answers
+
+`getPriority` returns **the player's own answer**, and `null` when they have not given one. The
+picker needs that: it used to call one function that returned `YIELD_PRODUCTION` for a
+settlement nobody had ever touched, so a fresh city showed "Production" — a choice the player
+had not made, presented as one they had. It now shows Balanced, which is the truth.
+
+`effectivePriority` is what the scoring asks, and it resolves Balanced to **production in a city
+and food in a town**.
+
+⚠️ **Balanced no longer means what Resource+ made it mean.** There, a settlement with no priority
+took whichever yield it had **least** of, which pulled every such settlement towards the same
+shapeless middle. City-production / town-food is a stance instead of an average, and it is the
+one the rest of the scoring is built around. A **town takes food**, not production: it turns its
+production into gold rather than building with it, so production would be steering it nowhere
+while food is what a town grows on.
 
 The in-memory map is the hot path; the persistent half is
 [`priority-store.js`](11-options-and-persistence.md).
@@ -484,16 +843,23 @@ campaign** — carrying the map across a load would apply one game's choices to 
 ## Divergences from Resource+, in one list
 
 1. **The happiness rescue tier** — entirely new, and the reason the file diverges at all.
-2. **Factories first** — a Modern-age tier Resource+ has no equivalent of.
+   Switchable: never / cities only / all settlements.
+2. **Factories first** — a Modern-age tier Resource+ has no equivalent of, and it packs by
+   capacity rather than by stock alone.
 3. **Conditional bonuses read from the data** instead of a hand-written per-age table that was
-   inverted for six resources and missing 31.
+   inverted for six resources and missing 31 — and a conditional bonus has to be the resource's
+   **best** branch, not merely a satisfied one.
 4. **Modifier requirements honoured** — the "cities only" gate Resource+ ignored.
 5. **Modifiers found by `ResourceType` argument**, not only by `ModifierMetadatas`.
 6. **`givesUnitProductionBonus`** covers unqualified modifiers (Truffles, Salt).
 7. **`scalesWithWarehouses`** read from the data, so Clay and Crabs are included.
 8. **`yieldTypeFromIcon`** actually works, so yield totals are not all zero.
-9. **The gathering tier** (turtles/silk/jade) — requested for this mod.
+9. **The gathering tier** — a culture settlement and a gold settlement, built from whatever pays
+   those yields. Requested for this mod; both piles switchable.
 10. **`TOWN_PRODUCTION_PENALTY`** and the **production fallback tier**.
-11. **Per-resource locks are NOT ported** — no lock UI here, so the lock set is always empty and
+11. **"Balanced" means city-production / town-food**, not "whichever yield it has least of".
+12. **Per-resource locks are NOT ported** — no lock UI here, so the lock set is always empty and
     "reassign" clears everything.
-12. **The loop talks to the engine, not the model** — 30.7 s → a fraction of it.
+13. **The loop talks to the engine, not the model** — 30.7 s → a fraction of it.
+14. **One implementation of "empty every settlement"**, shared by all three buttons and the
+    automatic rebuild; it sends the game's own bulk `Clear` operation.

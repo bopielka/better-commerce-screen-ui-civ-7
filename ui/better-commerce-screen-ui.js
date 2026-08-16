@@ -15,8 +15,20 @@ import './screen/trade-routes.js';
 import { startAutoAssign } from './planner/auto-assign.js';
 import { startAssignNotification } from './screen/assign-notification.js';
 
-import { log } from './support/diagnostics.js';
+import { BUILD_STAMP } from './support/build-stamp.js';
+import { log, warn } from './support/diagnostics.js';
 
 startAutoAssign();
 startAssignNotification();
-log('loaded');
+/*
+ * ⚠️ `warn`, not `log`, and it carries the build stamp.
+ *
+ * The game loads these scripts ONCE, at startup or on returning to the main menu, so a
+ * deploy made during a session changes the files on disk and nothing else - the game keeps
+ * running what it loaded, with no sign of it from inside the game. One round of debugging
+ * has already gone into a fix that was deployed and simply not running. This line makes the
+ * running build's identity the first thing in the log, and `warn` keeps it there even with
+ * diagnostics switched off for release.
+ */
+warn(`loaded, build ${BUILD_STAMP}`);
+log('diagnostics are on');

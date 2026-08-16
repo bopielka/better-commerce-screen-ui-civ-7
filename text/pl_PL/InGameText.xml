@@ -9,7 +9,7 @@
             <Text>Przypisywanie...</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="pl_PL">
-            <Text>Przypisuje wszystkie nieprzydzielone zasoby, zachowując dotychczasowe przydziały. Najpierw osady z ujemnym Zadowoleniem, po jednej — najgorsza najpierw — dopóki żadna nie jest poniżej zera. Potem wielbłądy, następnie zasoby, których mocniejszy warunek jest w danej osadzie spełniony, potem zasoby jednodochodowe, a na końcu wielodochodowe.</Text>
+            <Text>Zapełnia wszystkie wolne sloty z puli nieprzydzielonych. Nie rusza niczego, co już jest przypisane.[N][N]Następnie każda osada dostaje to, co jej ustawiłeś jako priorytet.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="pl_PL">
             <Text>Przypisz od nowa</Text>
@@ -31,7 +31,7 @@
         </Row>
 
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="pl_PL">
-            <Text>Wybierz dochód, który ta osada ma dostawać w pierwszej kolejności. Zrównoważony celuje w jej najsłabsze dochody.</Text>
+            <Text>Wybierz dochód, który ta osada ma dostawać w pierwszej kolejności. Zrównoważony oznacza Produkcję w mieście i Żywność w miasteczku.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="pl_PL">
             <Text>Priorytet: {1_Priority}</Text>
@@ -43,7 +43,7 @@
             <Text>Zrównoważony</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="pl_PL">
-            <Text>Przydzielaj w sposób zrównoważony, celując w najsłabsze dochody tej osady.</Text>
+            <Text>Zrównoważony: bez własnej specjalizacji. Osada dostaje Produkcję, jeśli jest miastem, i Żywność, jeśli jest miasteczkiem.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="pl_PL">
             <Text>Szybkie przypisanie</Text>
@@ -75,18 +75,76 @@
             <Text>Ułóż wszystkie przydziały od nowa</Text>
         </Row>
 
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="pl_PL">
+            <Text>Pomijaj powiadomienie o przypisaniu, gdy nie ma czego przypisać</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION" Language="pl_PL">
+            <Text>Gra wyświetla „Można przypisać zasoby”, gdy nowy zasób trafia do twojej puli albo gdy w osadzie pojawia się wolne miejsce. Powiadomienie ma wysoki priorytet i nie wygasa z końcem tury, więc trzyma przycisk końca tury, dopóki na nie nie zareagujesz — nawet gdy nie da się nic zrobić.[N][N]Włączone: powiadomienie nie jest rysowane, dopóki niczego z tego, co posiadasz, nie da się nigdzie legalnie przypisać — w tym gdy zostają same zasoby fabryczne, a żadna osada z wolnym slotem nie ma fabryki. Wraca w chwili, gdy to się zmieni. Nic nie jest odrzucane, blokowanie tury pozostaje nietknięte — pomijane jest wyłącznie rysowanie.[N][N]Wymaga też włączonego automatycznego przypisywania: przy wyłączonym mod niczego za ciebie nie umieszcza, więc powiadomienie mówi o czymś, na co wciąż musisz zareagować.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS" Language="pl_PL">
+            <Text>Traktuj zadowolenie priorytetowo</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION" Language="pl_PL">
+            <Text>Zanim cokolwiek innego, przypisywanie próbuje wyciągnąć osady z ujemnego Zadowolenia, zaczynając od najgorszej. Ma pierwszeństwo przed fabrykami, wielbłądami i priorytetem samej osady, więc jest to największa pojedyncza rzecz, jaką mod robi z układem zasobów.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_NEVER" Language="pl_PL">
+            <Text>Nigdy</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_CITIES" Language="pl_PL">
+            <Text>Tylko miasta</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_ALL" Language="pl_PL">
+            <Text>Wszystkie osady</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE" Language="pl_PL">
+            <Text>Twórz miasto skupione na kulturze automatycznie</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION" Language="pl_PL">
+            <Text>Wszystkie zasoby dające Kulturę — żółwie, jedwab, mango, len, wino, kadzidło i cokolwiek jeszcze oferuje epoka — trafiają do jednego miasta, które samo z siebie produkuje najwięcej Kultury, zamiast się rozpraszać. Część z nich to wartości procentowe, a procent z jednej dużej liczby jest wart więcej niż ten sam procent z sześciu małych. Osady, którym nadałeś własny priorytet, są obsługiwane najpierw — gromadzone jest tylko to, co zostanie.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD" Language="pl_PL">
+            <Text>Twórz miasto skupione na złocie automatycznie</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="pl_PL">
+            <Text>To samo dla Złota: jadeit, kaurysy, rubiny, srebro, goździki i reszta trafiają do miasta, które samo z siebie produkuje najwięcej Złota — i celowo nie do tego kulturowego, żeby obie kupki nie biły się o te same sloty. Osady, którym nadałeś własny priorytet, są obsługiwane najpierw.</Text>
+        </Row>
+
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="pl_PL">
             <Text>Skróty myszy</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="pl_PL">
-            <Text>Skróty myszy[N][N]PPM na przypisanym zasobie - cofa go do puli nieprzydzielonych.[N]Shift + PPM - cofa wszystkie zasoby tego samego rodzaju z tej osady.[N][N]Shift podczas przypisywania, przeciągnięciem albo kliknięciem - dokłada do tej osady kolejne zasoby tego samego rodzaju, aż skończy się miejsce.[N][N]Przytrzymany Shift i najechanie na cokolwiek - wszystkie zasoby tego rodzaju powiększają się, pokazując, czego dotyczyłaby powyższa akcja.</Text>
+            <Text>[B]PPM[/B] na przypisanym zasobie — cofa go do puli nieprzydzielonych.[N][N][B]Shift + PPM[/B] — cofa wszystkie zasoby tego samego rodzaju z tej osady.[N][N][B]Shift podczas przypisywania[/B], przeciągnięciem albo kliknięciem — dokłada do tej osady kolejne zasoby tego samego rodzaju, aż skończy się miejsce.[N][N][B]Przytrzymany Shift i najechanie[/B] na cokolwiek — wszystkie zasoby tego rodzaju powiększają się, pokazując, czego dotyczyłaby powyższa akcja.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="pl_PL">
+            <Text>PKB na turę (szacunkowo)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="pl_PL">
+            <Text>[B]+{1_Amount}[/B] z zasobów przypisanych do miast. Miasteczko nie daje nic.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS" Language="pl_PL">
+            <Text>[B]+{1_Amount}[/B] dodatkowo z tych, które przyszły szlakiem handlowym — importowany zasób w mieście jest wart dwa razy tyle.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS" Language="pl_PL">
+            <Text>[B]+{1_Amount}[/B] z budowli związanych ze złotem, liczonych niezależnie od tego, gdzie stoją.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES" Language="pl_PL">
+            <Text>[B]+{1_Amount}[/B] z zasobów fabrycznych — tak samo w mieście, jak i w miasteczku.</Text>
         </Row>
 
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="pl_PL">
             <Text>Najpierw fabryczne</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="pl_PL">
-            <Text>Przypisuje zasoby fabryczne przed wszystkim innym. Osada może prowadzić tylko jeden rodzaj zasobu fabrycznego, ale dowolną liczbę jego kopii — więc każda fabryka zaczyna od rodzaju, którego masz najwięcej, i zostaje nim zapełniona. Osady z ujemnym Zadowoleniem nadal mają pierwszeństwo. Tylko w epoce nowożytnej; włączone, dopóki tego nie wyłączysz.</Text>
+            <Text>Przypisuje zasoby fabryczne przed wszystkim innym.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST" Language="pl_PL">
+            <Text>Najpierw importowane</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST_TOOLTIP" Language="pl_PL">
+            <Text>Przypisuje zasoby, które przyszły do ciebie szlakiem handlowym od innego przywódcy, przed wszystkimi twoimi własnymi — i wyłącznie do miast.[N][N]Dlaczego się opłaca: przy [B]zwycięstwie gospodarczym[/B] zasób przypisany do miasta daje +1 PKB na turę, a importowany dodatkowo +1 ponad to — czyli dwa razy tyle co własny. W miasteczku żaden z nich nie daje nic, więc importy nigdy tam nie trafiają.[N][N][B]Opłaca się tylko przy zwycięstwie gospodarczym.[/B] Ma pierwszeństwo przed priorytetem każdej osady, więc dopóki ostatni import nie zostanie przypisany, twoje miasta biorą to, co akurat dowozi sieć handlowa, a nie to, w czym kazałeś im się specjalizować. Jeśli celujesz w kulturę, naukę albo wojsko — zostaw wyłączone.</Text>
         </Row>
 
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="pl_PL">

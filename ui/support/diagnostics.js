@@ -9,7 +9,7 @@
  * grouped, how many cards a tab built. Turn it back on while working on the mod and off
  * again before publishing: the previous mod shipped 1.0 with its logging still on.
  */
-export const DIAGNOSTICS = true;
+export const DIAGNOSTICS = false;
 
 export function log(...args) {
     if (DIAGNOSTICS) {

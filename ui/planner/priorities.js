@@ -39,15 +39,31 @@ export function cityKey(cityID) {
 }
 
 /**
- * What a settlement wants when the player has not said.
+ * What "Balanced" means.
  *
  * A city wants production. A town wants food: it turns its production into gold rather
  * than building with it, so production would be steering it nowhere, while food is what
  * a town grows on.
+ *
+ * ⚠️ This is what Balanced RESOLVES TO, not a value that gets stored or displayed. It used
+ * to be what `getPriority` returned for a settlement nobody had chosen for, which meant the
+ * picker on the card showed "Production" on a settlement the player had never touched - a
+ * choice they had not made, presented as one they had.
+ *
+ * Balanced also no longer means what Resource+ made it mean. There, a settlement with no
+ * priority took whichever yield it had least of, which pulled every settlement towards the
+ * same shapeless middle. City-production / town-food is a stance instead of an average, and
+ * it is the one the rest of the scoring is built around.
  */
 export const DEFAULT_CITY_PRIORITY = 'YIELD_PRODUCTION';
 export const DEFAULT_TOWN_PRIORITY = 'YIELD_FOOD';
 
+/**
+ * What the player chose, or null for Balanced - including "never chose anything".
+ *
+ * Read by the picker, which needs the player's own answer and not an interpretation of it.
+ * The scoring wants `effectivePriority` instead.
+ */
 export function getPriority(cityID) {
     const key = cityKey(cityID);
     if (priorityByCity.has(key)) {
@@ -59,7 +75,21 @@ export function getPriority(cityID) {
         priorityByCity.set(key, remembered);
         return remembered;
     }
-    return Cities.get(cityID)?.isTown ? DEFAULT_TOWN_PRIORITY : DEFAULT_CITY_PRIORITY;
+    return null;
+}
+
+/**
+ * The yield the scoring should feed this settlement first - never null.
+ *
+ * @param isTown pass it when the caller already knows; looked up otherwise.
+ */
+export function effectivePriority(cityID, isTown = undefined) {
+    const chosen = getPriority(cityID);
+    if (chosen) {
+        return chosen;
+    }
+    const town = isTown === undefined ? !!Cities.get(cityID)?.isTown : !!isTown;
+    return town ? DEFAULT_TOWN_PRIORITY : DEFAULT_CITY_PRIORITY;
 }
 
 /**

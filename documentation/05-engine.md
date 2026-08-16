@@ -6,7 +6,7 @@ C++ side goes through here.
 | File | Lines | Purpose |
 |---|---|---|
 | `operations.js` | 132 | **every** `ASSIGN_RESOURCE` request |
-| `unassign.js` | 139 | releasing, and who has to leave with what |
+| `unassign.js` | 191 | releasing, and who has to leave with what |
 | `resource-slots.js` | 80 | `BonusResourceSlots` (camels) |
 | `wait.js` | 51 | waiting for a queued operation to land |
 | `age.js` | 32 | which age this is, worked out once |
@@ -84,8 +84,9 @@ the player actually clicked is accepted.
 ### Exports
 
 ```js
-unassignOne(settlement, slottedResource)               // → Promise<number released>
+unassignOne(settlement, slottedResource)                // → Promise<number released>
 unassignAllOfTypeInSettlement(settlement, resourceType) // → Promise<number released>
+unassignEverySettlement()                               // → Promise<number released>
 freeRoomForMove(sourceSettlement, slottedResource, targetCityID) // → Promise<boolean>
 ```
 

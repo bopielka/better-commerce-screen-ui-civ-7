@@ -9,7 +9,7 @@
             <Text>Wird zugewiesen ...</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="de_DE">
-            <Text>Weist alle derzeit nicht zugewiesenen Ressourcen zu und behält bestehende Zuweisungen bei. Siedlungen mit negativer Zufriedenheit kommen zuerst, jeweils die schlechteste, bis keine mehr unter null liegt. Danach: Kamele, dann Ressourcen, deren stärkeres Siedlungskriterium erfüllt ist, dann Ressourcen mit einem Ertrag, zuletzt die mit mehreren.</Text>
+            <Text>Füllt jeden freien Platz aus dem Vorrat. Bereits Platziertes wird nicht bewegt.[N][N]Anschließend bekommt jede Siedlung das, was du als Priorität eingestellt hast.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="de_DE">
             <Text>Alle neu zuweisen</Text>
@@ -30,7 +30,7 @@
             <Text>Gibt jede zugewiesene Ressource im Reich in den Vorrat zurück.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="de_DE">
-            <Text>Wählt den Ertrag, den diese Siedlung bevorzugt erhalten soll. Ausgewogen zielt auf die niedrigsten betroffenen Erträge der Siedlung.</Text>
+            <Text>Wähle den Ertrag, den diese Siedlung zuerst erhalten soll. Ausgewogen bedeutet Produktion in einer Stadt und Nahrung in einem Ort.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="de_DE">
             <Text>Priorität: {1_Priority}</Text>
@@ -42,7 +42,7 @@
             <Text>Ausgewogen</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="de_DE">
-            <Text>Weist ausgewogen zu und bevorzugt die niedrigsten betroffenen Erträge dieser Siedlung.</Text>
+            <Text>Ausgewogen: keine eigene Spezialisierung. Die Siedlung erhält Produktion, wenn sie eine Stadt ist, und Nahrung, wenn sie ein Ort ist.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="de_DE">
             <Text>Schnell zuweisen</Text>
@@ -71,17 +71,75 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="de_DE">
             <Text>Alle Zuweisungen neu aufbauen</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="de_DE">
+            <Text>Zuweisungshinweis überspringen, wenn nichts passt</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION" Language="de_DE">
+            <Text>Das Spiel meldet „Ressourcenzuweisungen verfügbar“, wenn eine Ressource in deinen Vorrat gelangt oder eine Siedlung einen Platz gewinnt. Die Meldung hat hohe Priorität und verfällt nicht am Rundenende, hält also die Zug-beenden-Schaltfläche besetzt, bis du reagierst - auch wenn nichts zu tun ist.[N][N]Aktiviert wird sie nicht gezeichnet, solange nichts, was du hältst, irgendwo zulässig platziert werden könnte - auch dann nicht, wenn nur noch eine Fabrikressource übrig ist und keine Siedlung mit freiem Platz eine Fabrik hat. Sie kehrt zurück, sobald sich das ändert. Nichts wird verworfen, die Zugblockade bleibt unberührt; nur das Zeichnen unterbleibt.[N][N]Setzt außerdem eingeschaltete automatische Zuweisung voraus: ist sie aus, platziert der Mod nichts für dich, und die Meldung ist berechtigt.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS" Language="de_DE">
+            <Text>Zufriedenheit priorisieren</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION" Language="de_DE">
+            <Text>Vor allem anderen versucht die Zuweisung, Siedlungen aus negativer Zufriedenheit zu holen – die schlimmste zuerst. Das steht über Fabriken, Kamelen und der eigenen Priorität einer Siedlung und ist damit der größte Einzeleingriff des Mods.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_NEVER" Language="de_DE">
+            <Text>Nie</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_CITIES" Language="de_DE">
+            <Text>Nur Städte</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_ALL" Language="de_DE">
+            <Text>Alle Siedlungen</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE" Language="de_DE">
+            <Text>Automatisch eine Kultur-Siedlung aufbauen</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION" Language="de_DE">
+            <Text>Alle Ressourcen, die Kultur bringen – Schildkröten, Seide, Mangos, Flachs, Wein, Weihrauch und was das Zeitalter sonst bietet – werden in der einen Stadt gesammelt, die von sich aus schon die meiste Kultur erzeugt, statt verstreut zu werden. Einige davon sind Prozentwerte, und ein Prozentsatz einer großen Zahl schlägt denselben Prozentsatz von sechs kleinen. Siedlungen mit eigener Priorität werden zuerst bedient; gesammelt wird nur der Rest.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD" Language="de_DE">
+            <Text>Automatisch eine Gold-Siedlung aufbauen</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="de_DE">
+            <Text>Dasselbe für Gold: Jade, Kaurimuscheln, Rubine, Silber, Gewürznelken und der Rest werden in der Stadt gesammelt, die bereits am meisten Gold erzeugt – und bewusst nicht in der Kultur-Stadt, damit die beiden Stapel nicht um dieselben Plätze konkurrieren. Siedlungen mit eigener Priorität werden zuerst bedient.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="de_DE">
             <Text>Maus-Kurzbefehle</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="de_DE">
-            <Text>Maus-Kurzbefehle[N][N]Rechtsklick auf eine zugewiesene Ressource - gibt sie in den Vorrat zurück.[N]Umschalt + Rechtsklick - gibt alle Ressourcen derselben Art in dieser Siedlung zurück.[N][N]Umschalt beim Zuweisen, per Ziehen oder Klicken - füllt die Siedlung weiter mit Ressourcen derselben Art, bis kein Platz mehr ist.[N][N]Umschalt halten und über etwas fahren - alle Ressourcen dieser Art werden größer und zeigen, was die Aktion oben betreffen würde.</Text>
+            <Text>[B]Rechtsklick[/B] auf eine zugewiesene Ressource - schickt sie in den Vorrat zurück.[N][N][B]Umschalt + Rechtsklick[/B] - schickt jede Ressource dieser Art aus dieser Siedlung zurück.[N][N][B]Umschalt beim Zuweisen[/B], per Ziehen oder Klick - füllt die Siedlung weiter mit Ressourcen derselben Art, bis kein Platz mehr ist.[N][N][B]Umschalt halten und darüberfahren[/B] - jede Ressource dieser Art wird größer und zeigt, was die Aktion oben beträfe.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="de_DE">
+            <Text>BIP pro Runde (geschätzt)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="de_DE">
+            <Text>[B]+{1_Amount}[/B] aus Ressourcen in Städten. Ein Ort bringt nichts.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS" Language="de_DE">
+            <Text>[B]+{1_Amount}[/B] zusätzlich aus jenen, die über eine Handelsroute kamen - eine importierte Ressource in einer Stadt zählt doppelt.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS" Language="de_DE">
+            <Text>[B]+{1_Amount}[/B] aus Gold-Gebäuden, gleich wo sie stehen.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES" Language="de_DE">
+            <Text>[B]+{1_Amount}[/B] aus Fabrikressourcen, in Stadt wie Ort gleichermaßen.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="de_DE">
             <Text>Fabriken zuerst</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="de_DE">
-            <Text>Platziert Fabrikressourcen vor allem anderen. Eine Siedlung kann nur eine Art Fabrikressource betreiben, davon aber beliebig viele Exemplare - daher wird jede Fabrik mit der Art begonnen, von der Ihr am meisten habt, und dann damit gefüllt. Siedlungen unter null Zufriedenheit kommen weiterhin zuerst. Nur im Modernen Zeitalter, und aktiv, sofern Ihr es nicht abschaltet.</Text>
+            <Text>Weist Fabrikressourcen vor allem anderen zu.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST" Language="de_DE">
+            <Text>Importe zuerst</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST_TOOLTIP" Language="de_DE">
+            <Text>Weist Ressourcen, die über eine Handelsroute von einem anderen Anführer zu dir kamen, vor allen eigenen zu - und nur an Städte.[N][N]Warum es sich lohnt: für den [B]Wirtschaftssieg[/B] bringt eine in einer Stadt eingesetzte Ressource +1 BIP pro Runde, eine importierte +1 zusätzlich - doppelt so viel wie eine eigene. In einem Ort bringt keine von beiden etwas, deshalb gehen Importe nie dorthin.[N][N][B]Nur beim Wirtschaftssieg sinnvoll.[/B] Es steht über der Priorität jeder Siedlung: bis der letzte Import platziert ist, nehmen deine Städte, was das Handelsnetz gerade liefert, statt dessen, worauf du sie spezialisiert hast. Bei Kultur-, Wissenschafts- oder Militärsieg besser aus lassen.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="de_DE">
             <Text>Flugzeuge</Text>

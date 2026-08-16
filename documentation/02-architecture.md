@@ -28,7 +28,7 @@ started life as one module in `screen/`. The planner imported it to ask a yes/no
 and the whole UI came with it. The split is now:
 
 - `ui/planner/factory-first-setting.js` — the value, its persistence, its change event
-- `ui/screen/factory-first.js` — the checkbox element only
+- `ui/screen/assign-switches.js` — the checkbox elements only, for this and for imports-first
 
 The same reasoning put `ui/engine/age.js` in `engine/` rather than beside the Factory tab
 that first needed it.

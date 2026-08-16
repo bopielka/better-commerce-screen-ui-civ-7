@@ -25,7 +25,13 @@
  * decision is made by asking `canStart` rather than by arithmetic: companions are pulled
  * one at a time and only until the resource the player actually clicked is accepted.
  */
-import { canAssign, canUnassign, requestUnassign } from './operations.js';
+import {
+    canAssign,
+    canUnassign,
+    requestClearSettlement,
+    requestUnassign,
+    unassignIfAllowed,
+} from './operations.js';
 import { companionCandidates } from './resource-slots.js';
 import { waitForEngineEvent } from './wait.js';
 import { log, warn } from '../support/diagnostics.js';
@@ -119,6 +125,58 @@ export async function freeRoomForMove(sourceSettlement, slottedResource, targetC
 /** One resource, plus anything that turns out to have to leave with it. */
 export function unassignOne(settlement, slottedResource) {
     return release(settlement, [slottedResource]);
+}
+
+/**
+ * Empties every settlement the local player owns.
+ *
+ * ⚠️ The ONE implementation of this. There were three - the Reassign All button, the
+ * automatic rebuild and the Unassign All button - and they had already drifted: one counted
+ * resources and one counted settlements, one had a fallback and one did not, and only two
+ * of them waited for the engine. Three answers to "did that work?" for one action.
+ *
+ * The operation is the game's own: `clearAllResources` in commerce-screen-model.ts walks
+ * the player's cities and sends ASSIGN_RESOURCE with `Action: Clear` for each, which is
+ * exactly what `requestClearSettlement` sends. Two things are added on top, and both are
+ * needed here and not there:
+ *
+ *   - a wait between settlements, because `sendRequest` only QUEUES. The game does not
+ *     plan anything afterwards; this mod immediately lays the empire out again, and
+ *     planning against a board that has not emptied yet places resources that are about to
+ *     be released;
+ *   - a per-resource fallback for when the engine refuses the bulk form, so a settlement it
+ *     will not clear in one go is still emptied rather than silently skipped.
+ *
+ * Read straight from the game rather than from the Commerce screen's model, so the same
+ * call works with the screen shut.
+ *
+ * @returns how many resources were released.
+ */
+export async function unassignEverySettlement() {
+    let cleared = 0;
+    const cities = Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? [];
+
+    for (const city of cities) {
+        const assigned = city.Resources?.getAssignedResources() ?? [];
+        if (assigned.length === 0) {
+            continue;
+        }
+
+        if (requestClearSettlement(city.id)) {
+            cleared += assigned.length;
+        } else {
+            for (const resource of assigned) {
+                if (unassignIfAllowed(city.id, resource.value)) {
+                    cleared++;
+                } else {
+                    warn(`failed to request unassign for resource ${resource.value}`);
+                }
+            }
+        }
+        await waitForEngineEvent(UNASSIGNED_EVENT);
+    }
+
+    return cleared;
 }
 
 /**

@@ -18,6 +18,7 @@
 import { ConstructibleHasTagType } from '/base-standard/ui/utilities/utilities-tags.js';
 
 import { isFactoryAge } from '../engine/age.js';
+import { isAssignableToSettlement } from '../planner/facts.js';
 
 import { warn } from '../support/diagnostics.js';
 
@@ -120,8 +121,13 @@ export function forgetSettlementBuildings(cityID = null) {
  * "does it have BUILDING_FACTORY" - which is what this used to do, and which disagreed
  * with the screen. The two paths have to answer this identically or "factories first"
  * means one thing with the screen open and another with it shut.
+ *
+ * Exported because `assign-notification.js` needs the same answer and must not grow its own:
+ * two definitions of "has a factory" is precisely the shape of bug this file exists to avoid.
+ * It takes `city.Resources` rather than the city so that callers who already hold the
+ * component do not have to look it up again.
  */
-function hasFactory(cityResources) {
+export function settlementHasFactory(cityResources) {
     try {
         if (!cityResources.isTreasureConstructiblePrereqMet?.() || !isFactoryAge()) {
             return false;
@@ -163,7 +169,7 @@ function countBuildings(city) {
         warn(`could not read buildings for a settlement: ${error}`);
     }
 
-    const counts = { warehouseCount, hasRail, hasFactory: hasFactory(city.Resources) };
+    const counts = { warehouseCount, hasRail, hasFactory: settlementHasFactory(city.Resources) };
     buildingsByCity.set(key, counts);
     return counts;
 }
@@ -211,10 +217,23 @@ export function buildSettlements() {
 }
 
 /**
- * The local player's resources that are not assigned anywhere.
+ * The local player's resources that are not assigned anywhere and COULD be.
  *
- * Worked out by subtraction: the player's full list minus everything the settlements
- * report as assigned. There is no "unassigned" accessor to ask.
+ * Worked out by subtraction: the player's full list minus everything the settlements report
+ * as assigned. There is no "unassigned" accessor to ask.
+ *
+ * ⚠️ Empire and treasure resources are then dropped, because the game's own pool drops them -
+ * see `isAssignableToSettlement`. Leaving them in was a real difference between the two
+ * paths, and it is the sort this file exists to prevent: with the Commerce screen OPEN the
+ * planner reads the game's model, which had already filtered them out, and with the screen
+ * SHUT it read this list, which had not.
+ *
+ * They can never be placed, so nothing was ever assigned wrongly - the engine refuses each
+ * one and the loop sets it aside. What it cost was worse than wasted `canAssign` calls:
+ * acquiring, say, Gold in Antiquity gave auto-assign a "new resource" it could never place,
+ * and since it only forgets an arrival after a pass that placed something, that arrival was
+ * retried on every trigger for the rest of the game. The pool figure in "nothing could be
+ * placed: N in the pool" was inflated by them too.
  */
 export function buildAvailableResources(settlements) {
     const player = Players.get(GameContext.localPlayerID);
@@ -235,12 +254,16 @@ export function buildAvailableResources(settlements) {
         }
         const type =
             GameInfo.Resources.lookup(resource.uniqueResource?.resource)?.ResourceType ?? resourceTypeOf(value);
-        available.push({
+        const entry = {
             resourceValue: value,
             resourceType: type,
             cityID: undefined,
             yieldTypes: type ? yieldTypesFor(type) : [],
-        });
+        };
+        if (!isAssignableToSettlement(entry)) {
+            continue;
+        }
+        available.push(entry);
     }
     return available;
 }

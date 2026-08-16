@@ -27,6 +27,7 @@ import { CommerceScreenBaseTabContent } from '/base-standard/ui-next/screens/com
 import { absoluteWorth, factoryHoldings, gdpPerSlottedResource, sumFactoryTotals } from '../planner/factory-effects.js';
 import { forgetModifierIndex } from '../planner/effects.js';
 import { PRODUCTION_YIELD } from '../planner/facts.js';
+import { appendWithResourceTooltip, resourceTooltipProps } from './resource-tooltip.js';
 import { appendAll, clearChildren, ensureStyle, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -498,15 +499,10 @@ function legendFor(totals) {
  * TOOLTIP_TEXT_SELECTOR. The renderer assigns into `innerHTML`, so a newline collapses the
  * way any whitespace does in HTML and nothing about the text can force the break.
  */
-function tooltipFor(holding) {
+function whereLines(holding) {
     const lines = [];
-    const description = holding.definition?.Tooltip;
-    if (description) {
-        lines.push(Locale.compose(description));
-    }
-
     if (holding.cities?.length) {
-        lines.push('', `${Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS')}:`, '');
+        lines.push(`${Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS')}:`, '');
         for (const city of holding.cities) {
             lines.push(`        ${city.name}: ${city.count}`);
         }
@@ -544,9 +540,51 @@ function tooltipFor(holding) {
         }
     }
     if (origins.length) {
-        lines.push('', `${Locale.compose('LOC_COMMERCE_EMPIRE_RESOURCES_ORIGIN_TITLE')}:`, '', ...origins);
+        if (lines.length) {
+            lines.push('');
+        }
+        lines.push(`${Locale.compose('LOC_COMMERCE_EMPIRE_RESOURCES_ORIGIN_TITLE')}:`, '', ...origins);
     }
-    return lines.join('\n');
+    return lines;
+}
+
+/**
+ * The cards below the resource: where the copies sit, then one per leader they came from.
+ *
+ * ⚠️ The first has no `leaderId` on purpose - "in these settlements" is about us, so it gets
+ * no portrait. Everything after it is somebody else's face.
+ */
+function originGroups(holding) {
+    const groups = [];
+    if (holding.cities?.length) {
+        groups.push({
+            title: Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS'),
+            lines: holding.cities.map((city) => `${city.name}: ${city.count}`),
+        });
+    }
+    for (const [leaderId, byCity] of holding.origins ?? new Map()) {
+        const leader = Players.get(leaderId);
+        if (!leader) {
+            continue;
+        }
+        const cities = [...byCity.values()];
+        const total = cities.reduce((sum, city) => sum + city.count, 0);
+        groups.push({
+            leaderId,
+            title: `${Locale.compose(leader.name)}: ${total}`,
+            lines: cities.map((city) =>
+                Locale.compose('LOC_COMMERCE_EMPIRE_ORIGIN_CITY_CONTRIBUTION_COUNTER', city.count, city.name),
+            ),
+        });
+    }
+    return groups;
+}
+
+/** The plain-text tooltip, used only when the game's own component will not mount. */
+function tooltipFor(holding) {
+    const description = holding.definition?.Tooltip;
+    const lines = description ? [Locale.compose(description), ''] : [];
+    return [...lines, ...whereLines(holding)].join('\n');
 }
 
 function cardFor(holding, isIdle, applied) {
@@ -555,7 +593,7 @@ function cardFor(holding, isIdle, applied) {
     const inner = makeElement('div', `${CLASS}-card__inner card-frame-bg`);
 
     const head = makeElement('div', `${CLASS}-card__head`);
-    const icon = makeElement('div', `${CLASS}-card__icon`, { 'data-tooltip-content': tooltipFor(holding) });
+    const icon = makeElement('div', `${CLASS}-card__icon`);
     try {
         icon.style.backgroundImage = `url(${UI.getIcon(holding.type, 'RESOURCE')})`;
     } catch (error) {
@@ -571,7 +609,19 @@ function cardFor(holding, isIdle, applied) {
     // name of the thing here, not an annotation on it.
     title.textContent = `${Locale.compose(holding.definition?.Name ?? holding.type)} [${holding.count}]`;
 
-    appendAll(head, icon, title);
+    /*
+     * The game's own framed tooltip, so a factory resource looks the same object here as it
+     * does in the unassigned pool. Where the copies sit and who they came from go into its
+     * "Origin:" line, which is the one free text slot it has.
+     */
+    appendWithResourceTooltip(
+        head,
+        icon,
+        resourceTooltipProps(holding.type),
+        tooltipFor(holding),
+        originGroups(holding),
+    );
+    head.appendChild(title);
     inner.appendChild(head);
 
     /*

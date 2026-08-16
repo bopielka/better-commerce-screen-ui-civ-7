@@ -16,7 +16,7 @@
             <Text>Assigning...</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP">
-            <Text>Assigns all currently unassigned Resources while preserving existing assignments. Settlements on negative Happiness are served first, worst one at a time, until none is below zero. After that: Camels, then Resources whose stronger Settlement criteria are met, then single-Yield Resources, then multi-Yield ones.</Text>
+            <Text>Fills every free slot from the unassigned pool. Nothing already placed is moved.[N][N]Each Settlement then gets whatever you set it to prioritise.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL">
             <Text>Reassign All</Text>
@@ -39,7 +39,7 @@
 
         <!-- The controls on each settlement card -->
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP">
-            <Text>Choose the Yield this Settlement should prioritize. Balanced targets the Settlement's lowest affected Yields.</Text>
+            <Text>Choose the Yield this Settlement should prioritize. Balanced means Production in a City and Food in a Town.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT">
             <Text>Priority: {1_Priority}</Text>
@@ -51,7 +51,7 @@
             <Text>Balanced</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP">
-            <Text>Use Balanced assignment and prioritize this Settlement's lowest affected Yields.</Text>
+            <Text>Balanced: no specialisation of your own. The Settlement is fed Production if it is a City and Food if it is a Town.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN">
             <Text>Quick Assign</Text>
@@ -83,12 +83,63 @@
             <Text>Rebuild every assignment</Text>
         </Row>
 
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT">
+            <Text>Skip the assignment prompt when nothing fits</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION">
+            <Text>The game raises "Resource Assignments Available" when a Resource reaches your pool, or when a Settlement gains a slot. It is high priority and does not expire at end of turn, so it holds the end-turn button until you act on it - even when there is nothing you could do.[N][N]With this on, the prompt is not drawn while nothing you hold could legally be placed anywhere, including when all that is left is a Factory Resource and no Settlement with a free slot has a Factory. It returns the moment that changes. Nothing is dismissed and turn blocking is untouched; only the drawing is declined.[N][N]Also requires automatic assignment to be on: with it off the mod places nothing for you, so the prompt is telling you something you still need to act on.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS">
+            <Text>Prioritise Happiness</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION">
+            <Text>Before anything else, assignment tries to lift Settlements out of negative Happiness, worst first. This outranks Factories, Camels and each Settlement's own priority, so it is the largest single thing the mod does to a layout.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_NEVER">
+            <Text>Never</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_CITIES">
+            <Text>Cities only</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_ALL">
+            <Text>All Settlements</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE">
+            <Text>Build a Culture Settlement automatically</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION">
+            <Text>Every Resource that pays Culture - Turtles, Silk, Mangos, Flax, Wine, Incense and whatever else the age offers - is gathered into the one City that already makes the most Culture on its own, instead of being scattered. Several of them are percentages, so a percentage of one big number beats the same percentage of six small ones. Settlements you have given a priority of their own are served first, and only what is left over gets gathered.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD">
+            <Text>Build a Gold Settlement automatically</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION">
+            <Text>The same for Gold: Jade, Cowrie, Rubies, Silver, Cloves and the rest are gathered into the City that already makes the most Gold - and deliberately not the Culture one, so the two piles do not compete for the same slots. Settlements you have given a priority of their own are served first.</Text>
+        </Row>
+
         <!-- The "?" beside the buttons -->
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS">
             <Text>Mouse shortcuts</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP">
-            <Text>Mouse shortcuts[N][N]Right-click an assigned Resource - send it back to the unassigned pool.[N]Shift + right-click - send back every Resource of that same kind in that Settlement.[N][N]Shift while assigning, by dragging or by clicking - keep filling that Settlement with Resources of the same kind until it runs out of room.[N][N]Hold Shift and hover anything - every Resource of that kind grows, showing what the action above would affect.</Text>
+            <Text>[B]Right-click[/B] an assigned Resource - send it back to the unassigned pool.[N][N][B]Shift + right-click[/B] - send back every Resource of that same kind in that Settlement.[N][N][B]Shift while assigning[/B], by dragging or by clicking - keep filling that Settlement with Resources of the same kind until it runs out of room.[N][N][B]Hold Shift and hover[/B] anything - every Resource of that kind grows, showing what the action above would affect.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL">
+            <Text>GDP per turn (estimate)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES">
+            <Text>[B]+{1_Amount}[/B] from Resources assigned to Cities. A Town pays nothing.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS">
+            <Text>[B]+{1_Amount}[/B] more from those that came over a Trade Route - an imported Resource in a City is worth double.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS">
+            <Text>[B]+{1_Amount}[/B] from Gold buildings, counted wherever they stand.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES">
+            <Text>[B]+{1_Amount}[/B] from Factory Resources, in a City or a Town alike.</Text>
         </Row>
 
         <!-- The Modern-age switch in the button row -->
@@ -96,7 +147,14 @@
             <Text>Factories first</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP">
-            <Text>Place Factory Resources before anything else. A Settlement can run only one kind of Factory Resource, but any number of copies of it, so each Factory is started on the kind you have most of and then filled with it. Settlements below zero Happiness are still dealt with first. Modern age only, and on unless you turn it off.</Text>
+            <Text>Places Factory Resources before anything else.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST">
+            <Text>Imports first</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST_TOOLTIP">
+            <Text>Assigns Resources that reached you over a Trade Route from another leader before any of your own, and only into Cities.[N][N]Why it pays: towards an [B]Economic Victory[/B] a Resource slotted in a City is worth +1 GDP per turn, and an imported one is worth +1 more on top of that - twice as much as your own. Neither pays anything in a Town, so imports are never sent to one.[N][N][B]Only worth it for the Economic Victory.[/B] It outranks every Settlement's own priority, so until the last import is placed your Cities take whatever the trade network happens to supply instead of what you told them to specialise in. Chasing Culture, Science or a Military win, leave this off.</Text>
         </Row>
 
         <!-- Unit classes: the game's data has no name for these tags anywhere -->

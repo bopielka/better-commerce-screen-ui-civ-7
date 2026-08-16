@@ -1,0 +1,140 @@
+# Changelog
+
+Notable changes to **Better Commerce Screen UI**. Newest first.
+
+⚠️ **There was no changelog before 1.3.** Earlier releases are not recorded here, and nothing
+below should be read as the mod's full history — it is the history from 1.3 onwards.
+
+## 1.3
+
+### Added
+
+- **"Imports first" switch**, in the button bar above "Factories first" — offered in **every** age,
+  off by default. With it on, Resources that reached you over a Trade Route from another leader are
+  assigned before any of your own, and only into **Cities**.
+  Why it can pay: towards an **Economic Victory** a Resource slotted in a City is worth +1 GDP per
+  turn and an imported one is worth +1 more on top — twice as much as your own — while neither pays
+  anything in a Town. The tooltip says as much, and says plainly that it is **not** worth it for
+  any other victory type: it outranks every Settlement's own priority, so until the last import is
+  placed your Cities take whatever the trade network supplies rather than what you specialised them
+  for. Order within the imports: what the City was told to make, then production, then Cities with
+  no specialisation of their own, then anywhere else.
+- **"Prioritise Happiness" setting** (Options → Mods, above automatic assignment). The rescue
+  tier — which lifts settlements out of negative Happiness before doing anything else — can now
+  be set to **Never**, **Cities only**, or **All settlements** (the default, and the previous
+  behaviour). It outranks factories, camels and each settlement's own priority, so it is the
+  largest single thing the mod does to a layout and it should not have been unconditional.
+- **"Build a Culture Settlement automatically"** and **"Build a Gold Settlement automatically"**
+  (Options → Mods, both on by default). Turning either off skips that pile entirely.
+- **"Skip the assignment prompt when nothing fits"** (Options → Mods, on by default). Turning it
+  off leaves the game's end-turn prompt exactly as the game raises it.
+- Automatic assignment now also triggers on **taking an enemy settlement**
+  (`CityTransfered`, `ConqueredSettlementIntegrated`), on **wonders being completed**, on new
+  settlements, and on the empire's **resource capacity changing** — so finishing a Marketplace or
+  a Colossus is a cue, not just acquiring a resource.
+- **A running GDP total** beside the switches, with the economic victory-point icon: roughly how
+  much your assigned Resources earn per turn, broken down in its tooltip into what comes from
+  Resources in Cities, the extra from imported ones, Factory Resources, and Gold buildings. It
+  updates as you assign. Gold buildings are counted only for the **current age** — a Market stops
+  paying in Exploration — except the ageless ones, which always count.
+- `knowledge-base/27-resources.md`: what every resource pays and under what condition, per age,
+  generated from the game's own data.
+
+### Changed
+
+- **Every tooltip this mod adds is now drawn in the game's framed style**, with sections split
+  into separate cards instead of one block of text: the three buttons, the "?" shortcut list (one
+  shortcut per card), both switches and the GDP total. They also float a little clear of the
+  control instead of sitting flush against it.
+- **The Empire and Factory tabs now draw the game's framed resource tooltip** — the class header,
+  the resource in its frame, its name and description, exactly as the unassigned pool draws it.
+  They used to show the same words in a plain box, so one resource looked like two different
+  objects depending on which tab you hovered it on. Underneath it, **a card per leader**: their
+  portrait, how many copies came from them, and which of their settlements — so nothing is lost and
+  the origins are easier to read than the indented text list they replace.
+
+- **Resources are no longer judged "specially suited" to a settlement that gets their weaker
+  variant.** The game writes an either/or bonus as two gated modifiers, the second the inverse of
+  the first — Fish is +8 Food *with* a Port and +4 *without* one — and both branches read as "a
+  condition is met". Fish at +4 was therefore being ranked above Sugar at a flat +8 and sent to
+  portless towns. A bonus now only counts as conditional when the settlement gets the **best**
+  amount that resource can pay for that yield. Also affects Furs, Pearls, Silk, Tobacco and
+  Truffles in Modern, and Tin, Wild Game, Gypsum, Kaolin and Pearls in the earlier ages.
+- **"Balanced" now means Production in a City and Food in a Town**, instead of "whichever yield
+  the settlement has least of". A settlement you have never touched also **shows** Balanced in the
+  priority picker now, rather than showing Production as though you had chosen it. Both of the
+  picker's tooltips — the one on the button and the one on the Balanced option — were rewritten to
+  say so, in all twelve languages.
+- **The culture and gold piles gather every resource that pays those yields**, not just Turtles,
+  Silk and Jade. Mangos, Flax, Wine, Incense, Cowrie, Rubies, Silver, Cloves and anything else the
+  age offers now go where they compound. Settlements with a priority of their own are still served
+  first.
+- **Factories first packs by capacity.** When starting an empty factory it now weighs how many
+  copies would actually *fit*, not how many are waiting — so the most plentiful resource goes to
+  the roomiest factory instead of being started in the smallest one and stranding the rest.
+- **Automatic assignment runs the same code the buttons run.** It used to have its own copy of
+  the placement call, its own "is a pass running" flag and its own "empty every settlement", any
+  of which could collide with a button press mid-run.
+- **One implementation of "empty every settlement"**, shared by Reassign All, Unassign All and the
+  automatic rebuild. It sends the game's own bulk `Clear` operation, waits for the engine between
+  settlements, and falls back to releasing one resource at a time if the bulk form is refused.
+- Every placement now writes one diagnostic line naming the **tier** it won on and whether the
+  resource was imported, instead of only the happiness rescue doing so. The same board can be
+  produced by four different rules, and it was not possible to tell them apart from outside.
+
+### Fixed
+
+- **The end-turn prompt is now also hidden when the only thing left is a Factory Resource and no
+  Settlement with a free slot has a Factory.** The engine accepts that pair — it just does
+  nothing useful — so the prompt kept insisting there was something to do.
+- **The Commerce screen no longer shows a stale layout after a run.** Assignments were being made
+  faster than the screen could take them in: it updates one resource at a time from an event that
+  only ever holds the most recent one, so events arriving in the same tick overwrote each other
+  and those resources were never drawn. The assignment itself was always correct — closing and
+  reopening the screen showed the real layout — which made it look like a placement bug. The loop
+  now leaves one frame between placements while the screen is open (and still runs at full speed
+  when it is closed), and reconciles the two afterwards.
+  The **unassigned list on the left** needed more than pacing: unlike the settlement cards, which
+  re-read live state on every event and heal themselves, a row there is removed only by the event
+  naming that exact resource — so a single missed event left a resource shown as unassigned after
+  it had been placed, for as long as the screen stayed open. Those stale rows are now removed
+  outright.
+- **Automatic assignment now checks periodically, so a missing engine event can no longer disable
+  it.** Improving a tile by letting a city expand onto it raises no "build completed" event — that
+  one is for the production queue — so that case produced no trigger at all. Rather than keep
+  guessing at event names (this was the third such gap), the watcher now also looks every 15
+  seconds. The events keep it feeling instant; the sweep makes it reliable. `ConstructibleAddedToMap`
+  and `ConstructibleChanged` were added too, so the common case stays immediate.
+- **Automatic assignment no longer loses a trigger that arrives at a bad moment.** If the Commerce
+  screen was open, or a button was mid-run, the arrival was dropped and nothing rescheduled it —
+  and closing the screen raises no event, so the pass waited for the next turn or the next
+  acquisition. Since the ordinary workflow is to be *in* the Commerce screen when a resource
+  lands, this was the likeliest reason for the feature appearing to do nothing at all. Triggers
+  are now held and retried until the way is clear.
+- **Every automatic mode still waits for something to actually happen.** The modes differ in how
+  much of the pool an arrival is a cue to tidy — not in when they run. Loading a save assigns
+  nothing: nothing happened, and a pool you left full is a pool you left full.
+- **Empire and treasure resources are no longer treated as things to assign.** They are never
+  placed in a settlement — they pay for being held, or turn into treasure fleets — and the game's
+  own screen leaves them out of the unassigned pool. With the Commerce screen open the mod read
+  the game's list and behaved correctly; with the screen closed it built its own and did not.
+  Nothing was ever assigned wrongly, but acquiring one (Gold in Antiquity, say) handed automatic
+  assignment a "new resource" it could never place, and it then retried that arrival on every
+  trigger for the rest of the game. Which resources these are **depends on the age** — Gold is an
+  empire resource in Antiquity and a treasure resource in Exploration — so it is read from the
+  resource's class in the loaded age, not from a list.
+- **One settlement holds the Culture role and one holds the Gold role, and the role moves on when
+  that settlement fills up.** The Gold pile used to have no target at all: it scored every city
+  that was not the Culture city, weighted by that city's own Gold — which spread Gold resources
+  around instead of building a Gold settlement, and cost slots elsewhere: Jade reached the
+  gathering tier in the capital while Silk, not being the capital's pile, could not, and stayed
+  in the pool. Cities are now ranked **once per run** rather than re-picked before every single
+  placement (which let a pile hand itself to a rival city halfway through and end up split
+  between two settlements), and the role passes down that ranking as each settlement runs out of
+  room, so a Culture city with two free slots no longer lets the other twelve Culture resources
+  scatter.
+- **The end-turn "Resource Assignments Available" prompt is no longer suppressed when automatic
+  assignment is switched off.** Hiding it only makes sense when the mod has already placed the
+  resources for you; with the setting off, the prompt is telling you something you still need to
+  act on.
+- Unassign All is now covered by the same "one run at a time" guard as the other two buttons.

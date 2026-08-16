@@ -185,6 +185,25 @@ factory state can have changed.
 report as assigned. **There is no "unassigned" accessor to ask.** The same subtraction appears
 in `ui/screen/assign-notification.js`.
 
+⚠️ **Empire and treasure resources are then dropped**, because the game's own pool drops them —
+`commerce-screen-model.ts` returns early on `RESOURCECLASS_EMPIRE` and `RESOURCECLASS_TREASURE`
+before building a slot for them. An empire resource pays for being **held** and a treasure
+resource turns into treasure fleets; neither is ever assigned anywhere.
+
+Which resources those are **changes with the age** — Gold is `EMPIRE` in Antiquity and
+`TREASURE` in Exploration, Ivory is `EMPIRE` then `BONUS`, Marble becomes `EMPIRE` only in
+Modern — so it is a class check, not a list, and no age logic is needed: each age's
+`resources.xml` rewrites the column with `<Update>` rows. See
+[`knowledge-base/27-resources.md`](../../knowledge-base/27-resources.md).
+
+⚠️ **This was the one real difference between the two paths, and it is the sort this file
+exists to prevent.** With the screen OPEN the planner reads the game's model, which had already
+filtered them; with the screen SHUT it read this list, which had not. Nothing was ever assigned
+wrongly — the engine refuses each one and the loop sets it aside — but acquiring, say, Gold in
+Antiquity handed auto-assign a "newly acquired resource" it could never place, and since an
+arrival is only forgotten after a pass that placed something, that arrival was retried on every
+trigger for the rest of the game.
+
 ### `buildHeadlessModel(prebuiltSettlements, prebuiltAvailable)`
 
 A stand-in carrying only what the planner reads, in the same nesting the real model uses:

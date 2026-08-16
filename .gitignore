@@ -12,3 +12,6 @@ desktop.ini
 # Local files
 scratch/
 *.log
+
+# Written by deploy-on-mac.sh on every deploy; the value is never source.
+ui/support/build-stamp.js

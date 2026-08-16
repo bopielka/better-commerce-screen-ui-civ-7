@@ -1,10 +1,16 @@
 /**
  * Hiding "Resource Assignments Available" when there is nothing you could do about it.
  *
- * The game raises `NOTIFICATION_ASSIGN_NEW_RESOURCES` whenever a resource arrives, and it
- * is a HIGH severity notification that does not expire at end of turn - so once every
- * settlement is full it takes over the turn button for a situation that rarely has
- * anything worth doing about it, turn after turn.
+ * The game raises `NOTIFICATION_ASSIGN_NEW_RESOURCES` when a resource reaches the player's
+ * pool, or when a settlement gains a slot. Its row in `notification.xml` is HIGH severity
+ * with `ExpiresEndOfTurn="False"`, so once raised it holds the turn button until it is
+ * acted on - including when there is nothing that could be done about it.
+ *
+ * ⚠️ Those two triggers are OBSERVED IN PLAY, not read from the data. The row carries the
+ * severity and the expiry; what raises it is engine-side and appears nowhere in
+ * `notification.xml`. An earlier version of this note asserted the condition was simply
+ * "you have unassigned resources", which was an inference and wrong - and it had already
+ * been copied into a player-facing tooltip before anyone checked.
  *
  * ⚠️ Not that nothing CAN be done - the player can always open the screen and rearrange
  * what is already assigned, swapping one resource for another. That is why the test below
@@ -50,10 +56,38 @@ import { PanelAction } from '/base-standard/ui/action/panel-action.js';
 import { canAssign } from '../engine/operations.js';
 import { grantsBonusSlots } from '../engine/resource-slots.js';
 import { isAutoAssignPending, isAutoAssignRunning } from '../planner/auto-assign.js';
+import { isAssignableToSettlement, resourceClassOf } from '../planner/facts.js';
+import { settlementHasFactory } from '../model/headless-model.js';
 import { isAssignmentInProgress } from '../planner/run.js';
+import CommerceOptions, {
+    AutoAssignMode,
+    CommerceOptionsChangedEventName,
+} from '../options/najane-commerce-options.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const NOTIFICATION_TYPE = 'NOTIFICATION_ASSIGN_NEW_RESOURCES';
+const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
+
+/**
+ * Whether this mod may decline to draw the notification at all.
+ *
+ * TWO conditions, and either one alone turns the whole thing off - in which case the game
+ * behaves exactly as it does without this mod: nothing is wrapped away, the icon is drawn,
+ * and the turn button blocks as the engine intends.
+ *
+ * 1. ⚠️ The player's own switch. Hiding a prompt the game raised is the most intrusive thing
+ *    in this file, so it is worth being able to say no to outright.
+ *
+ * 2. ⚠️ Automatic assignment must be doing something. The justification for hiding
+ *    "Resource Assignments Available" is that the mod has already assigned the resources -
+ *    sending the player to a screen where the work is done is the nag, not the notification
+ *    itself. With automatic assignment Off the mod assigns nothing on its own, so the
+ *    notification is telling the player something true and actionable and taking it away
+ *    would remove a prompt they still need.
+ */
+function suppressionEnabled() {
+    return CommerceOptions.skipAssignPrompt && CommerceOptions.autoAssignMode !== AutoAssignMode.Off;
+}
 
 /** The element whose ring holds the icon; see the note at the top of this file. */
 const ACTION_PANEL = 'panel-action';
@@ -137,17 +171,31 @@ function computeAnythingCanBePlaced() {
                 assigned.add(resource.value);
             }
             if ((resources.getAssignedResourcesCap() ?? 0) - slotted.length > 0) {
-                withRoom.push(city.id);
+                // The factory answer is carried along; see the note where it is used.
+                withRoom.push({ cityID: city.id, hasFactory: settlementHasFactory(resources) });
             }
         }
 
-        // Unassigned is the player's list minus what the settlements report; there is no
-        // accessor for it. Same subtraction the planner does.
+        /*
+         * Unassigned is the player's list minus what the settlements report; there is no
+         * accessor for it. Same subtraction the planner does.
+         *
+         * ⚠️ Empire and treasure resources are dropped, exactly as the game's own pool drops
+         * them - they are never assigned to a settlement. Keeping them meant asking
+         * `canAssign` about every one of them against every settlement with room, which is
+         * the most expensive call in this mod, for pairs the engine was always going to
+         * refuse. It could not change the answer, only how long it took to reach it.
+         */
         const unassigned = [];
         for (const resource of player?.Resources?.getResources() ?? []) {
-            if (!assigned.has(resource.value)) {
-                unassigned.push(resource);
+            if (assigned.has(resource.value)) {
+                continue;
             }
+            const resourceType = GameInfo.Resources.lookup(resource.uniqueResource?.resource)?.ResourceType ?? null;
+            if (!isAssignableToSettlement({ resourceType, resourceValue: resource.value })) {
+                continue;
+            }
+            unassigned.push(resource);
         }
 
         /*
@@ -172,8 +220,25 @@ function computeAnythingCanBePlaced() {
             return false;
         }
         for (const resource of unassigned) {
-            for (const cityID of withRoom) {
-                if (canAssign(cityID, resource.value)) {
+            /*
+             * ⚠️ A factory resource needs a settlement WITH A FACTORY, and the engine does
+             * not say so: `canAssign` accepts the pair and the resource then sits in a
+             * settlement that cannot run it. So the icon kept being offered for a haul of
+             * factory resources while every settlement with a free slot lacked a factory -
+             * "you can act on this" for an action worth nothing.
+             *
+             * Same answer as the planner's, from the same function, deliberately: two
+             * definitions of "has a factory" is how the screen and the engine come to
+             * disagree.
+             */
+            const type = GameInfo.Resources.lookup(resource.uniqueResource?.resource)?.ResourceType;
+            const needsFactory = type && resourceClassOf({ resourceType: type }) === FACTORY_CLASS;
+
+            for (const settlement of withRoom) {
+                if (needsFactory && !settlement.hasFactory) {
+                    continue;
+                }
+                if (canAssign(settlement.cityID, resource.value)) {
                     return true;
                 }
             }
@@ -228,15 +293,20 @@ function scheduleRecheck() {
  *
  * `Game.Notifications.dismiss(id)` runs and is accepted - the log showed "dismissed 1" -
  * but the notification is back within the second. Its row in `notification.xml` carries
- * `AutoNotify="True"`, so the engine re-raises it for as long as the condition holds, and
- * the condition is "you have unassigned resources". It cannot be cleared from the UI while
- * those resources exist.
+ * `AutoNotify="True"`, so the engine puts it back on its own.
+ *
+ * ⚠️ What exactly it re-checks is NOT knowable from the data, and guessing at it is how a
+ * wrong claim reached a player-facing tooltip. All that is established here is the
+ * behaviour: dismissing does not stick.
  */
 
 /**
  * Is this notification the thing blocking the end of the turn, with nothing to be done?
  */
 function blockingPointlessly(playerID) {
+    if (!suppressionEnabled()) {
+        return false;
+    }
     try {
         const type = Game.Notifications.getEndTurnBlockingType(playerID);
         if (type === EndTurnBlockingTypes.NONE) {
@@ -352,7 +422,7 @@ export function startAssignNotification() {
         }
         PanelAction.prototype.getNotificationInfo = function (notificationId) {
             const info = original.call(this, notificationId);
-            if (info?.type !== hiddenType) {
+            if (info?.type !== hiddenType || !suppressionEnabled()) {
                 return info;
             }
             /*
@@ -402,6 +472,13 @@ export function startAssignNotification() {
                 warn(`could not listen for ${name}: ${error}`);
             }
         }
+        // Switching automatic assignment on or off changes whether the icon may be hidden
+        // at all, and no engine event follows an options change - so without this the
+        // player would not see the difference until something else happened to refresh it.
+        window.addEventListener(CommerceOptionsChangedEventName, () => {
+            forgetPlaceability();
+            scheduleRecheck();
+        });
         wrapActionButton();
         attached = true;
         log(`assign action icon filter installed (type hash ${hiddenType})`);

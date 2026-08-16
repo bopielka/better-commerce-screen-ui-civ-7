@@ -9,7 +9,7 @@
             <Text>할당 중...</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="ko_KR">
-            <Text>기존 할당을 유지한 채 할당되지 않은 자원을 모두 할당합니다. 행복도가 음수인 정착지를 가장 나쁜 것부터 하나씩 먼저 처리해 0 미만이 없도록 만듭니다. 그다음은 낙타, 이어서 더 강한 정착지 조건을 만족하는 자원, 그다음 산출이 하나인 자원, 마지막으로 산출이 여럿인 자원 순입니다.</Text>
+            <Text>미배정 목록에서 빈 슬롯을 모두 채웁니다. 이미 배치된 것은 옮기지 않습니다.[N][N]그다음 각 정착지는 지정한 우선순위를 받습니다.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="ko_KR">
             <Text>전부 재할당</Text>
@@ -30,7 +30,7 @@
             <Text>제국의 할당된 자원을 모두 미할당 상태로 되돌립니다.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="ko_KR">
-            <Text>이 정착지가 우선할 산출을 고릅니다. 균형은 그 정착지에서 가장 낮은 산출을 노립니다.</Text>
+            <Text>이 정착지가 우선으로 받을 산출을 고르세요. 균형은 도시라면 생산력, 마을이라면 식량을 뜻합니다.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="ko_KR">
             <Text>우선순위: {1_Priority}</Text>
@@ -42,7 +42,7 @@
             <Text>균형</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="ko_KR">
-            <Text>균형 있게 할당하며 이 정착지에서 가장 낮은 산출을 우선합니다.</Text>
+            <Text>균형: 별도의 특화 없음. 도시라면 생산력을, 마을이라면 식량을 우선 배정합니다.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="ko_KR">
             <Text>빠른 할당</Text>
@@ -71,17 +71,75 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="ko_KR">
             <Text>할당을 전부 다시 만들기</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="ko_KR">
+            <Text>배정할 곳이 없으면 알림 건너뛰기</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION" Language="ko_KR">
+            <Text>게임은 자원이 보유 목록에 들어오거나 정착지에 빈 슬롯이 생길 때 「자원 배정 가능」을 띄웁니다. 우선순위가 높고 턴 종료로 사라지지 않아, 대응할 때까지 턴 종료 버튼을 차지합니다 — 할 수 있는 일이 없을 때조차.[N][N]켜면 보유한 어떤 자원도 어디에도 정당하게 배치할 수 없는 동안에는 표시하지 않습니다. 남은 것이 공장 자원뿐이고 빈 슬롯이 있는 정착지에 공장이 없는 경우도 포함됩니다. 상황이 바뀌면 곧바로 돌아옵니다. 무엇도 무시하지 않고 턴 차단도 건드리지 않으며, 그리기만 생략합니다.[N][N]자동 배정이 켜져 있어야 합니다. 꺼져 있으면 모드가 대신 배치하지 않으므로, 그 알림은 실제로 대응이 필요한 것입니다.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS" Language="ko_KR">
+            <Text>행복도 우선 처리</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION" Language="ko_KR">
+            <Text>무엇보다 먼저, 행복도가 음수인 정착지를 가장 나쁜 곳부터 끌어올리려 합니다. 공장, 낙타, 정착지별 우선순위보다 상위이므로 배치에 가장 큰 영향을 줍니다.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_NEVER" Language="ko_KR">
+            <Text>안 함</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_CITIES" Language="ko_KR">
+            <Text>도시만</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_ALL" Language="ko_KR">
+            <Text>모든 정착지</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE" Language="ko_KR">
+            <Text>문화 중심 정착지 자동 육성</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION" Language="ko_KR">
+            <Text>문화를 산출하는 모든 자원(거북, 비단, 망고, 아마, 포도주, 향 등 해당 시대의 모든 것)을 흩뿌리지 않고, 이미 스스로 가장 많은 문화를 내는 도시 한 곳에 모읍니다. 상당수가 백분율 보너스라, 큰 수치의 몇 퍼센트가 작은 수치 여섯 개의 같은 퍼센트보다 낫습니다. 직접 우선순위를 지정한 정착지가 먼저 처리되고, 남은 것만 모입니다.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD" Language="ko_KR">
+            <Text>금 중심 정착지 자동 육성</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="ko_KR">
+            <Text>금도 마찬가지로 비취, 자패, 루비, 은, 정향 등을 이미 금을 가장 많이 내는 도시에 모읍니다. 문화 도시와는 의도적으로 다른 도시를 고르므로 두 더미가 같은 슬롯을 두고 다투지 않습니다. 직접 우선순위를 지정한 정착지가 먼저 처리됩니다.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="ko_KR">
             <Text>마우스 단축키</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="ko_KR">
-            <Text>마우스 단축키[N][N]할당된 자원을 오른쪽 클릭 - 미할당 상태로 되돌립니다.[N]Shift + 오른쪽 클릭 - 그 정착지에 있는 같은 종류의 자원을 모두 되돌립니다.[N][N]할당하는 동안 Shift(끌기든 클릭이든) - 자리가 없어질 때까지 같은 종류의 자원으로 그 정착지를 계속 채웁니다.[N][N]Shift를 누른 채 커서를 올리기 - 그 종류의 자원이 모두 커지면서 위 동작이 무엇에 영향을 주는지 보여줍니다.</Text>
+            <Text>배정된 자원을 [B]우클릭[/B] — 미배정 목록으로 되돌립니다.[N][N][B]Shift + 우클릭[/B] — 그 정착지에 있는 같은 종류의 자원을 모두 되돌립니다.[N][N][B]배정 중 Shift[/B](드래그든 클릭이든) — 자리가 찰 때까지 같은 종류의 자원을 계속 넣습니다.[N][N][B]Shift를 누른 채 올려놓기[/B] — 같은 종류의 자원이 모두 커져, 위 동작이 미치는 범위를 보여줍니다.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="ko_KR">
+            <Text>턴당 GDP (추정)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="ko_KR">
+            <Text>[B]+{1_Amount}[/B] — 도시에 배정한 자원에서. 마을은 아무것도 주지 않습니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS" Language="ko_KR">
+            <Text>[B]+{1_Amount}[/B] — 교역로로 들어온 자원에서 추가로. 도시의 수입 자원은 두 배 가치입니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS" Language="ko_KR">
+            <Text>[B]+{1_Amount}[/B] — 금 관련 건물에서. 어디에 있든 계산됩니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES" Language="ko_KR">
+            <Text>[B]+{1_Amount}[/B] — 공장 자원에서. 도시든 마을이든 같습니다.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="ko_KR">
             <Text>공장 우선</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="ko_KR">
-            <Text>공장 자원을 무엇보다 먼저 배치합니다. 정착지 하나에는 공장 자원을 한 종류만 둘 수 있지만 같은 종류라면 몇 개든 둘 수 있으므로, 각 공장은 가장 많이 가진 종류로 시작해 그 종류로 채웁니다. 행복도가 0 미만인 정착지는 여전히 가장 먼저 처리합니다. 현대에만 적용되며, 끄지 않는 한 켜져 있습니다.</Text>
+            <Text>공장 자원을 무엇보다 먼저 배치합니다.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST" Language="ko_KR">
+            <Text>수입품 우선</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST_TOOLTIP" Language="ko_KR">
+            <Text>다른 지도자에게서 교역로로 들어온 자원을 자국 자원보다 먼저, 도시에만 배정합니다.[N][N]이득인 이유: [B]경제 승리[/B]에서 도시에 배치한 자원은 턴당 +1 GDP, 수입 자원은 여기에 +1이 더 붙어 자국산의 두 배입니다. 마을에서는 어느 쪽도 아무것도 주지 않으므로 수입품은 마을로 보내지 않습니다.[N][N][B]경제 승리가 아니라면 권하지 않습니다.[/B] 정착지별 우선순위보다 상위이므로, 마지막 수입품이 배치될 때까지 도시는 지정한 특화가 아니라 교역망이 공급하는 것을 받습니다. 문화·과학·군사 승리를 노린다면 꺼 두세요.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="ko_KR">
             <Text>항공</Text>

@@ -9,7 +9,7 @@
             <Text>Asignando...</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="es_ES">
-            <Text>Asigna todos los recursos sin asignar conservando las asignaciones existentes. Los asentamientos con felicidad negativa van primero, el peor de uno en uno, hasta que ninguno esté por debajo de cero. Después: camellos, luego los recursos cuyo criterio de asentamiento más fuerte se cumple, luego los de un solo rendimiento y por último los de varios.</Text>
+            <Text>Llena todas las ranuras libres desde la reserva. No mueve nada ya colocado.[N][N]Después, cada asentamiento recibe la prioridad que le hayas fijado.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="es_ES">
             <Text>Reasignar todo</Text>
@@ -30,7 +30,7 @@
             <Text>Devuelve a la reserva todos los recursos asignados del imperio.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="es_ES">
-            <Text>Elige el rendimiento que este asentamiento debe priorizar. Equilibrado apunta a los rendimientos afectados más bajos del asentamiento.</Text>
+            <Text>Elige el rendimiento que este asentamiento debe recibir primero. Equilibrado significa Producción en una ciudad y Alimento en un pueblo.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="es_ES">
             <Text>Prioridad: {1_Priority}</Text>
@@ -42,7 +42,7 @@
             <Text>Equilibrado</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="es_ES">
-            <Text>Asigna de forma equilibrada priorizando los rendimientos afectados más bajos de este asentamiento.</Text>
+            <Text>Equilibrado: sin especialización propia. El asentamiento recibe Producción si es una ciudad y Alimento si es un pueblo.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="es_ES">
             <Text>Asignación rápida</Text>
@@ -71,17 +71,75 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="es_ES">
             <Text>Rehacer todas las asignaciones</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="es_ES">
+            <Text>Omitir el aviso de asignación cuando nada encaja</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION" Language="es_ES">
+            <Text>El juego muestra «Asignaciones de recursos disponibles» cuando un recurso llega a tu reserva o cuando un asentamiento gana un hueco. Es de prioridad alta y no caduca al final del turno, así que retiene el botón de fin de turno hasta que actúes, incluso cuando no hay nada que puedas hacer.[N][N]Activado, el aviso no se dibuja mientras nada de lo que tienes pueda colocarse legalmente en ningún sitio, incluido el caso en que solo quedan recursos de fábrica y ningún asentamiento con hueco tiene fábrica. Vuelve en cuanto eso cambia. No se descarta nada y el bloqueo de turno queda intacto; solo se omite el dibujado.[N][N]Requiere además que la asignación automática esté activada: si no lo está, el mod no coloca nada por ti y el aviso sí es accionable.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS" Language="es_ES">
+            <Text>Priorizar la felicidad</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION" Language="es_ES">
+            <Text>Antes que nada, la asignación intenta sacar a los asentamientos de la felicidad negativa, empezando por el peor. Tiene prioridad sobre las fábricas, los camellos y la prioridad propia de cada asentamiento, así que es lo que más altera la distribución.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_NEVER" Language="es_ES">
+            <Text>Nunca</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_CITIES" Language="es_ES">
+            <Text>Solo ciudades</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_ALL" Language="es_ES">
+            <Text>Todos los asentamientos</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE" Language="es_ES">
+            <Text>Crear automáticamente un asentamiento de Cultura</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION" Language="es_ES">
+            <Text>Todos los recursos que dan Cultura —tortugas, seda, mangos, lino, vino, incienso y lo que ofrezca la era— se reúnen en la única ciudad que ya produce más Cultura por sí sola, en lugar de dispersarse. Varios son porcentajes, y un porcentaje de un número grande vale más que el mismo porcentaje de seis pequeños. Los asentamientos con prioridad propia se atienden primero; solo se reúne lo que sobra.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD" Language="es_ES">
+            <Text>Crear automáticamente un asentamiento de Oro</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="es_ES">
+            <Text>Lo mismo para el Oro: jade, cauri, rubíes, plata, clavo y demás se reúnen en la ciudad que ya produce más Oro, y a propósito no en la de Cultura, para que los dos montones no compitan por las mismas ranuras. Los asentamientos con prioridad propia se atienden primero.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="es_ES">
             <Text>Atajos de ratón</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="es_ES">
-            <Text>Atajos de ratón[N][N]Clic derecho en un recurso asignado: lo devuelve a la reserva.[N]Mayús + clic derecho: devuelve todos los recursos de ese mismo tipo en ese asentamiento.[N][N]Mayús al asignar, arrastrando o haciendo clic: sigue llenando el asentamiento con recursos del mismo tipo hasta que no quede sitio.[N][N]Mantén Mayús y pasa el cursor: todos los recursos de ese tipo se agrandan, mostrando a qué afectaría la acción anterior.</Text>
+            <Text>[B]Clic derecho[/B] en un recurso asignado: lo devuelve a la reserva.[N][N][B]Mayús + clic derecho[/B]: devuelve todos los recursos de esa clase en ese asentamiento.[N][N][B]Mayús al asignar[/B], arrastrando o haciendo clic: sigue llenando ese asentamiento con recursos de la misma clase hasta que no quepan más.[N][N][B]Mantén Mayús y pasa el cursor[/B] por cualquier cosa: todos los recursos de esa clase se agrandan, mostrando a qué afectaría la acción anterior.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="es_ES">
+            <Text>PIB por turno (estimado)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="es_ES">
+            <Text>[B]+{1_Amount}[/B] de recursos asignados a ciudades. Un pueblo no aporta nada.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS" Language="es_ES">
+            <Text>[B]+{1_Amount}[/B] adicionales de los que llegaron por ruta comercial: un recurso importado en una ciudad vale el doble.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS" Language="es_ES">
+            <Text>[B]+{1_Amount}[/B] de edificios de oro, estén donde estén.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES" Language="es_ES">
+            <Text>[B]+{1_Amount}[/B] de recursos de fábrica, igual en ciudad que en pueblo.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="es_ES">
             <Text>Fábricas primero</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="es_ES">
-            <Text>Coloca los recursos de fábrica antes que nada. Un asentamiento solo puede tener un tipo de recurso de fábrica, pero cualquier número de copias del mismo, así que cada fábrica se empieza con el tipo del que más tengas y luego se llena con él. Los asentamientos por debajo de cero de felicidad se siguen atendiendo primero. Solo en la era moderna, y activo salvo que lo desactives.</Text>
+            <Text>Coloca los recursos de fábrica antes que nada.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST" Language="es_ES">
+            <Text>Importados primero</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST_TOOLTIP" Language="es_ES">
+            <Text>Asigna los recursos que te llegaron por una ruta comercial de otro líder antes que los propios, y solo a ciudades.[N][N]Por qué compensa: para la [B]victoria económica[/B], un recurso asignado a una ciudad vale +1 PIB por turno, y uno importado vale +1 más encima: el doble que uno propio. En un pueblo ninguno da nada, así que los importados nunca van allí.[N][N][B]Solo compensa para la victoria económica.[/B] Tiene prioridad sobre la de cada asentamiento, así que hasta colocar el último importado tus ciudades toman lo que la red comercial suministre en vez de aquello en lo que las especializaste. Si buscas cultura, ciencia o una victoria militar, déjalo desactivado.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="es_ES">
             <Text>aeronaves</Text>

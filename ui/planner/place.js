@@ -37,10 +37,11 @@ import {
     buildSettlements,
     forgetSettlementBuildings,
 } from '../model/headless-model.js';
-import { bestAssignment, forgetEligibility } from './scoring.js';
+import { bestAssignment, forgetEligibility, startPlacementRun } from './scoring.js';
 import { isFactoryFirstEnabled } from './factory-first-setting.js';
-import { resourceClassOf, resourceType } from './facts.js';
-import { log, warn } from '../support/diagnostics.js';
+import { isImportedResource, resourceClassOf, resourceType } from './facts.js';
+import { allSettlements, getCommerceModel, pruneAssignedFromPool } from '../model/screen-model.js';
+import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
 
 /**
  * Waits for the engine to have actually taken the assignment.
@@ -85,6 +86,38 @@ function awaitAssignment(cityID, resourceValue) {
 }
 
 /**
+ * Letting the Commerce screen keep up, when it happens to be open.
+ *
+ * ⚠️ The screen updates INCREMENTALLY and it can miss events. `commerce-screen-model.ts`
+ * turns `ResourceAssigned` into a Solid signal with `createEngineEvent`, which is a plain
+ * `createSignal()` - it holds the LATEST payload and nothing else - and the effect reading
+ * it splices that one resource into its store. Two events delivered in the same tick
+ * therefore produce one splice, and the resource from the overwritten payload never appears
+ * on screen at all.
+ *
+ * This loop provokes exactly that. It confirms an assignment by POLLING the settlement every
+ * 4ms, so it moves on as soon as the game state changes - which is earlier than the event is
+ * delivered. At roughly fifteen placements a second the events arrive in clumps, and the
+ * board on screen ends up missing some of what the engine actually did. Leaving the screen
+ * and coming back rebuilds it from scratch and shows the correct layout, which is what makes
+ * this look like an assignment bug when it is a display one.
+ *
+ * ⚠️ There is no way to ask the screen to rebuild. `updateSlottedResources()` does exactly
+ * that and is private; the model's only public reset, `resetResourceTab()`, just clears the
+ * selection. So the fix is not to refresh afterwards but to not outrun it in the first place:
+ * one frame between placements is enough for the event pump to deliver each one separately.
+ *
+ * ⚠️ Only while the screen is OPEN. With it shut there is no model to keep in step, and the
+ * automatic path runs at full speed as before.
+ */
+function letTheScreenCatchUp() {
+    if (!getCommerceModel()) {
+        return null;
+    }
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+/**
  * Guards against a runaway loop if the engine keeps accepting but nothing changes.
  * High enough to cover a whole empire twice over.
  */
@@ -94,6 +127,8 @@ const MAX_PLACEMENTS = 300;
 const EXPLAIN_SAMPLE = 8;
 
 const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
+/** Cannot go into a town at all; see the note in explainWhyNothingFits. */
+const CITY_RESOURCE_CLASS = 'RESOURCECLASS_CITY';
 
 /**
  * Places as much as it can, best first.
@@ -107,6 +142,9 @@ export async function placeResources({ scope = null, targetCityID = null, label 
     // Whatever was remembered describes a board that has since moved on.
     forgetEligibility();
     forgetSettlementBuildings();
+    // The culture and gold settlements are chosen once here and held for the whole run;
+    // see the note on hoardTargets for why they must not be re-picked every pass.
+    startPlacementRun();
 
     // A pair the engine refuses is set aside rather than retried, or the loop would
     // choose it again every pass and never finish.
@@ -119,6 +157,8 @@ export async function placeResources({ scope = null, targetCityID = null, label 
     let choosingMs = 0;
     let waitingMs = 0;
     let placed = 0;
+    /** What the last pass saw still sitting in the pool - see the note by the summary. */
+    let leftInPool = 0;
 
     while (placed < MAX_PLACEMENTS) {
         let mark = Date.now();
@@ -128,6 +168,7 @@ export async function placeResources({ scope = null, targetCityID = null, label 
                 (scope === null || scope.has(resource.resourceValue)) && !refused.has(resource.resourceValue),
         );
         boardMs += Date.now() - mark;
+        leftInPool = available.length;
 
         mark = Date.now();
         const plan = available.length
@@ -152,8 +193,20 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         // if that was a camel. Every other settlement's remain valid and are kept.
         forgetEligibility(plan.settlement.cityID);
         forgetSettlementBuildings(plan.settlement.cityID);
-        if (plan.rescue) {
-            log(`happiness rescue: ${plan.resource.resourceType} -> ${settlementName(plan.settlement.cityID)}`);
+        /*
+         * ⚠️ One line per placement, naming the TIER that won it.
+         *
+         * Only the happiness rescue used to say anything, and that left every other
+         * outcome unexplainable from outside: "why did Tin end up in my culture capital
+         * instead of Silk" has at least four possible answers - the import tier, the
+         * production fallback, a rescue, or the resource already sitting there before the
+         * run - and the board looks the same in all of them.
+         */
+        if (DIAGNOSTICS) {
+            log(
+                `  ${plan.resource.resourceType}${isImportedResource(plan.resource) ? ' [import]' : ''}` +
+                    ` -> ${settlementName(plan.settlement.cityID)} (${plan.tier})`,
+            );
         }
 
         mark = Date.now();
@@ -164,10 +217,21 @@ export async function placeResources({ scope = null, targetCityID = null, label 
             placed--;
             warn(`the engine took ${plan.resource.resourceType} but it never arrived; skipping it`);
         }
+        // One frame, and only with the screen open; see letTheScreenCatchUp.
+        await letTheScreenCatchUp();
         waitingMs += Date.now() - mark;
     }
 
-    if (placed === 0) {
+    /*
+     * ⚠️ Explained whenever ANYTHING is left, not only when the run placed nothing.
+     *
+     * "It placed most of them and left three" is the case a player actually reports, and it
+     * used to be the one case that said nothing at all - so a run that had finished correctly
+     * and a run that had stalled produced the same silence.
+     */
+    // ⚠️ Gated here, not inside `log`: the walk and up to eight `canStart` calls are the
+    // expensive part, and `canStart` is the most expensive call in this mod.
+    if (leftInPool > 0 && DIAGNOSTICS) {
         explainWhyNothingFits(scope, refused);
     }
     if (placed >= MAX_PLACEMENTS) {
@@ -178,10 +242,67 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         log(
             `${label}: ${placed} resource(s) in ${total}ms ` +
                 `(${boardMs}ms reading the board, ${choosingMs}ms choosing, ` +
-                `${waitingMs}ms waiting for the engine, ${Math.round(total / placed)}ms each)`,
+                `${waitingMs}ms waiting for the engine, ${Math.round(total / placed)}ms each)` +
+                // Says outright that the run finished rather than stalled.
+                (leftInPool > 0 ? `, ${leftInPool} left unplaceable` : ', pool empty'),
         );
     }
+    // Last, so the warning reads after the summary it is about.
+    await verifyScreenMatchesEngine();
     return placed;
+}
+
+/**
+ * Brings the screen back into line with the game, and says so if it could not.
+ *
+ * ⚠️ BOTH halves of the screen, because they fail differently and only checking one is how
+ * the second round of this went. The settlement cards heal themselves - their handler
+ * re-reads live state on every event - so comparing only the assigned count reported "all
+ * good" while the unassigned pool on the left still showed a resource that had been placed.
+ * The pool is maintained purely differentially and cannot heal; see
+ * `pruneAssignedFromPool`.
+ *
+ * The pool is therefore REPAIRED rather than merely reported: stale rows are removed. What
+ * cannot be repaired - a card missing a resource - is reported, because that half is the
+ * game's to rebuild and reopening the screen does it.
+ *
+ * Two frames of grace first: the last placement's event may still be in flight.
+ */
+async function verifyScreenMatchesEngine() {
+    const model = getCommerceModel();
+    if (!model) {
+        return;
+    }
+    await letTheScreenCatchUp();
+    await letTheScreenCatchUp();
+    try {
+        const settlements = buildSettlements();
+        const assignedValues = new Set();
+        for (const settlement of settlements) {
+            for (const resource of settlement.slottedResources) {
+                assignedValues.add(resource.resourceValue);
+            }
+        }
+
+        const ghosts = pruneAssignedFromPool(assignedValues);
+        if (ghosts > 0) {
+            log(`removed ${ghosts} resource(s) the screen still showed as unassigned after placing them`);
+        }
+
+        const onScreen = allSettlements(model).reduce(
+            (total, settlement) => total + (settlement.slottedResources?.length ?? 0),
+            0,
+        );
+        if (onScreen !== assignedValues.size) {
+            warn(
+                `the Commerce screen shows ${onScreen} assigned resource(s) but the game has ` +
+                    `${assignedValues.size}; the assignment is correct and the screen is behind - ` +
+                    'reopen the screen to see the real layout',
+            );
+        }
+    } catch (error) {
+        warn(`could not reconcile the screen with the game: ${error}`);
+    }
 }
 
 function settlementName(cityID) {
@@ -217,11 +338,40 @@ function explainWhyNothingFits(scope, refused) {
         }
 
         const withRoom = settlements.filter((settlement) => settlement.availableSlots?.length);
+        /*
+         * ⚠️ Cities counted separately, because that is the answer most of the time.
+         *
+         * "3 in the pool, 7 of 15 settlements have room" reads like a bug in this mod, and
+         * that is exactly how it was read. What it actually meant was that the three left
+         * were CITY resources and all seven settlements with room were TOWNS - and a city
+         * resource cannot go into a town: "City Resources must be assigned to a City with
+         * available Resource Capacity" (LOC_PEDIA_CONCEPTS_CITY_RESOURCES_TOOLTIP).
+         */
+        const citiesWithRoom = withRoom.filter((settlement) => !settlement.settlementNameData?.isTown);
+
+        const byClass = new Map();
+        for (const resource of available) {
+            const className = resourceClassOf(resource) ?? 'UNKNOWN';
+            byClass.set(className, (byClass.get(className) ?? 0) + 1);
+        }
+        const poolByClass = [...byClass]
+            .map(([className, count]) => `${className.replace('RESOURCECLASS_', '')} x${count}`)
+            .join(', ');
+
         log(
-            `nothing could be placed: ${available.length} in the pool, ` +
-                `${withRoom.length} of ${settlements.length} settlement(s) have room` +
+            `${available.length} left in the pool (${poolByClass}), ` +
+                `${withRoom.length} of ${settlements.length} settlement(s) have room, ` +
+                `${citiesWithRoom.length} of those are cities` +
                 (refused.size ? `, ${refused.size} set aside after the engine refused them` : ''),
         );
+
+        const cityClassLeft = byClass.get(CITY_RESOURCE_CLASS) ?? 0;
+        if (cityClassLeft > 0 && citiesWithRoom.length === 0) {
+            log(
+                `  ${cityClassLeft} City resource(s) left and no CITY has room - ` +
+                    'a City resource cannot go into a Town, so these cannot be placed at all',
+            );
+        }
 
         if (withRoom.length === 0) {
             // Nothing to ask about: with no room anywhere, every refusal is the same one
@@ -230,8 +380,10 @@ function explainWhyNothingFits(scope, refused) {
             return;
         }
 
-        const target = withRoom[0];
-        const where = settlementName(target.cityID);
+        // ⚠️ A city if there is one, because asking a town about a city resource produces a
+        // refusal with no reason attached - which is what "no reason given" was.
+        const target = citiesWithRoom[0] ?? withRoom[0];
+        const where = `${settlementName(target.cityID)}${target.settlementNameData?.isTown ? ' (town)' : ''}`;
         // A handful is a sample, not a census: the reasons repeat, and the pool can hold
         // over a hundred resources.
         const sample = available.slice(0, EXPLAIN_SAMPLE);

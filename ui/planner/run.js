@@ -1,20 +1,18 @@
 /**
- * What the buttons on the screen do: Assign All, Reassign All, and a settlement's own
- * quick assign.
+ * What the buttons on the screen do: Assign All, Reassign All, Unassign All, and a
+ * settlement's own quick assign. The automatic path in auto-assign.js comes through here
+ * too, so that everything which rearranges the empire shares one guard and one log.
  *
- * The placing itself is place.js, shared with the automatic path - see the note there for
- * why none of this goes through the screen's model. What is left here is the framing: one
- * run at a time, empty before refilling, and a line in the log saying what happened.
+ * The placing itself is place.js and the emptying is engine/unassign.js - see the note in
+ * place.js for why none of this goes through the screen's model. What is left here is the
+ * framing: one run at a time, empty before refilling, and a line in the log saying what
+ * happened.
  */
-import { requestClearSettlement, unassignIfAllowed } from '../engine/operations.js';
-import { waitForEngineEvent } from '../engine/wait.js';
+import { unassignEverySettlement } from '../engine/unassign.js';
 import { buildSettlements } from '../model/headless-model.js';
-import { allSettlements } from '../model/screen-model.js';
 import { forgetEligibility, settlementHappiness } from './scoring.js';
 import { placeResources } from './place.js';
-import { log, warn } from '../support/diagnostics.js';
-
-const UNASSIGNED_EVENT = 'ResourceUnassigned';
+import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
 
 let assignmentInProgress = false;
 
@@ -22,63 +20,64 @@ export function isAssignmentInProgress() {
     return assignmentInProgress;
 }
 
-/**
- * Empties every settlement.
- *
- * One Clear per settlement beats one Deactivate per resource; the per-resource path is
- * the fallback for when the engine refuses the bulk form. Read from the game rather than
- * from the screen, for the same reason as everything in place.js.
- */
-async function unassignEverything() {
-    let cleared = 0;
-
-    for (const settlement of buildSettlements()) {
-        const values = (settlement.slottedResources ?? []).map((resource) => resource.resourceValue);
-        if (values.length === 0) {
-            continue;
-        }
-
-        if (requestClearSettlement(settlement.cityID)) {
-            cleared += values.length;
-        } else {
-            for (const value of values) {
-                if (unassignIfAllowed(settlement.cityID, value)) {
-                    cleared++;
-                } else {
-                    warn(`failed to request unassign for resource ${value}`);
-                }
-            }
-        }
-        await waitForEngineEvent(UNASSIGNED_EVENT);
-    }
-
+/** Empties everything, then forgets what was remembered about a board that has moved on. */
+async function clearEmpire() {
+    const cleared = await unassignEverySettlement();
     // Every settlement has room again, so nothing remembered about them still holds.
     forgetEligibility();
     return cleared;
 }
 
-/** Guards every entry point: only one of these loops may run at a time. */
+/**
+ * Guards every entry point: only one of these loops may run at a time.
+ *
+ * ⚠️ `model` is optional. The automatic path has no Commerce screen and therefore no model,
+ * and it used to keep its own copy of this guard - which meant a pass could start while a
+ * button was still running. There is nothing to deselect and nothing to wait for when the
+ * screen is shut, so the two conditions are simply skipped.
+ *
+ * ⚠️ Hands back whatever the work returned - for the placing entry points, HOW MANY resources
+ * landed - and `false` when it refused to start or threw. Answering a plain "did it start"
+ * is not enough: auto-assign.js only forgets a newly acquired resource once something has
+ * actually been placed, and a run that started and placed nothing would otherwise look like
+ * success and swallow the arrival.
+ */
 async function runExclusively(model, work) {
-    if (assignmentInProgress || !model.isSlottingAvailable) {
+    if (assignmentInProgress) {
+        return false;
+    }
+    if (model && !model.isSlottingAvailable) {
         return false;
     }
     assignmentInProgress = true;
     try {
-        model.deselectSelectedResource?.();
-        await work();
+        model?.deselectSelectedResource?.();
+        return await work();
     } catch (error) {
         warn(`assignment run failed: ${error}`);
+        return false;
     } finally {
         assignmentInProgress = false;
     }
-    return true;
 }
 
-/** Reports what the rescue tier is looking at, so a wrong reading shows up in the log. */
-function logHappinessState(model) {
-    const unhappy = allSettlements(model)
+/**
+ * Reports what the rescue tier is looking at, so a wrong reading shows up in the log rather
+ * than as a mysterious layout.
+ *
+ * ⚠️ Diagnostics only - nothing depends on it, and it is checked here rather than inside
+ * `log` because the walk over every settlement is the expensive part, not the printing.
+ * Read from the game rather than from the screen's model so the automatic path gets the
+ * same figures; if these disagree with the settlement cards, the fault is in
+ * headless-model.js and not in the scoring.
+ */
+function logHappinessState() {
+    if (!DIAGNOSTICS) {
+        return;
+    }
+    const unhappy = buildSettlements()
         .map((settlement) => ({
-            name: Locale.compose(Cities.get(settlement.cityID)?.name ?? ''),
+            name: settlement.settlementNameData?.settlementName ?? '',
             isTown: !!settlement.settlementNameData?.isTown,
             happiness: settlementHappiness(settlement),
         }))
@@ -96,24 +95,42 @@ function logHappinessState(model) {
     );
 }
 
-export function assignAll(model) {
+/**
+ * Fills everything that is free, best first.
+ *
+ * @param model  the Commerce screen's model, or null when the screen is shut.
+ * @param scope  the resource values that may be placed, or null for the whole pool.
+ * @param label  what to call this in the log.
+ * @returns how many resources were placed, or false if the run never started.
+ */
+export function assignAll(model = null, { scope = null, label = 'assign all' } = {}) {
     return runExclusively(model, async () => {
-        logHappinessState(model);
-        await placeResources({ label: 'assign all' });
-        logHappinessState(model);
+        logHappinessState();
+        const placed = await placeResources({ scope, label });
+        logHappinessState();
+        return placed;
     });
 }
 
-export function reassignAll(model) {
+/** Empties every settlement, then lays the whole empire out again. */
+export function reassignAll(model = null, { label = 'reassign all' } = {}) {
     return runExclusively(model, async () => {
-        const cleared = await unassignEverything();
-        log(`reassign all: ${cleared} unassigned, laying them out again`);
-        await placeResources({ label: 'reassign all' });
+        const cleared = await clearEmpire();
+        log(`${label}: ${cleared} unassigned, laying them out again`);
+        logHappinessState();
+        return placeResources({ label });
+    });
+}
+
+/** Empties every settlement and leaves it at that. */
+export function unassignAll(model = null) {
+    return runExclusively(model, async () => {
+        const cleared = await clearEmpire();
+        log(`unassign all: ${cleared} released`);
+        return cleared;
     });
 }
 
 export function quickAssignSettlement(model, cityID) {
-    return runExclusively(model, async () => {
-        await placeResources({ targetCityID: cityID, label: 'quick assign' });
-    });
+    return runExclusively(model, () => placeResources({ targetCityID: cityID, label: 'quick assign' }));
 }

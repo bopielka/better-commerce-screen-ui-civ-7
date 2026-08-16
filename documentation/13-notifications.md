@@ -4,10 +4,21 @@
 
 ## What it does
 
-The game raises `NOTIFICATION_ASSIGN_NEW_RESOURCES` whenever a resource arrives. It is a **HIGH
-severity notification that does not expire at end of turn**, so once every settlement is full it
-takes over the turn button for a situation that rarely has anything worth doing about it — turn
-after turn.
+The game raises `NOTIFICATION_ASSIGN_NEW_RESOURCES` when a resource **reaches the player's pool**,
+or when a **settlement gains a slot**. Its row in `notification.xml`:
+
+```xml
+SeverityType="HIGH"  ExpiresEndOfTurn="False"  AutoNotify="True"  Priority="1"
+```
+
+So once raised it **holds the turn button until it is acted on** — including when there is
+nothing that could be done about it.
+
+⚠️ **The two triggers are observed in play, not read from the data.** The row carries the
+severity and the expiry; what *raises* it is engine-side and appears nowhere in
+`notification.xml`. An earlier version of this page asserted the condition was simply "you have
+unassigned resources" — an inference, and wrong. It had already been copied into a player-facing
+tooltip before anyone checked it, which is the reason this warning is here.
 
 Measured in game: **140 resources in the pool, 0 of 18 settlements with a free slot.** The
 notification is factually right and completely useless, and the game still promotes it to the main
@@ -15,6 +26,26 @@ button once every other action is done.
 
 With this module, the icon is not drawn while **nothing you hold could legally be placed
 anywhere**. It comes back the moment that changes.
+
+## ⚠️ Two conditions, either of which turns the whole thing off
+
+`suppressionEnabled()` is checked by both wrapped methods and by the filter:
+
+1. **The player's own switch** — *Skip the assignment prompt when nothing fits*, on by default.
+   Hiding a prompt the game raised is the most intrusive thing in this file, so it is worth being
+   able to say no to outright.
+2. **Automatic assignment must be on.** The justification for hiding this notification is that
+   **the mod has already assigned the resources** — sending the player to a screen where the work
+   is done is the nag, not the notification itself. With automatic assignment Off the mod assigns
+   nothing on its own, so the notification is telling the player something true and actionable and
+   taking it away removes a prompt they still need.
+
+With either one off the game behaves exactly as it does without this mod — nothing is wrapped
+away, the icon is drawn, and the turn button blocks as the engine intends.
+
+⚠️ An options change raises **no engine event**, so `CommerceOptionsChangedEventName` is listened
+for alongside `RECHECK_EVENTS`. Without it, switching the setting would not visibly change
+anything until something else happened to refresh the panel.
 
 ⚠️ **Nothing is dismissed, cancelled or acknowledged, and turn blocking is untouched.** That is
 decided by the engine, not by whether an icon is drawn. This only declines to draw it, which keeps
@@ -57,6 +88,21 @@ notification is at its most useless.
 what is already assigned, swapping one resource for another. The test is therefore whether any
 **unassigned** resource can go anywhere — the case where rearranging would be for its own sake.
 Saying "you cannot act on this" would be untrue.
+
+### ⚠️ `canAssign` is not the whole rule: factory resources
+
+**A factory resource needs a settlement with a factory, and the engine does not say so.**
+`canAssign` accepts the pair; the resource then sits in a settlement that cannot run it. So the
+icon kept being offered for a haul of factory resources while every settlement with a free slot
+lacked a factory — "you can act on this", for an action worth nothing.
+
+The check therefore skips those pairs before asking. It uses `settlementHasFactory` from
+[`headless-model.js`](06-model.md) — **the planner's own function**, deliberately: two definitions
+of "has a factory" is how the screen and the engine come to disagree, and that file exists to stop
+exactly that.
+
+⚠️ The neighbouring rule needs no such help: a **City** resource cannot go into a Town, and
+`canAssign` **does** refuse that one. Only the factory rule leaks.
 
 ### `computeAnythingCanBePlaced()`
 

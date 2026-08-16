@@ -60,7 +60,7 @@ The full list of 79 keys is in `text/en_us/InGameText.xml`. Groups worth knowing
 | Tab tooltips | `TAB_RESOURCES`, `TAB_EMPIRE`, `TAB_EMPIRE_TREASURE`, `TAB_TREASURE`, `TAB_FACTORY` | `tab-icons.js` |
 | Empire tab | `EMPIRE_ONE`, `EMPIRE_ALL`, `EMPIRE_INCOME`, `EMPIRE_CAPPED`, `EMPIRE_CELEBRATION_ONLY`, `EMPIRE_NO_SCALING` | `empire-tab.js` |
 | Unit classes | `UNITS_AIRCRAFT` … `UNITS_SIEGE` (8) | `empire-effects.js` |
-| Factory tab | `FACTORY_*` (17) | `factory-resources.js`, `factory-effects.js`, `factory-first.js` |
+| Factory tab | `FACTORY_*` (17) | `factory-resources.js`, `factory-effects.js`, `assign-switches.js` |
 | Trade | `TRADE_*`, `ROUTE_LAND`, `ROUTE_SEA`, `BLOCKED_LIMIT`, `BLOCKED_RANGE` | `trade-summary.js`, `trade-routes.js` |
 | Treasure | `TREASURE_CLICK*`, `TREASURE_ON_ARRIVAL` | `treasure-tab.js` |
 

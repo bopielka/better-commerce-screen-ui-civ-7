@@ -11,10 +11,13 @@
  * screen-level actions. They are still only mounted while the Resources tab is open,
  * since that is the only tab where they mean anything.
  */
-import { assignAll, isAssignmentInProgress, reassignAll } from '../planner/run.js';
+import { assignAll, isAssignmentInProgress, reassignAll, unassignAll } from '../planner/run.js';
+import { gdpPerTurn } from '../planner/gdp.js';
+import { isFactoryAge } from '../engine/age.js';
 import { getCommerceModel } from '../model/screen-model.js';
-import { createFactoryFirstToggle } from './factory-first.js';
+import { createAssignSwitches } from './assign-switches.js';
 import { HELP_CLASS, HELP_STYLE, makeHelpMark } from './help-mark.js';
+import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
 import { appendAll, bindActivatable, ensureStyle, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -22,6 +25,10 @@ const BAR_CLASS = 'najane-assign-bar';
 const BUTTON_CLASS = 'najane-assign-button';
 const HIDDEN_CLASS = 'najane-hidden';
 const STYLE_ID = 'najane-assign-buttons-style';
+const GDP_CLASS = 'najane-assign-gdp';
+
+/** The game's own font icon for economic victory points; see factory-resources.js. */
+const GDP_ICON = 'blp:fi_victorypoint_economic_64';
 
 const SLOTTED_CONTAINER_SELECTOR = '[data-name="slotted-resource-container"]';
 
@@ -50,10 +57,18 @@ const BUTTONS = [
         label: 'LOC_NAJANE_COMMERCE_UNASSIGN_ALL',
         busy: 'LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY',
         tooltip: 'LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP',
-        run: async (model) => {
-            model.deselectSelectedResource();
-            model.clearAllResources();
-        },
+        /*
+         * ⚠️ Not `model.clearAllResources()`, which is what this used to call.
+         *
+         * That is the game's own bulk clear, and it sends exactly the operation this one
+         * sends - but it fires every settlement's Clear in a single tick and never waits.
+         * With nothing planned afterwards that is fine for the game and it was fine here
+         * too, right up until it became the odd one out: three buttons that all empty the
+         * empire, two of them through the planner's path and one straight into the model,
+         * reporting nothing and answering "did that work?" differently. One path now, in
+         * engine/unassign.js, which still sends the game's own operation.
+         */
+        run: (model) => unassignAll(model),
     },
 ];
 
@@ -106,6 +121,35 @@ const STYLE = `
 }
 .${BUTTON_CLASS}--busy { opacity: 0.55; }
 
+/* The tooltip wrapper is a pass-through: the button keeps its own box. */
+.${BUTTON_CLASS}-mount { display: flex; flex: 0 0 auto; }
+
+/*
+ * The GDP figure, shaped like the game's own victory-point readouts: the number, then the
+ * icon. No label - the icon is the label, and the tooltip says the rest.
+ */
+.${GDP_CLASS} {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    height: 2.4rem;
+    margin-left: 1.1rem;
+    color: #e5d2ac;
+    font-family: "TitleFont", "TitleFont-JP", "TitleFont-KR", "TitleFont-SC", "TitleFont-TC";
+    font-size: 1rem;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+.${GDP_CLASS}__icon {
+    width: 1.6rem;
+    height: 1.6rem;
+    margin-left: 0.3rem;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
 .${HIDDEN_CLASS} { display: none; }
 ${HELP_STYLE}
 `;
@@ -113,15 +157,55 @@ ${HELP_STYLE}
 let bar = null;
 let styleElement = null;
 let observer = null;
+/** The GDP readout, kept so it can be rebuilt when the board changes. */
+let gdpMount = null;
+let gdpTimer = null;
+
+/**
+ * Events after which the figure is out of date.
+ *
+ * ⚠️ Debounced, and rebuilt rather than edited in place. A run places one resource at a
+ * time and fires one event each - fifty-odd for a full empire - so without the debounce the
+ * readout would be rebuilt fifty times in four seconds. The tooltip carries the same
+ * numbers broken down by source, so editing only the total would leave it disagreeing with
+ * itself the moment it was opened.
+ */
+const GDP_EVENTS = ['ResourceAssigned', 'ResourceUnassigned', 'ResourceCapChanged', 'ConstructibleBuildCompleted'];
+const GDP_REFRESH_MS = 400;
+
+function refreshGdpSoon() {
+    if (gdpTimer !== null) {
+        return;
+    }
+    gdpTimer = setTimeout(() => {
+        gdpTimer = null;
+        /*
+         * ⚠️ `parentNode.replaceChild`, NOT `gdpMount.replaceWith`.
+         *
+         * This engine's DOM is Coherent's, not a browser's, and it does not implement the
+         * ChildNode convenience methods - `replaceWith` threw `is not a function` on every
+         * single refresh, so the figure never moved. `isConnected` is avoided for the same
+         * reason: a live parent is the check that is safe to rely on here.
+         */
+        const parent = gdpMount?.parentNode;
+        if (!parent) {
+            return;
+        }
+        try {
+            const replacement = makeGdpTotal();
+            parent.replaceChild(replacement, gdpMount);
+            gdpMount = replacement;
+        } catch (error) {
+            warn(`could not refresh the GDP figure: ${error}`);
+        }
+    }, GDP_REFRESH_MS);
+}
 
 function makeButton({ label, busy, tooltip, run }) {
     const idleLabel = Locale.compose(label);
     const busyLabel = Locale.compose(busy);
     // font-fit-shrink is the game's own class: it scales the text down to fit the box.
-    const button = makeElement('div', `${BUTTON_CLASS} font-fit-shrink`, {
-        'data-tooltip-content': Locale.compose(tooltip),
-        'aria-label': idleLabel,
-    });
+    const button = makeElement('div', `${BUTTON_CLASS} font-fit-shrink`, { 'aria-label': idleLabel });
     button.textContent = idleLabel;
 
     bindActivatable(button, async () => {
@@ -140,7 +224,50 @@ function makeButton({ label, busy, tooltip, run }) {
             button.textContent = idleLabel;
         }
     });
-    return button;
+    // The framed tooltip wraps the button, so the caller is handed a mount point rather
+    // than the button itself; see framed-tooltip.js.
+    const mount = makeElement('div', `${BUTTON_CLASS}-mount`);
+    appendWithFramedTooltip(mount, button, { title: label, text: Locale.compose(tooltip) });
+    return mount;
+}
+
+/**
+ * What every assigned resource is earning per turn, in one figure.
+ *
+ * ⚠️ No label, deliberately: this sits in a row that is already three buttons, a help mark
+ * and two switches wide, and the game writes its own victory-point readouts the same way -
+ * the number and the icon, with the words in the tooltip.
+ *
+ * The three sources are broken out there because they are not one rule: resources in a
+ * CITY pay 1, an imported one pays 1 more on top, and a factory resource pays 3 in a city
+ * or a town alike. The factory card is left out entirely outside the Modern age, where
+ * there is nothing to say.
+ */
+function makeGdpTotal() {
+    const { fromCities, fromImports, fromFactories, fromBuildings, total } = gdpPerTurn();
+
+    const readout = makeElement('div', GDP_CLASS);
+    const value = makeElement('div', 'font-fit-shrink');
+    value.textContent = `+${total}`;
+    const icon = makeElement('div', `${GDP_CLASS}__icon`);
+    icon.style.backgroundImage = `url(${GDP_ICON})`;
+    appendAll(readout, value, icon);
+
+    const cards = [
+        Locale.compose('LOC_NAJANE_COMMERCE_GDP_FROM_CITIES', fromCities),
+        Locale.compose('LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS', fromImports),
+    ];
+    if (isFactoryAge()) {
+        cards.push(Locale.compose('LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES', fromFactories));
+    }
+    cards.push(Locale.compose('LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS', fromBuildings));
+
+    const mount = makeElement('div', `${BUTTON_CLASS}-mount`);
+    appendWithFramedTooltip(mount, readout, {
+        title: 'LOC_NAJANE_COMMERCE_GDP_TOTAL',
+        text: cards.join('[N][N]'),
+    });
+    return mount;
 }
 
 /**
@@ -166,12 +293,12 @@ function injectBar() {
         ...BUTTONS.map(makeButton),
         makeHelpMark('LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP', 'LOC_NAJANE_COMMERCE_SHORTCUTS'),
     );
-    // Modern age only, so this is null in the other two. It rides in this bar rather than
-    // in the screen's own header - see the note at the top of factory-first.js.
-    const factoryFirst = createFactoryFirstToggle();
-    if (factoryFirst) {
-        bar.appendChild(factoryFirst);
-    }
+    gdpMount = makeGdpTotal();
+    bar.appendChild(gdpMount);
+    // "Imports first" in every age, "factories first" stacked under it in the Modern age.
+    // They ride in this bar rather than in the screen's own header - see the note at the
+    // top of assign-switches.js.
+    bar.appendChild(createAssignSwitches());
     row.appendChild(bar);
     return true;
 }
@@ -179,7 +306,7 @@ function injectBar() {
 /**
  * Hides the game's own "unassign all", which sits at the very bottom of the settlement
  * column, past everything the player has to scroll through. The button in the bar above
- * calls the same `model.clearAllResources()`.
+ * sends the same operation, through engine/unassign.js.
  *
  * The original is hidden rather than moved: it is a `ConfirmationDialog` wrapping an
  * icon button, and relocating a Solid-managed subtree would fight whatever re-renders it.
@@ -208,6 +335,13 @@ function inject() {
 
 export function startAssignAllButtons() {
     styleElement = ensureStyle(STYLE_ID, STYLE);
+    for (const name of GDP_EVENTS) {
+        try {
+            engine.on(name, refreshGdpSoon);
+        } catch (error) {
+            warn(`could not listen for ${name}: ${error}`);
+        }
+    }
 
     if (inject()) {
         return;
@@ -232,6 +366,13 @@ export function startAssignAllButtons() {
 export function stopAssignAllButtons() {
     observer?.disconnect();
     observer = null;
+    if (gdpTimer !== null) {
+        clearTimeout(gdpTimer);
+        gdpTimer = null;
+    }
+    gdpMount = null;
+    // Every framed tooltip owns a Solid root created outside the tree; see framed-tooltip.js.
+    disposeFramedTooltips();
     bar?.remove();
     bar = null;
     document.querySelectorAll(`.${HELP_CLASS}`).forEach((mark) => mark.remove());

@@ -9,6 +9,7 @@
  * Shared rather than copied because a second one that looked slightly different would read
  * as a different kind of control.
  */
+import { appendWithFramedTooltip } from './framed-tooltip.js';
 import { makeElement } from '../support/dom.js';
 
 export const HELP_CLASS = 'najane-assign-help';
@@ -37,14 +38,22 @@ export const HELP_STYLE = `
     text-align: center;
 }
 .${HELP_CLASS}:hover { background: rgba(77, 67, 55, 0.98); }
+/* Pass-through, so the mark keeps its own round box in the row. */
+.${HELP_CLASS}-mount { display: flex; flex: 0 0 auto; }
 `;
 
-/** Not clickable - just a label with a tooltip. */
+/**
+ * Not clickable - just a label with a tooltip.
+ *
+ * ⚠️ Returns a WRAPPER, not the mark: the framed tooltip has to enclose its trigger. The
+ * shortcut list this carries is four thoughts separated by blank lines, which is exactly
+ * what the framed form is for - each becomes its own card instead of one wall of text.
+ */
 export function makeHelpMark(tooltipKey, labelKey) {
-    const mark = makeElement('div', HELP_CLASS, {
-        'data-tooltip-content': Locale.compose(tooltipKey),
-        'aria-label': Locale.compose(labelKey),
-    });
+    const mark = makeElement('div', HELP_CLASS, { 'aria-label': Locale.compose(labelKey) });
     mark.textContent = '?';
-    return mark;
+
+    const mount = makeElement('div', `${HELP_CLASS}-mount`);
+    appendWithFramedTooltip(mount, mark, { title: labelKey, text: Locale.compose(tooltipKey) });
+    return mount;
 }

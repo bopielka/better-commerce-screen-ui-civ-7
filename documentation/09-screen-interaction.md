@@ -17,7 +17,8 @@ DOM facts recorded there.
 | `bulk-assign.js` | 170 | Shift-assign, by wrapping `slotSelectedResource` |
 | `layout.js` | 164 | tab strip, description line, dropdown height |
 | `shift-click.js` | 120 | left-clicking at all while Shift is held |
-| `factory-first.js` | 107 | the "factories first" checkbox |
+| `assign-switches.js` | 140 | the "imports first" and "factories first" checkboxes |
+| `resource-tooltip.js` | 89 | the game's own framed resource tooltip, for imperative cards |
 | `help-mark.js` | 50 | the shared round "?" |
 
 ---
@@ -310,10 +311,16 @@ almost every game the row is empty — the styling was not broken, there was sim
 
 ---
 
-## `factory-first.js` — the checkbox
+## `assign-switches.js` — the two checkboxes
 
-Only the **control** is here; what it means and where it is kept are in
-`ui/planner/factory-first-setting.js`. Returns `null` outside the Modern age.
+Only the **controls** are here; what each one means and where it is kept are in
+`ui/planner/imports-first-setting.js` and `ui/planner/factory-first-setting.js`.
+
+**Imports first** is offered in every age; **factories first** only in the Modern age, because
+factory resources only exist there. They are **stacked**, imports on top — two of them side by
+side would not fit beside three buttons, so each row is deliberately smaller than the bar's other
+text and the column is height-capped to the 2.4rem of one button. Anything taller pushes the bar
+past the tab strip it sits in; see `layout.js` for that budget.
 
 Why a control on the screen rather than a mod option: it is a decision about this empire in this
 age, the kind of thing you change while looking at the board.

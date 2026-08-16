@@ -9,7 +9,7 @@
             <Text>指派中……</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="zh_Hant_HK">
-            <Text>在保留現有指派的前提下，指派所有未指派的資源。幸福感為負的聚落優先處理，每次一個、從最差的開始，直到沒有低於零的為止。之後依序是：駱駝、符合較強聚落條件的資源、單一產出資源，最後是多產出資源。</Text>
+            <Text>用未分配池填滿所有空槽。已放置的一律不動。[N][N]隨後各聚落獲得你為其設定的優先項。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="zh_Hant_HK">
             <Text>全部重新指派</Text>
@@ -30,7 +30,7 @@
             <Text>把帝國內所有已指派的資源退回未指派區。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="zh_Hant_HK">
-            <Text>選擇這個聚落優先取得的產出。「均衡」會針對該聚落最低的相關產出。</Text>
+            <Text>選擇這座聚落應優先獲得的產出。均衡表示城市優先生產力、城鎮優先食物。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="zh_Hant_HK">
             <Text>優先：{1_Priority}</Text>
@@ -42,7 +42,7 @@
             <Text>均衡</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="zh_Hant_HK">
-            <Text>按均衡方式指派，優先補足這個聚落最低的相關產出。</Text>
+            <Text>均衡：沒有自訂的專精。該聚落若為城市則優先生產力，若為城鎮則優先食物。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="zh_Hant_HK">
             <Text>快速指派</Text>
@@ -71,17 +71,75 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="zh_Hant_HK">
             <Text>重建全部指派</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="zh_Hant_HK">
+            <Text>無處可放時略過分配提示</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION" Language="zh_Hant_HK">
+            <Text>當有資源進入你的資源池，或某個聚落新增了槽位時，遊戲會彈出「可分配資源」。它優先度高且不會在回合結束時消失，因此會一直佔用結束回合按鈕，直到你處理它——哪怕你其實無事可做。[N][N]開啟後，只要你手上沒有任何資源能夠合法地放到任何地方，該提示就不會繪製，包括只剩工廠資源、而有空槽的聚落都沒有工廠的情況。情況一變它立刻回來。不會忽略任何東西，也不觸碰回合阻擋，只是不去繪製。[N][N]還需要自動分配處於開啟狀態：關閉時模組不會替你放置，那條提示確實需要你處理。</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS" Language="zh_Hant_HK">
+            <Text>優先處理快樂度</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION" Language="zh_Hant_HK">
+            <Text>在其他一切之前，分配會先設法讓快樂度為負的聚落回升，由最差的開始。其優先度高於工廠、駱駝以及聚落自身的優先項，因此對佈局影響最大。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_NEVER" Language="zh_Hant_HK">
+            <Text>從不</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_CITIES" Language="zh_Hant_HK">
+            <Text>僅城市</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_ALL" Language="zh_Hant_HK">
+            <Text>所有聚落</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE" Language="zh_Hant_HK">
+            <Text>自動打造文化聚落</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION" Language="zh_Hant_HK">
+            <Text>所有產出文化的資源——海龜、絲綢、芒果、亞麻、葡萄酒、香料以及該時代的其他資源——都會集中到本身文化產出最高的那座城市，而非四處分散。其中不少是百分比加成，對一個大數值取百分比遠勝於對六個小數值取相同百分比。你已指定優先項的聚落會先得到滿足，只有剩餘的才會被集中。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD" Language="zh_Hant_HK">
+            <Text>自動打造金幣聚落</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="zh_Hant_HK">
+            <Text>金幣同理：翡翠、貝幣、紅寶石、白銀、丁香等會集中到本身金幣產出最高的城市，並且刻意避開文化城市，以免兩堆資源爭搶同樣的槽位。你已指定優先項的聚落會先得到滿足。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="zh_Hant_HK">
             <Text>滑鼠快捷操作</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="zh_Hant_HK">
-            <Text>滑鼠快捷操作[N][N]右鍵點擊已指派的資源——把它退回未指派區。[N]Shift + 右鍵——把該聚落內同類的資源全部退回。[N][N]指派時按住 Shift（拖曳或點擊皆可）——持續用同類資源填滿該聚落，直到沒有空位。[N][N]按住 Shift 並停留——該類資源會全部放大，顯示上面的操作會影響哪些。</Text>
+            <Text>[B]右鍵點擊[/B]已分配的資源——將其退回未分配池。[N][N][B]Shift + 右鍵[/B]——退回該聚落中所有同類資源。[N][N][B]分配時按住 Shift[/B]（拖曳或點擊均可）——持續向該聚落填入同類資源，直到沒有空位。[N][N][B]按住 Shift 並停留[/B]任意資源——所有同類資源都會放大，顯示上述操作會影響哪些。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="zh_Hant_HK">
+            <Text>每回合 GDP（估算）</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="zh_Hant_HK">
+            <Text>[B]+{1_Amount}[/B] 來自分配到城市的資源。城鎮不產生任何點數。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS" Language="zh_Hant_HK">
+            <Text>[B]+{1_Amount}[/B] 額外來自經貿易路線運來的資源——城市中的進口資源價值翻倍。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS" Language="zh_Hant_HK">
+            <Text>[B]+{1_Amount}[/B] 來自與金幣相關的建築，無論位於何處。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES" Language="zh_Hant_HK">
+            <Text>[B]+{1_Amount}[/B] 來自工廠資源，城市與城鎮同等計入。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="zh_Hant_HK">
             <Text>工廠優先</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="zh_Hant_HK">
-            <Text>先於其他一切放置工廠資源。一個聚落同時只能運作一種工廠資源，但同一種可以放任意多份，因此每座工廠都從你數量最多的那一種開始，並用它填滿。幸福感低於零的聚落仍然最先處理。僅限現代，除非關閉否則預設啟用。</Text>
+            <Text>先於其他一切放置工廠資源。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST" Language="zh_Hant_HK">
+            <Text>進口優先</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST_TOOLTIP" Language="zh_Hant_HK">
+            <Text>把經由貿易路線從其他領袖處運來的資源，優先於你自己的資源分配，並且只分配給城市。[N][N]為何划算：在[B]經濟勝利[/B]中，分配到城市的資源每回合價值 +1 GDP，進口資源還要再 +1——是自產資源的兩倍。兩者在城鎮都不產生任何點數，因此進口資源絕不會被送往城鎮。[N][N][B]只有走經濟勝利才值得開啟。[/B]它的優先度高於每個聚落自身的優先項：在最後一件進口資源安置完畢之前，你的城市拿到的是貿易網恰好供應的東西，而不是你指定的專精。若追求文化、科技或軍事勝利，請保持關閉。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="zh_Hant_HK">
             <Text>空軍</Text>

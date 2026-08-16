@@ -2,6 +2,24 @@ import '/core/ui/options/screen-options.js'; // must load before the model is to
 import { CategoryType, Options, OptionType } from '/core/ui/options/model-options.js';
 import { CategoryData } from '/core/ui/options/options-helpers.js';
 
+/*
+ * ⚠️ The only imports of this mod's own code here, and they are all leaves: a settings
+ * module under ui/planner/ holds each value and imports nothing but diagnostics. The
+ * dependency runs one way - options write to the planner, the planner never reads the
+ * options screen - which is what lets the assignment engine answer these questions with
+ * the Commerce screen closed. See the note at the top of factory-first-setting.js.
+ */
+import {
+    happinessPriorityMode,
+    setHappinessPriorityMode,
+} from '../planner/happiness-setting.js';
+import {
+    isCultureGatheringEnabled,
+    isGoldGatheringEnabled,
+    setCultureGatheringEnabled,
+    setGoldGatheringEnabled,
+} from '../planner/hoard-setting.js';
+
 /**
  * Mod options for "Better Commerce Screen UI", shown under a "Mods" tab in the options
  * screen. Same shape as the specialists mod's options, deliberately: the "Mods" category
@@ -100,8 +118,17 @@ function migrateFromCheckboxes() {
     return AutoAssignMode.NewOnly;
 }
 
+/**
+ * ⚠️ Offset by one, because this one defaults to ON and an option that was never set reads
+ * back as 0 - see "the zero trap" in documentation/11. `autoAssignMode` gets away with a raw
+ * value only because its default happens to be 0 as well.
+ */
+const SKIP_PROMPT_OFF = 1;
+const SKIP_PROMPT_ON = 2;
+
 const CommerceOptions = new (class {
     mode = null;
+    skipPrompt = null;
 
     /**
      * How far automatic assignment goes. Off by default: it acts on the player's behalf
@@ -120,9 +147,53 @@ const CommerceOptions = new (class {
         persist('autoAssignMode', this.mode);
         window.dispatchEvent(new CustomEvent(CommerceOptionsChangedEventName));
     }
+
+    /**
+     * Whether the end-turn prompt may be hidden while nothing you hold can be placed.
+     *
+     * On by default: the game raises that notification whenever a resource is unassigned,
+     * it is HIGH severity and does not expire, so once the empire is full it takes over the
+     * turn button every turn for a situation with nothing to do about it. Off restores the
+     * game's own behaviour exactly.
+     */
+    get skipAssignPrompt() {
+        if (this.skipPrompt === null) {
+            const stored = Number(restore('skipAssignPrompt'));
+            this.skipPrompt = stored === SKIP_PROMPT_OFF ? false : true;
+        }
+        return this.skipPrompt;
+    }
+
+    set skipAssignPrompt(value) {
+        this.skipPrompt = !!value;
+        persist('skipAssignPrompt', this.skipPrompt ? SKIP_PROMPT_ON : SKIP_PROMPT_OFF);
+        window.dispatchEvent(new CustomEvent(CommerceOptionsChangedEventName));
+    }
 })();
 
+const HAPPINESS_ITEMS = [
+    { label: 'LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_NEVER' },
+    { label: 'LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_CITIES' },
+    { label: 'LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_ALL' },
+];
+
+/*
+ * ⚠️ Order matters: the options screen lays a group out in the order the options are
+ * added, so the happiness dropdown is registered first to sit above automatic assignment.
+ */
 Options.addInitCallback(() => {
+    Options.addOption({
+        category: CategoryType.Mods,
+        group: OPTION_GROUP,
+        type: OptionType.Dropdown,
+        id: 'najane-commerce-happiness-priority',
+        initListener: (info) => (info.selectedItemIndex = happinessPriorityMode()),
+        updateListener: (_info, value) => setHappinessPriorityMode(value),
+        label: 'LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS',
+        description: 'LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION',
+        dropdownItems: HAPPINESS_ITEMS,
+    });
+
     Options.addOption({
         category: CategoryType.Mods,
         group: OPTION_GROUP,
@@ -133,6 +204,39 @@ Options.addInitCallback(() => {
         label: 'LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE',
         description: 'LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION',
         dropdownItems: MODE_ITEMS,
+    });
+
+    Options.addOption({
+        category: CategoryType.Mods,
+        group: OPTION_GROUP,
+        type: OptionType.Checkbox,
+        id: 'najane-commerce-skip-assign-prompt',
+        initListener: (info) => (info.currentValue = CommerceOptions.skipAssignPrompt),
+        updateListener: (_info, value) => (CommerceOptions.skipAssignPrompt = value),
+        label: 'LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT',
+        description: 'LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION',
+    });
+
+    Options.addOption({
+        category: CategoryType.Mods,
+        group: OPTION_GROUP,
+        type: OptionType.Checkbox,
+        id: 'najane-commerce-gather-culture',
+        initListener: (info) => (info.currentValue = isCultureGatheringEnabled()),
+        updateListener: (_info, value) => setCultureGatheringEnabled(value),
+        label: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE',
+        description: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION',
+    });
+
+    Options.addOption({
+        category: CategoryType.Mods,
+        group: OPTION_GROUP,
+        type: OptionType.Checkbox,
+        id: 'najane-commerce-gather-gold',
+        initListener: (info) => (info.currentValue = isGoldGatheringEnabled()),
+        updateListener: (_info, value) => setGoldGatheringEnabled(value),
+        label: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD',
+        description: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION',
     });
 });
 

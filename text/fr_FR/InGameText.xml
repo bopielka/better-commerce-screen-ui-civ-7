@@ -9,7 +9,7 @@
             <Text>Assignation...</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_ASSIGN_ALL_TOOLTIP" Language="fr_FR">
-            <Text>Assigne toutes les ressources non assignées en conservant les assignations existantes. Les colonies dont le bonheur est négatif passent d'abord, la pire à la fois, jusqu'à ce qu'aucune ne soit sous zéro. Ensuite : les chameaux, puis les ressources dont le critère de colonie le plus fort est rempli, puis celles à un seul rendement, enfin celles à plusieurs.</Text>
+            <Text>Remplit tous les emplacements libres depuis la réserve. Rien de déjà placé n'est déplacé.[N][N]Ensuite, chaque colonie reçoit la priorité que vous lui avez fixée.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_REASSIGN_ALL" Language="fr_FR">
             <Text>Tout réassigner</Text>
@@ -30,7 +30,7 @@
             <Text>Renvoie dans la réserve toutes les ressources assignées de l'empire.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP" Language="fr_FR">
-            <Text>Choisissez le rendement que cette colonie doit privilégier. Équilibré vise les rendements affectés les plus bas de la colonie.</Text>
+            <Text>Choisissez le rendement que cette colonie doit recevoir en premier. Équilibré signifie Production dans une ville et Nourriture dans un bourg.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_CURRENT" Language="fr_FR">
             <Text>Priorité : {1_Priority}</Text>
@@ -42,7 +42,7 @@
             <Text>Équilibré</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_PRIORITY_BALANCED_TOOLTIP" Language="fr_FR">
-            <Text>Assigne de façon équilibrée en privilégiant les rendements affectés les plus bas de cette colonie.</Text>
+            <Text>Équilibré : aucune spécialisation propre. La colonie reçoit de la Production si c'est une ville et de la Nourriture si c'est un bourg.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN" Language="fr_FR">
             <Text>Assignation rapide</Text>
@@ -71,17 +71,75 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="fr_FR">
             <Text>Reconstruire toutes les assignations</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="fr_FR">
+            <Text>Ignorer l'invite d'affectation quand rien ne rentre</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION" Language="fr_FR">
+            <Text>Le jeu signale « Affectations de ressources disponibles » quand une ressource rejoint votre réserve ou qu'une colonie gagne un emplacement. La notification est prioritaire et n'expire pas en fin de tour : elle retient le bouton de fin de tour jusqu'à ce que vous agissiez, même quand il n'y a rien à faire.[N][N]Activé, l'invite n'est pas affichée tant que rien de ce que vous détenez ne peut être placé légalement où que ce soit - y compris lorsqu'il ne reste qu'une ressource d'usine et qu'aucune colonie disposant d'un emplacement libre n'a d'usine. Elle revient dès que cela change. Rien n'est rejeté et le blocage de tour reste intact ; seul l'affichage est omis.[N][N]Nécessite aussi que l'affectation automatique soit active : sinon le mod ne place rien pour vous et l'invite reste utile.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS" Language="fr_FR">
+            <Text>Donner la priorité au bonheur</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION" Language="fr_FR">
+            <Text>Avant toute chose, l'affectation tente de sortir les colonies d'un bonheur négatif, en commençant par la pire. Cela prime sur les usines, les chameaux et la priorité propre de chaque colonie : c'est la plus grande influence du mod sur la répartition.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_NEVER" Language="fr_FR">
+            <Text>Jamais</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_CITIES" Language="fr_FR">
+            <Text>Villes uniquement</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_ALL" Language="fr_FR">
+            <Text>Toutes les colonies</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE" Language="fr_FR">
+            <Text>Créer automatiquement une colonie de Culture</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION" Language="fr_FR">
+            <Text>Toutes les ressources qui rapportent de la Culture — tortues, soie, mangues, lin, vin, encens et tout ce que l'ère propose — sont rassemblées dans la seule ville qui produit déjà le plus de Culture, au lieu d'être dispersées. Plusieurs sont des pourcentages, et un pourcentage d'un grand nombre vaut mieux que le même pourcentage de six petits. Les colonies auxquelles vous avez donné une priorité sont servies d'abord ; seul le reste est rassemblé.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD" Language="fr_FR">
+            <Text>Créer automatiquement une colonie d'Or</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="fr_FR">
+            <Text>Idem pour l'Or : jade, cauris, rubis, argent, clous de girofle et le reste sont rassemblés dans la ville qui produit déjà le plus d'Or — et délibérément pas celle de la Culture, afin que les deux tas ne se disputent pas les mêmes emplacements. Les colonies auxquelles vous avez donné une priorité sont servies d'abord.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="fr_FR">
             <Text>Raccourcis souris</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS_TOOLTIP" Language="fr_FR">
-            <Text>Raccourcis souris[N][N]Clic droit sur une ressource assignée : la renvoie dans la réserve.[N]Maj + clic droit : renvoie toutes les ressources de ce type dans cette colonie.[N][N]Maj pendant l'assignation, par glissement ou par clic : continue de remplir la colonie avec des ressources du même type jusqu'à ce qu'il n'y ait plus de place.[N][N]Maintenez Maj et survolez : toutes les ressources de ce type s'agrandissent, montrant ce que l'action ci-dessus affecterait.</Text>
+            <Text>[B]Clic droit[/B] sur une ressource affectée : la renvoie dans la réserve.[N][N][B]Maj + clic droit[/B] : renvoie toutes les ressources de ce type dans cette colonie.[N][N][B]Maj pendant l'affectation[/B], par glisser ou par clic : continue de remplir la colonie avec des ressources du même type jusqu'à saturation.[N][N][B]Maintenir Maj et survoler[/B] n'importe quoi : chaque ressource de ce type grossit, montrant ce que l'action ci-dessus toucherait.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="fr_FR">
+            <Text>PIB par tour (estimation)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="fr_FR">
+            <Text>[B]+{1_Amount}[/B] des ressources affectées aux villes. Un bourg ne rapporte rien.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS" Language="fr_FR">
+            <Text>[B]+{1_Amount}[/B] de plus pour ceux arrivés par route commerciale : une ressource importée en ville vaut le double.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS" Language="fr_FR">
+            <Text>[B]+{1_Amount}[/B] des bâtiments liés à l'or, où qu'ils se trouvent.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES" Language="fr_FR">
+            <Text>[B]+{1_Amount}[/B] des ressources d'usine, en ville comme en bourg.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST" Language="fr_FR">
             <Text>Usines d'abord</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_FIRST_TOOLTIP" Language="fr_FR">
-            <Text>Place les ressources d'usine avant tout le reste. Une colonie ne peut exploiter qu'un seul type de ressource d'usine, mais autant d'exemplaires que voulu : chaque usine démarre donc sur le type dont vous avez le plus, puis s'en remplit. Les colonies sous zéro bonheur restent traitées en premier. Ère moderne uniquement, et actif tant que vous ne le désactivez pas.</Text>
+            <Text>Place les ressources d'usine avant tout le reste.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST" Language="fr_FR">
+            <Text>Importations d'abord</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPORTS_FIRST_TOOLTIP" Language="fr_FR">
+            <Text>Affecte les ressources arrivées par une route commerciale d'un autre dirigeant avant les vôtres, et uniquement aux villes.[N][N]Pourquoi c'est rentable : pour la [B]victoire économique[/B], une ressource placée dans une ville vaut +1 PIB par tour, et une ressource importée +1 de plus - deux fois plus que la vôtre. Dans un bourg, ni l'une ni l'autre ne rapporte, donc les importations n'y vont jamais.[N][N][B]Rentable uniquement pour la victoire économique.[/B] Cela prime sur la priorité de chaque colonie : tant que la dernière importation n'est pas placée, vos villes prennent ce que le réseau commercial fournit plutôt que ce que vous leur avez assigné. Pour une victoire culturelle, scientifique ou militaire, laissez désactivé.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT" Language="fr_FR">
             <Text>aéronefs</Text>

@@ -267,6 +267,55 @@ export function pooledResources(model) {
     return resources;
 }
 
+/**
+ * Deletes rows from the screen's unassigned pool for resources the game has since assigned.
+ *
+ * ⚠️ The pool list is maintained PURELY DIFFERENTIALLY, and that is why it heals less well
+ * than the settlement cards. On `ResourceAssigned`, `commerce-screen-model.ts` splices the
+ * one resource named in that event's payload out of `availableResourceSectionData` - and
+ * that is the only thing that ever removes a row. The settlement side of the same handler
+ * re-reads `getAssignedResources()` and rewrites `availableSlots` and `yieldDeltas` from
+ * live state, so a missed event there is repaired by the next one; the pool has no such
+ * path, so a missed event leaves a row behind **for as long as the screen stays open**.
+ *
+ * Events do get missed: `createEngineEvent` is a plain `createSignal()` holding only the
+ * latest payload, and this mod assigns fast enough to deliver two in a tick. Pacing the loop
+ * makes that rare rather than impossible.
+ *
+ * ⚠️ Removal only - deliberately. Deleting a row the game already accounted for is safe and
+ * needs nothing but the resource value. Putting a row BACK would mean building a
+ * `ResourceSlotData` complete with `resourceProps` and its `canSwapWithSelectedResource`
+ * memo, which is reimplementing the model's own builder and would rot the first time it
+ * changes. The opposite direction does not need it anyway: unassigning goes through the
+ * model's update gate, which accumulates its events in an array instead of a signal.
+ *
+ * @param assignedValues resource values the game currently has slotted somewhere.
+ * @returns how many stale rows were removed.
+ */
+export function pruneAssignedFromPool(assignedValues) {
+    const model = currentModel;
+    if (!model) {
+        return 0;
+    }
+    let removed = 0;
+    for (const section of model.data?.resourceTabData?.availableResourceSectionData ?? []) {
+        for (const subsection of section.subSections ?? []) {
+            const slots = subsection.resourceSlotData;
+            if (!slots) {
+                continue;
+            }
+            // Backwards, because splicing shifts everything after the index.
+            for (let index = slots.length - 1; index >= 0; index--) {
+                if (assignedValues.has(slots[index].resourceValue)) {
+                    slots.splice(index, 1);
+                    removed++;
+                }
+            }
+        }
+    }
+    return removed;
+}
+
 /** The unassigned resource under this screen point, if any. */
 export function findAvailableResourceAtPoint(x, y) {
     const model = currentModel;

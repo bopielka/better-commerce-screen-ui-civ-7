@@ -60,29 +60,49 @@ Three buttons above the tabs, plus three controls on every settlement card.
 |---|---|
 | **Assign All** | `ui/screen/assign-all-buttons.js` → `ui/planner/run.js` `assignAll` |
 | **Reassign All** | same → `reassignAll` |
-| **Unassign All** | same → `model.clearAllResources()` directly |
+| **Unassign All** | same → `unassignAll` → `ui/engine/unassign.js` |
 | Per-settlement priority picker | `ui/screen/settlement-controls.js` → `ui/planner/priorities.js` |
 | Per-settlement quick assign | same → `ui/planner/run.js` `quickAssignSettlement` |
 | Per-settlement unassign | same → `model.clearAllResources(cityID)` |
 | The game's own buried "unassign all" being hidden | `ui/screen/assign-all-buttons.js` |
 | The "factories first" checkbox (Modern only) | `ui/screen/factory-first.js` + `ui/planner/factory-first-setting.js` |
 
-The ordering the buttons obey is in `ui/planner/scoring.js`; the loop that executes it is
-`ui/planner/place.js`. See [planner: assignment](07-planner-assignment.md).
+Every one of these — and the automatic path below — goes through `ui/planner/run.js`, which holds
+the single "only one at a time" guard. The ordering they obey is in `ui/planner/scoring.js`; the
+loop that executes it is `ui/planner/place.js`; emptying a settlement is `ui/engine/unassign.js`.
+See [planner: assignment](07-planner-assignment.md).
 
-## Automatic assignment with the screen closed
+The priority picker's default is **Balanced**, and Balanced means production in a city and food in
+a town — not "whatever the settlement has least of".
 
-One dropdown under **Options → Mods**, four steps, `Never` by default.
+## Options under **Options → Mods**
+
+| Setting | Default | What it does |
+|---|---|---|
+| Prioritise Happiness | All settlements | how far the rescue tier goes: never / cities only / all |
+| Assign Resources automatically | Never | see the table below |
+| Build a Culture Settlement automatically | on | gathers everything paying culture into one city |
+| Build a Gold Settlement automatically | on | the same for gold, deliberately in a different city |
+
+Plus the **factories first** checkbox, which lives on the screen rather than in the options
+because it is Modern-age only.
+
+### Automatic assignment with the screen closed
 
 | Setting | `AutoAssignMode` | Behaviour |
 |---|---|---|
-| Never | `Off` | nothing |
+| Never | `Off` | nothing — **and the end-turn nag is left alone too**, see [notifications](13-notifications.md) |
 | Place the new resource | `NewOnly` | only values that were not owned last pass |
 | Place everything unassigned | `EverythingUnassigned` | the arrival is a cue to tidy the pool |
 | Rebuild every assignment | `RebuildEverything` | clears every settlement and starts again |
 
-Implemented in `ui/planner/auto-assign.js`; the option itself is
-`ui/options/najane-commerce-options.js`. See [options](11-options-and-persistence.md).
+A resource can arrive by improving a tile, by trade route or by **taking an enemy settlement**;
+room for one can arrive by finishing a building or a **wonder** that carries slots. All of those
+are triggers.
+
+`ui/planner/auto-assign.js` decides *when*; the work goes through `run.js` like everything else.
+The options are `ui/options/najane-commerce-options.js`, `ui/planner/happiness-setting.js` and
+`ui/planner/hoard-setting.js`. See [options](11-options-and-persistence.md).
 
 ## The tabs
 

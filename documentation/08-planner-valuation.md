@@ -11,6 +11,28 @@ Empire and Factory tabs.
 
 Both read the modifier tables through [`effects.js`](07-planner-assignment.md#effectsjs--reading-the-modifier-tables).
 
+⚠️ The cards both tabs draw use **the game's own resource tooltip**, not a plain-text one — see
+`ui/screen/resource-tooltip.js`. It is a Solid **component** (`ui-next/tooltips/resource-tooltip.jsx`)
+that wraps its trigger in `<Tooltip.Trigger>`, so it cannot be asked for from a `data-tooltip-*`
+attribute: the trigger has to be handed to the component and the component's output put in its
+place. Both tabs build their cards imperatively inside `onMount`, which is where the Solid owner it
+needs comes from.
+
+⚠️ It is a **transcription** of the game's component, not a wrapper around it. The game's has
+exactly one free text slot — `resourceOrigin`, rendered after "Origin:" — which is enough for the
+single city name it puts there and nowhere near enough for what these tabs know. So the shell is
+rebuilt from the same parts and the breakdown goes underneath as **a card per leader**: their
+portrait, their total, and their settlements. Nothing is lost and it still looks like the game's.
+
+⚠️ Its props are transcribed from `getResourcePropsFromDefinition`, which the game does not export —
+`resourceType` there is a **localisation key**, not the resource's type, and both icons are
+`url(blp:…)` strings.
+
+⚠️ It **falls back to the plain-text tooltip** if the component will not mount, and warns. This
+reaches into a component the game did not write for outside use; without the fallback a game patch
+that moves it would leave the cards with no tooltip at all, which is worse than the bare box this
+replaced.
+
 ⚠️ **They are separate files on purpose.** An empire resource pays for being **held**, so the
 interesting number is per copy multiplied by reach. A factory resource pays for being
 **slotted**, so the only numbers worth showing are the total from copies actually in factories
