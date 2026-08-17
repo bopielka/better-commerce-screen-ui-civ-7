@@ -147,6 +147,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="de_DE">
             <Text>Kavallerie</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CIVILIAN" Language="de_DE">
+            <Text>Zivile</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="de_DE">
             <Text>schwere Schiffe</Text>
         </Row>
@@ -300,5 +303,51 @@
         <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="de_DE">
             <Text></Text>
         </Replace>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT" Language="de_DE">
+            <Text>Händler kaufen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_TOOLTIP" Language="de_DE">
+            <Text>Kauft {1_Unit} in {2_City} für {3_Cost} Gold und schickt ihn nach {4_Target}. Er zieht von allein dorthin und eröffnet die Handelsroute, sobald er nah genug ist.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS" Language="de_DE">
+            <Text>Ein Händler kostet {1_Cost} Gold, du hast {2_Gold}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED" Language="de_DE">
+            <Text>Keine deiner Siedlungen kann derzeit einen Händler kaufen.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_ON_THE_WAY" Language="de_DE">
+            <Text>Einer deiner Händler ist bereits nach {2_Target} unterwegs.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_BALANCED" Language="de_DE">
+            <Text>Zeigt alle Routen. Die mit den meisten Ressourcen zuerst.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_YIELD" Language="de_DE">
+            <Text>Zeigt nur Routen mit Ressourcen, die {1_Yield} bringen. Die mit den meisten davon zuerst.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_EMPIRE" Language="de_DE">
+            <Text>Zeigt nur Routen mit Imperiums- oder Schatzressourcen. Die mit den meisten davon zuerst.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_FACTORY" Language="de_DE">
+            <Text>Zeigt nur Routen mit Fabrikressourcen. Die mit den meisten davon zuerst.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_RESOURCE" Language="de_DE">
+            <Text>Zeigt nur Routen mit: {1_Resource}. Die mit den meisten davon zuerst.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT" Language="de_DE">
+            <Text>Händler zeigen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP" Language="de_DE">
+            <Text>Klicke, um zu diesem Händler auf der Karte zu springen. Dieser Bildschirm wird geschlossen.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL" Language="de_DE">
+            <Text>Kein Handelsroutenplatz frei</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="de_DE">
+            <Text>Mit {1_Leader} kannst du {2_Capacity} Handelsroute(n) halten, und {3_Used} laufen bereits oder sind unterwegs. Ein jetzt entsandter Händler findet womöglich keinen freien Platz vor.[N][N]Klicke, um die Diplomatie mit {1_Leader} zu öffnen. Die Aktion „Handelsbeziehungen verbessern“ erhöht dort dein Handelsroutenlimit mit ihnen.</Text>
+        </Row>
     </LocalizedText>
 </Database>

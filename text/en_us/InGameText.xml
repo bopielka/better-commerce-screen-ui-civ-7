@@ -164,6 +164,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY">
             <Text>Cavalry</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CIVILIAN">
+            <Text>Civilian</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY">
             <Text>Heavy Naval</Text>
         </Row>
@@ -337,6 +340,56 @@
         <!-- The Factory Resources tab, Modern age -->
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION">
             <Text>Factory Resources across your empire.</Text>
+        </Row>
+
+        <!-- The buy-a-merchant button on a trade route card -->
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT">
+            <Text>Buy a Merchant</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_TOOLTIP">
+            <Text>Buys {1_Unit} in {2_City} for {3_Cost} Gold and sends it to {4_Target}. It travels there on its own and opens the Trade Route as soon as it is close enough.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS">
+            <Text>A Merchant costs {1_Cost} Gold and you have {2_Gold}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED">
+            <Text>No Settlement of yours can buy a Merchant at the moment.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_ON_THE_WAY">
+            <Text>A Merchant of yours is already on its way to {2_Target}.</Text>
+        </Row>
+
+        <!-- The sort tabs above each trade route section -->
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_BALANCED">
+            <Text>Show every route. The ones carrying the most Resources come first.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_YIELD">
+            <Text>Show only the routes carrying Resources that pay {1_Yield}. The ones carrying the most of them come first.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_EMPIRE">
+            <Text>Show only the routes carrying Empire or Treasure Resources. The ones carrying the most of them come first.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_FACTORY">
+            <Text>Show only the routes carrying Factory Resources. The ones carrying the most of them come first.</Text>
+        </Row>
+
+        <!-- The camel sort tab, and the button that finds a sent Merchant -->
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_RESOURCE">
+            <Text>Show only the routes carrying: {1_Resource}. The ones carrying the most of them come first.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT">
+            <Text>Show the Merchant</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP">
+            <Text>Click to go to this Merchant on the map. This screen closes.</Text>
+        </Row>
+
+        <!-- The warning when a leader's trade capacity is already spoken for -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL">
+            <Text>No Trade Route slot left</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP">
+            <Text>You can hold {2_Capacity} Trade Route(s) with {1_Leader}, and {3_Used} are already running or on the way. A Merchant sent now may arrive with no slot to take.[N][N]Click to open diplomacy with {1_Leader}. The ‘Improve Trade Relations’ action there raises your Trade Route limit with them.</Text>
         </Row>
     </EnglishText>
 </Database>

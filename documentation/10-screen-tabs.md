@@ -281,6 +281,84 @@ decided where in that band the cards sat.
 short: a `.trade-route-cards-row` is the body of *one* section, and between it and the container
 sit the `CollapsibleContainer`'s own wrappers, which are not the same depth for every section.
 
+### ⚠️ Decorate on a FRAME, never straight from the observer
+
+A `MutationObserver` callback runs as a **microtask**, and so does Solid's effect queue — the
+two interleave. Decorating straight from the observer therefore inserted and moved nodes **in
+the middle of a render Solid had begun and not finished**, and its next `reconcileArrays` found
+a DOM its own bookkeeping did not describe:
+
+```
+Error: NotFoundError: Failed to execute 'insertBefore' on 'Node':
+The node before which the new node is to be inserted is not a child of this node.
+```
+
+On screen that read as **a first visit to the tab with no leader portraits and none of this
+mod's buttons**, both back on the second visit — the render had died halfway, and the next one
+started from a clean DOM. Nothing in the symptom pointed at timing.
+
+`scheduleDecorate()` coalesces every trigger — the observer, the orders-changed event, the
+component's own `onMount`, a click on a group header — into one `requestAnimationFrame`, which
+runs after the microtask queue has drained. The screen is not reactive to this mod's work
+either way, so the frame costs nothing.
+
+> The other observer-driven modules on this screen (`settlement-controls.js`,
+> `assign-all-buttons.js`) still decorate synchronously. They have shipped that way since 1.3
+> without this failure, but they are the same shape and the same trap is open to them.
+
+### ⚠️ NEVER MOVE A CARD
+
+The cards are rendered by Solid's `For` over `section.tradeRoutes`, and **Solid keeps its own
+record of which node sits where**. Move one — into a container of this mod's own, or just past
+its neighbour — and that record becomes a lie. The next reconcile throws, and it takes the rest
+of the screen's rendering with it:
+
+```
+Error: NotFoundError: Failed to execute 'insertBefore' on 'Node':
+The node before which the new node is to be inserted is not a child of this node.
+    at reconcileArrays (core/vendor/solid-js/web/dist/web.js:489)
+```
+
+That is from `UI.log`, and the symptom on screen was **every tooltip dead and none of this
+mod's card buttons drawn** — nothing pointed at the sort or the grouping at all. A sibling
+error, `replaceChild ... is not a child of this node`, arrived on closing the screen.
+
+Reading `reconcileArrays` explains exactly what is and is not allowed:
+
+| Action | Safe? | Why |
+|---|---|---|
+| Inserting an element of ours between the cards | **yes** | the algorithm only ever references its own nodes, and ours stays a child of the same parent |
+| Reordering the cards in the DOM | no | Solid's `a[]` no longer matches the DOM, so its `nextSibling` references point at the wrong places |
+| Moving a card into a container of ours | **never** | `a[x]` is no longer a child of the row at all, and both `insertBefore` and `replaceChild` throw |
+
+Sorting the model's array instead is the **second** trap, and it hangs the game outright. The
+tab keeps an effect of its own:
+
+```js
+createEffect(() => {
+  props.tradeRouteSections.forEach((s) => s.tradeRoutes.sort(sortFunction()));
+});
+```
+
+It **reads** those arrays, so writing to one wakes it; it sorts them back; that is a DOM change;
+the observer calls this mod again; which writes again. Opening the Trade Routes tab froze the
+game on the spot.
+
+So ordering is done **inside the row**: the cards are re-inserted in the wanted order, before
+whatever followed the last of them, and every one of them stays a child of the same row.
+Filtering is a class that hides the card. Neither writes to the model, so the tab's effect has
+nothing to react to.
+
+⚠️ `order`, the flex property, is written as well — and it was tried **first**, as the mechanism
+that touches nothing at all. It appears nowhere in the shipped game, and the routes did not
+visibly reorder while it was the only mechanism, so this renderer very likely ignores it. The
+style stays because it costs nothing and is the right answer if it is ever honoured.
+
+⚠️ Reordering **within the row** is not the thing that crashed. Read `reconcileArrays`: every
+reference it takes is one of its own nodes or that node's `nextSibling`, so while each card is
+still a child of the same parent, `insertBefore` and `replaceChild` both find their targets.
+What broke it was a card moved into a container of this mod's own — a different parent.
+
 ### Grouping the unstartable routes
 
 Two collapsible groups, in a fixed order:
@@ -318,9 +396,200 @@ reaches the leader's portrait.
 wrapped in an `Activatable`, so its parent holds nothing but the row itself — searching there
 found nothing and **no width was ever written.**
 
+⚠️ The card measured is one that **carries the buy buttons**, when there is one. The width is a
+single rule for every card, and the corner it is measured against is not the same width on all
+of them: the first card in the document is often in the "already running" section, which has no
+buttons, and the title line was then given room that ran straight underneath the gold button on
+the cards that do have it. Found with a loop, not `:has()` — this renderer is not a browser, and
+a selector it does not implement matches nothing silently.
+
 ⚠️ It writes to a stylesheet in `<head>`, **never to the cards**, so it cannot feed the
 `MutationObserver` watching them — and only when a figure actually changes, so a resize settles
 instead of oscillating. Capped at `MAX_REMEASURE_ATTEMPTS = 40`.
+
+### The gold button — `trade-buy-merchant.js`
+
+```
+[hex] [sea]  MEKKA → BOGDAN            [325 gold] [leader]
+```
+
+One click for the whole sequence the card otherwise only hints at: buy a merchant in the
+settlement the route is measured from, walk it to the other empire's settlement, and open the
+route the moment the engine allows it. The journey is looked after by
+[`ui/engine/merchant-orders.js`](05-engine.md); the tab only draws the button.
+
+- **Only on startable cards.** On a card blocked by distance or by the trade limit the
+  merchant would arrive to nothing, so those keep no button at all — the reason is already
+  written across them.
+- **Dark, not hidden, when the settlement cannot sell.** A price that cannot be paid is still
+  the answer to "what would this cost", and the tooltip says which of the two reasons it is.
+- **No confirmation dialog**, deliberately: the game's own production list buys with one click
+  too, and the price is on the button before it is pressed.
+- Where the merchant is bought is the route's own `nearestCityId` first, and the nearest
+  settlement that *can* sell one after that. The settlement that ends up buying is **named in
+  the tooltip** rather than left to be discovered.
+- **A merchant already walking there disables the button**, and a second button appears under
+  it: a map pin that **closes the screen and takes the player to that merchant**. One errand
+  per settlement at a time. If the merchant is lost on the way, the order is dropped and the
+  button comes back on its own — see the pruning pass in [`merchant-orders.js`](05-engine.md).
+
+- **A warning under the price** when that leader's trade capacity is already spoken for —
+  every route running plus every merchant on its way to *any* of that leader's settlements. It
+  does not disable anything: relations change while a merchant walks, and a player is entitled
+  to gamble on that. Clicking it closes the screen and opens **diplomacy with that leader**,
+  which is where the capacity comes from. The same sentence is added to the price tooltip as
+  its own card, and it says plainly that it can be clicked.
+
+⚠️ The warning and the map pin share one slot under the price and are never both there: a
+warning is only raised when no merchant of ours is walking to that settlement, which is exactly
+when there is nothing to fly the camera to.
+
+Tooltips are the game's framed ones, the same as the buttons on the Resources tab; see
+`framed-tooltip.js`.
+
+⚠️ Diplomacy is opened by dispatching the game's own `RaiseDiplomacyEvent` on `window` — the
+diplomacy manager listens for it — rather than by importing the manager. The screen is popped
+first: the hub is an interface mode over the map, not a panel that opens behind a screen.
+
+**The leader's portrait opens the same thing**, on every card including the ones nothing can be
+bought on — "who is this and can I fix it" is the question a blocked card raises hardest. The
+relationship tooltip behind the portrait is untouched; only the click is added.
+
+The buttons are centred on the portrait's middle and on each other: the price is wider than the
+pin, and a ragged left edge showed it.
+
+⚠️ **One state, one tooltip.** While a merchant is on its way the button does nothing, so the
+tooltip says only that — printing the sentence describing the purchase underneath it describes
+an action that is not on offer.
+
+⚠️ The stack is **rebuilt, not patched**, whenever the generation changes. A framed tooltip is
+a Solid component built around its trigger; there is no "set the text" on one.
+
+⚠️ Which means each card's tooltips get **their own scope**, disposed before the elements they
+are anchored to are thrown away. A frame left mounted around a discarded trigger has nothing to
+measure against and the game draws it in the **top-left corner of the screen** — which is what
+a click on the buy button did until `renderStack` started disposing first. The tab's teardown
+passes the bare scope and takes every card's with it; `disposeFramedTooltips` matches by prefix.
+The sort strip does the same, one scope per section.
+
+⚠️ The in-flight flag lives in a module-level set keyed by TARGET SETTLEMENT, not on the
+button — the stack is rebuilt from scratch on every change, and a flag on the element would be
+thrown away mid-purchase and let a second click through. The click also redraws its own stack
+straight away: a click is not a DOM mutation, so nothing else wakes the observer.
+
+⚠️ The map pin uses `ContextManager.pop("screen-resource-allocation")` — the same call the
+screen's own close button makes (`ScreenFrame`, the ContextManager close handler). Moving the
+camera behind an open screen is what the treasure cards do, and the "?" on that tab exists
+because players could not tell it had happened.
+
+⚠️ The tab also listens for `MerchantOrdersChangedEventName` on `window`. A merchant lost at
+sea changes what a card should say and **disturbs nothing on screen**, so the MutationObserver
+never fires — without that listener the card would go on offering to wait for a merchant that
+has drowned.
+
+⚠️ The button lives **inside the leader's corner**, which this mod flips to `row-reverse` so
+that an appended child lands to the *left* of the portrait. That is why it is appended rather
+than inserted first.
+
+⚠️ It is decorated **before** the "already decorated" check on the title row. The corner and
+the row are rebuilt independently by Solid, and a card whose row survived a redraw would
+otherwise never get its button back.
+
+⚠️ The price is re-read rather than closed over: the unit's cost progression counts the copies
+already bought, so the price of the *next* merchant is not the price of the last one. A
+generation counter, bumped by `forgetMerchantOffers()`, keeps that re-read to once per change
+instead of once per DOM mutation — asking `canStartQuery` per card per mutation is the shape
+of pass this mod has been slow for once already.
+
+### The sort tabs — `trade-sort-tabs.js`
+
+Each section that is still a decision — "available" and "unavailable" — carries a small tab
+strip above its cards, one tab per yield:
+
+```
+[balanced] [food] [production] [gold] [science] [culture] [influence] [camels] [empire]
+```
+
+A tab **filters and then orders**: pick Production and the section shows only the routes
+carrying at least one Resource that pays Production, the one carrying the most at the front.
+Balanced filters nothing and orders by total. The camel tab counts resources that carry their
+own slots; the empire tab counts resources of the `RESOURCECLASS_EMPIRE` **or**
+`RESOURCECLASS_TREASURE` class, and the factory tab (Modern only) counts `RESOURCECLASS_FACTORY`.
+
+⚠️ **Empire and Treasure are one tab, not two.** `ui/planner/facts.js`'s
+`UNASSIGNABLE_CLASSES` already treats them as the same kind of thing — both are held rather
+than slotted — and a resource is TREASURE instead of EMPIRE in some ages purely because a
+patch rewrote its `ResourceClassType` (Gold is EMPIRE in Antiquity, TREASURE in Exploration).
+A filter keyed to only one class would quietly stop finding the same resource across an age
+transition.
+
+⚠️ **Only the tabs there is something to filter by are drawn, and per section.** Counted over
+every route at once, the available section offered a Science tab because some unreachable
+settlement three continents away had a Science resource — and pressing it emptied the section.
+A filter belongs to the list it filters. The chosen tab falls
+back to Balanced if it stops being offered, or the section would empty itself with nothing on
+screen to explain why.
+
+⚠️ **Each section keeps its own choice**, keyed by what the section holds (`available` /
+`unavailable`) and **not** by the element it is drawn in — the rows are Solid's and are thrown
+away on every redraw, so a choice remembered against one would not survive the next.
+
+⚠️ The camel tab is found by the **`BonusResourceSlots` column**, never by resource name — the
+same rule as `ui/engine/resource-slots.js`, so anything a patch gives the property is counted.
+It is hidden in the Modern age, which has no such resource: a tab that scores every route zero
+falls back to the default order, which reads as the tab being broken.
+
+⚠️ Every score is a **pair**: what the tab counts, then the total number of resources. The
+second is not tidiness — a tab nobody's routes can satisfy would otherwise leave the cards in
+whatever order they were in. Falling through to "most resources first" means the worst a tab
+can do is the default order.
+
+⚠️ **The strip is a copy of the game's tab bar, not an instance of it.** The classes are the
+game's own — `img-tab-bar`, `img-tab-end-cap`, `img-tab-selection-indicator` and the
+`text-secondary` / `text-accent-1` pair — lifted from `core/ui-next/components/tab.js`.
+
+⚠️ It deliberately does **not** carry `data-name="TabList"` or `data-name="TabListItem"`.
+Three modules find the screen's real strip by exactly those attributes (`tab-icons.js`,
+`treasure-tab.js`, `trade-summary.js`) and `document.querySelector` takes the **first** match
+in the document — a faithful copy would quietly become "the tab strip" for all three.
+
+⚠️ The selection indicator is **measured**, because that is how the game does it:
+`TabListComponent` writes `left` and `width` onto it from two bounding rectangles. It is
+retried on the next frame while the strip has no width — it is built inside a section that may
+still be collapsed, and a measurement taken then pins the marker to the left edge forever.
+
+⚠️ The sort writes the cards back **from the end, before the node that followed the last
+card** — not with `appendChild`. The cards are not the only children of a row: the strip is
+one, and in the unavailable section so are the two group containers. Appending would move
+every card past them, which reads as the cards having jumped into another group.
+
+⚠️ A section of routes that are **already running** gets neither strip nor sort. The capacity
+is already spent; the tabs are a question about what to spend it on next.
+
+⚠️ The scores come from `route.resources` — the resource type names read out of
+`importPayloads` when the projection is cached — and the yield/class of each type is cached
+again in this module. `resourceYieldTypes` scans `GameInfo.Resource_YieldChanges` on every
+call: it is written for the assignment pass, which asks about a handful of resources, while
+this asks about every resource on every card on every pass.
+
+Sorting runs **after** the grouping, so a card that has just been moved into a group is sorted
+inside that group rather than in the row it came from.
+
+### The unavailable section opens by default
+
+`commerce-screen-model.js` gives that section `initiallyCollapsed: true`. That made sense for a
+list nobody could act on; this mod splits it into "one trade slot away" and "out of range" and
+puts a sort strip on it, none of which is visible behind a closed ribbon.
+
+⚠️ The **data** is changed, not the DOM — `expandTradeSections()` in `trade-routes.js`, called
+from the screen's own transcription in `factory-tab.js`, which is where the tab's data passes
+through this mod. `CollapsibleContainer` reads the flag once into a signal when it is created;
+by the time there is an element to click, the flag has been read, and clicking it from script
+would mean forging the engine's input event — `Activatable` ignores DOM clicks.
+
+⚠️ Written **in place**, and only when it differs: the sections are entries in the model's
+store, and replacing them with copies would hand Solid a new identity on every read and rebuild
+every card in the tab.
 
 ### Other bits
 

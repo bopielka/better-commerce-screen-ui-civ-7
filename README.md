@@ -182,10 +182,67 @@ its tooltip names every leader you still have room for, split into the ones you 
 with right now and the ones where the room is there but nothing of theirs is in range.
 That distinction is the whole question the tab used to make you answer card by card.
 
+That section also opens by default now — the game draws it closed, which hid everything below.
+
 The routes you cannot start yet are split into two collapsible groups, because they are
 different news: the ones where **nothing is wrong except your trade limit**, and the ones
 that are simply **out of range**. The first group is your shopping list for the next trade
 capacity you earn.
+
+#### Which route is worth the capacity
+
+Above the cards in each section — available and unavailable alike — sits the screen's own
+tab strip in miniature, one tab per yield:
+
+```
+  (balanced) (food) (production) (gold) (science) (culture) (influence) (camels) (empire)
+```
+
+Balanced is what you get without touching anything: nothing is hidden, and the routes carrying
+the most resources come first. Pick a yield and the section shows **only** the routes carrying
+at least one resource that pays it, the ones carrying the most of it first — which is the question you actually have
+when a trade slot opens up and three empires want to use it. The camel tab counts the
+resources that bring extra settlement slots with them, and the last one counts empire and
+treasure resources together; in the Modern age the camels go (there are none) and a factory
+tab arrives. One
+section keeps its own choice, so sorting the available routes by gold says nothing about how
+the ones you cannot reach yet are ordered.
+
+Only the tabs worth offering are drawn: the strip is built from what is actually in reach this
+turn, so you will never be given a filter that hides every card.
+
+#### Buy the merchant from the card
+
+Every route you could actually open now carries a gold button next to the leader's
+portrait, showing what a merchant costs:
+
+```
+(city) (sea)  MEKKA -> BOGDAN            [ 325 ]  (leader)
+```
+
+One click buys a merchant in the settlement the route is measured from and sends it to the
+other empire's settlement. It walks there on its own and **opens the trade route itself**
+as soon as it is close enough — including on the turns after you have closed this screen.
+You are not asked to confirm: the price is on the button before you press it, exactly as
+the game's own production list buys with one click.
+
+If that settlement cannot sell a merchant, the nearest one that can does instead, and the
+tooltip names it. If you cannot afford one, the button goes dark and says so rather than
+disappearing.
+
+Clicking a leader's portrait on any card opens diplomacy with them.
+
+Trade capacity is counted per leader, not per settlement — so if one slot is free and a
+merchant of yours is already walking to one of that leader's cities, every other card of theirs
+gets an **attention mark** under the price saying the slot is spoken for. It does not stop
+you: relations can change while a merchant walks. Clicking the mark closes the screen and opens
+diplomacy with that leader, where another slot is earned.
+
+One errand per settlement at a time: while a merchant of yours is walking there the button is
+disabled and a **map pin** appears under it. Click the pin and the screen closes and takes you
+to that merchant. If it is lost at sea or killed on the road, the mod notices, drops the errand
+and gives you the gold button back — the card never claims that help is on the way when it is
+not.
 
 ### Treasure convoys, without the noise
 
@@ -336,6 +393,8 @@ ui/                                 JavaScript loaded by the game's UI
     operations.js                     EVERY ASSIGN_RESOURCE request lives here
     unassign.js                       releasing, and who has to leave with what
     resource-slots.js                 BonusResourceSlots (camels)
+    merchant.js                       buying a merchant, walking it, signing the route
+    merchant-orders.js                the standing order a bought merchant carries
     wait.js                           waiting for a queued operation to land
     age.js                            which age this is, worked out once
     shift.js                          is Shift held?
@@ -363,6 +422,8 @@ ui/                                 JavaScript loaded by the game's UI
     factory-tab.js                    the screen itself, plus the Modern-age Factory tab
     empire-tab.js                     the rebuilt Empire Resources tab
     trade-routes.js                   the Trade Routes tab: titles, columns, grouping
+    trade-buy-merchant.js             the gold button on a route card: buy and send
+    trade-sort-tabs.js                the per-yield sort tabs above each route section
     assign-all-buttons.js             Assign All / Reassign All / Unassign All / "?"
     settlement-controls.js            per-settlement priority picker + quick assign
     assign-switches.js                the "imports first" / "factories first" checkboxes

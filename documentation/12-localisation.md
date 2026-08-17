@@ -50,7 +50,7 @@ the language. `text/en_us/InGameText.xml` is 284 lines and is the reference file
 | `LOC_OPTIONS_GROUP_NAJANE_COMMERCE` | ⚠️ the options group heading — the name is derived from the group id, not chosen |
 | `LOC_NAJANE_COMMERCE_*` | everything on screen |
 
-The full list of 79 keys is in `text/en_us/InGameText.xml`. Groups worth knowing:
+The full list of 110 keys is in `text/en_us/InGameText.xml`. Groups worth knowing:
 
 | Group | Keys | Used by |
 |---|---|---|
@@ -59,9 +59,12 @@ The full list of 79 keys is in `text/en_us/InGameText.xml`. Groups worth knowing
 | Settlement controls | `PRIORITY_*`, `QUICK_ASSIGN*` | `settlement-controls.js` |
 | Tab tooltips | `TAB_RESOURCES`, `TAB_EMPIRE`, `TAB_EMPIRE_TREASURE`, `TAB_TREASURE`, `TAB_FACTORY` | `tab-icons.js` |
 | Empire tab | `EMPIRE_ONE`, `EMPIRE_ALL`, `EMPIRE_INCOME`, `EMPIRE_CAPPED`, `EMPIRE_CELEBRATION_ONLY`, `EMPIRE_NO_SCALING` | `empire-tab.js` |
-| Unit classes | `UNITS_AIRCRAFT` … `UNITS_SIEGE` (8) | `empire-effects.js` |
+| Unit classes | `UNITS_AIRCRAFT` … `UNITS_SIEGE`, plus `UNITS_CIVILIAN` (9) | `empire-effects.js` |
 | Factory tab | `FACTORY_*` (17) | `factory-resources.js`, `factory-effects.js`, `assign-switches.js` |
 | Trade | `TRADE_*`, `ROUTE_LAND`, `ROUTE_SEA`, `BLOCKED_LIMIT`, `BLOCKED_RANGE` | `trade-summary.js`, `trade-routes.js` |
+| Buy a merchant | `BUY_MERCHANT` + `_TOOLTIP`, `_FUNDS`, `_BLOCKED`, `_ON_THE_WAY` | `trade-buy-merchant.js` |
+| Sort tabs | `SORT_BALANCED`, `SORT_YIELD`, `SORT_RESOURCE`, `SORT_EMPIRE`, `SORT_FACTORY` | `trade-sort-tabs.js` |
+| Merchant buttons | `SHOW_MERCHANT` + `_TOOLTIP`, `TRADE_FULL` + `_TOOLTIP` | `trade-buy-merchant.js` |
 | Treasure | `TREASURE_CLICK*`, `TREASURE_ON_ARRIVAL` | `treasure-tab.js` |
 
 ## ⚠️ Strings this mod must own, and why

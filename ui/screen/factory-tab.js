@@ -37,6 +37,7 @@ import { TradeRoutesContainer } from '/base-standard/ui-next/screens/commerce/co
 import screenStyle from '/base-standard/ui-next/screens/commerce/commerce-screen.scss.js';
 import { EmpireResourcesContainer } from './empire-tab.js';
 import { FactoryResourcesContainer } from './factory-resources.js';
+import { prepareTradeTabData } from './trade-routes.js';
 import { TreasureConvoysContainer, withoutHomelandIdlers } from './treasure-tab.js';
 import { isFactoryAge } from '../engine/age.js';
 
@@ -107,11 +108,21 @@ const CommerceScreenWithFactoryTab = (_props) => {
                                 createComponent(Tab.Item, {
                                     name: 'Trade',
                                     title: () => 'LOC_COMMERCE_TRADE_ROUTE_TAB',
-                                    body: () =>
-                                        createComponent(
+                                    body: () => {
+                                        /*
+                                         * ⚠️ Read and prepared HERE, not inside the props
+                                         * getter below. This hands the mod the very arrays the
+                                         * tab renders - it opens the "unavailable" section and
+                                         * keeps them for ordering - and both are writes into a
+                                         * mutable store. A write from inside a tracked read is
+                                         * how a render loop starts.
+                                         */
+                                        prepareTradeTabData(model.data.tradeRouteTabData);
+                                        return createComponent(
                                             TradeRoutesContainer,
                                             mergeProps(() => model.data.tradeRouteTabData),
-                                        ),
+                                        );
+                                    },
                                 }),
                                 createComponent(Tab.Item, {
                                     name: 'Empire',

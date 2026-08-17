@@ -5,6 +5,86 @@ Notable changes to **Better Commerce Screen UI**. Newest first.
 ⚠️ **There was no changelog before 1.3.** Earlier releases are not recorded here, and nothing
 below should be read as the mod's full history — it is the history from 1.3 onwards.
 
+## 1.4
+
+### Added
+
+- **The "unavailable trade routes" section now opens by default.** The game draws it closed,
+  which hid both the two groups this mod splits it into and the new sort tabs.
+- **Filter tabs above each trade route section.** The screen's own tab strip, in miniature, at
+  the top of "available" and "unavailable" alike — one tab per yield. Picking one shows **only**
+  the routes carrying at least one resource of that kind, the richest first.
+  - **Balanced** is the default, hides nothing, and puts the routes carrying the **most
+    resources** at the front.
+  - **Only the tabs worth offering are drawn** — the strip is built from the resources actually
+    in reach this turn, so there is no tab that would hide every card.
+  - **Food**, **Production**, **Gold**, **Science**, **Culture** and **Influence** reorder the
+    cards by how many of the route's resources pay that yield. A **camel** tab counts the
+    resources that carry their own settlement slots (hidden in the Modern age, which has
+    none), a tab counts **Empire resources**, and in the Modern age one more counts **Factory
+    resources**.
+  - Within a tab, more of what it counts wins; between equals, the route carrying more in
+    total.
+  - Each section keeps its own choice — sorting the available routes by gold says nothing
+    about how the unreachable ones should be ordered.
+  - Routes that are **already running** get no strip — the capacity is already spent, and the
+    tabs are a question about what to spend it on next.
+
+- **Buy a merchant straight from a trade route card.** Every route in "Available trade routes"
+  now carries a gold button beside the leader's portrait with the merchant's price on it. One
+  click buys a merchant in the settlement the route is measured from and sends it to the other
+  empire's settlement; it walks there on its own and **opens the trade route itself** as soon
+  as the game allows it, including on the turns after the Commerce screen has been closed.
+  - If that settlement cannot sell a merchant, the nearest one that can does instead, and the
+    tooltip names it.
+  - Not enough gold, or a settlement that cannot buy: the button goes **dark with the price
+    still on it** rather than disappearing, and the tooltip says which it is.
+  - **One errand per settlement at a time.** While a merchant of yours is walking to that
+    settlement the button is disabled and the tooltip says so — and only that; the sentence
+    about the purchase it would otherwise make is about an action that is not on offer.
+  - **A warning under the price when the slot is already spoken for.** Trade capacity is
+    counted per leader, so with one slot free and a merchant already walking to one of that
+    leader's settlements, every other card of theirs still reads as available — and would sell
+    you a second merchant into a slot that is taken. Those cards now carry an attention mark
+    that says so, in the tooltip as well, and clicking it opens **diplomacy with that leader**
+    where the capacity can be raised. It never blocks the purchase: relations change while a
+    merchant walks, and that gamble is the player's to take.
+  - **A map pin under the gold button** while a merchant is on its way: it closes the Commerce
+    screen and takes you straight to that merchant on the map. It shares the slot with the
+    warning above — the two can never apply at once.
+  - **Clicking a leader's portrait opens diplomacy with them**, on every card in the tab.
+  - Tooltips throughout are the game's framed ones, the same as the buttons on the Resources
+    tab, and every one that sits on a button now says plainly that it can be clicked.
+  - **Merchants that never arrive are tracked.** One lost at sea, killed or disbanded has its
+    order dropped, so the card stops claiming that help is on the way and the button comes back
+    by itself. Cards refresh on that the moment it happens, not on the next time something on
+    screen moves.
+  - No confirmation dialog, deliberately: the game's own production list buys with one click
+    too, and the price is on the button before it is pressed.
+  - The continuation logic — try to sign the route first, walk on only when the engine refuses,
+    three attempts per merchant per turn — follows **Holistic QoL+**, whose merchant-route patch
+    solves the same problem and documents the freeze that the attempt cap prevents.
+- The **Empire** filter tab now counts **Treasure Resources alongside Empire ones** — the same
+  pairing `ui/planner/facts.js` already treats as one kind of thing, since a resource is
+  TREASURE instead of EMPIRE in some ages purely because a patch rewrote its class (Gold is
+  EMPIRE in Antiquity, TREASURE in Exploration).
+
+### Fixed
+
+- **Hardwood's card showed raw, unrendered markup** — `[icon:YIELD_PRODUCTION]`,
+  `[TIP:...]...[/tip]` — instead of an icon and a tooltip, reported as "missing labels on
+  Hardwood". Its production bonus uses an effect (`EFFECT_PLAYER_ADJUST_UNIT_PRODUCTION_PER_RESOURCE`,
+  a percentage towards naval or civilian units rather than a building) that
+  `ui/planner/empire-effects.js` had no branch for, so the card fell all the way through to
+  the game's own description — composed but never stylised. It now has a proper branch and
+  shows a normal "+X% towards Naval/Civilian Units" total like every other resource.
+  - The fallback path itself is fixed too, for any future effect this mod does not yet total:
+    it renders with `Locale.stylize`, the same call the game's own tooltip renderer makes for
+    this exact kind of text, instead of composing into plain `textContent`.
+- **The "no Trade Route slot" tooltip named the wrong fix.** It said "better relations earn
+  another slot", which is not how trade capacity actually rises — a specific diplomatic
+  action, **Improve Trade Relations**, does. The tooltip now names it.
+
 ## 1.3
 
 ### Added

@@ -147,6 +147,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="ko_KR">
             <Text>기병</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CIVILIAN" Language="ko_KR">
+            <Text>민간</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="ko_KR">
             <Text>대형 함선</Text>
         </Row>
@@ -300,5 +303,51 @@
         <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="ko_KR">
             <Text></Text>
         </Replace>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT" Language="ko_KR">
+            <Text>상인 구매</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_TOOLTIP" Language="ko_KR">
+            <Text>{2_City}에서 {1_Unit}을(를) {3_Cost} 금으로 구매해 {4_Target}(으)로 보냅니다. 상인은 스스로 이동하며 충분히 가까워지면 교역로를 개설합니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS" Language="ko_KR">
+            <Text>상인 가격은 {1_Cost} 금이고, 보유 금은 {2_Gold}입니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED" Language="ko_KR">
+            <Text>지금은 상인을 구매할 수 있는 정착지가 없습니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_ON_THE_WAY" Language="ko_KR">
+            <Text>이미 당신의 상인이 {2_Target}(으)로 이동 중입니다.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_BALANCED" Language="ko_KR">
+            <Text>모든 교역로를 표시합니다. 자원이 많은 것이 위로 옵니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_YIELD" Language="ko_KR">
+            <Text>{1_Yield}을(를) 주는 자원이 있는 교역로만 표시합니다. 많은 것이 위로 옵니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_EMPIRE" Language="ko_KR">
+            <Text>제국 자원 또는 보물 자원이 있는 교역로만 표시합니다. 많은 것이 위로 옵니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_FACTORY" Language="ko_KR">
+            <Text>공장 자원이 있는 교역로만 표시합니다. 많은 것이 위로 옵니다.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_RESOURCE" Language="ko_KR">
+            <Text>{1_Resource}이(가) 있는 교역로만 표시합니다. 많은 것이 위로 옵니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT" Language="ko_KR">
+            <Text>상인 보기</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP" Language="ko_KR">
+            <Text>클릭하면 지도에서 이 상인으로 이동합니다. 이 화면은 닫힙니다.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL" Language="ko_KR">
+            <Text>교역로 자리가 없습니다</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="ko_KR">
+            <Text>{1_Leader}과(와)는 교역로를 {2_Capacity}개까지 유지할 수 있는데, 이미 {3_Used}개가 운영 중이거나 이동 중입니다. 지금 상인을 보내면 도착했을 때 자리가 없을 수 있습니다.[N][N]클릭하면 {1_Leader}과(와)의 외교가 열립니다. 그곳의 '교역 관계 개선' 행동으로 이 상대와의 교역로 한도를 늘릴 수 있습니다.</Text>
+        </Row>
     </LocalizedText>
 </Database>

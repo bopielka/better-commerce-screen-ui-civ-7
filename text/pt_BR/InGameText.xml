@@ -147,6 +147,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="pt_BR">
             <Text>cavalaria</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CIVILIAN" Language="pt_BR">
+            <Text>civis</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="pt_BR">
             <Text>naus pesadas</Text>
         </Row>
@@ -300,5 +303,51 @@
         <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="pt_BR">
             <Text></Text>
         </Replace>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT" Language="pt_BR">
+            <Text>Comprar um mercador</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_TOOLTIP" Language="pt_BR">
+            <Text>Compra {1_Unit} em {2_City} por {3_Cost} de ouro e o envia para {4_Target}. Ele viaja sozinho e abre a rota comercial assim que estiver perto o bastante.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS" Language="pt_BR">
+            <Text>Um mercador custa {1_Cost} de ouro e você tem {2_Gold}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED" Language="pt_BR">
+            <Text>Nenhum dos seus assentamentos pode comprar um mercador agora.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_ON_THE_WAY" Language="pt_BR">
+            <Text>Um mercador seu já está a caminho de {2_Target}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_BALANCED" Language="pt_BR">
+            <Text>Mostra todas as rotas. Primeiro as que trazem mais recursos.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_YIELD" Language="pt_BR">
+            <Text>Mostra apenas as rotas com recursos que dão: {1_Yield}. Primeiro as que trazem mais.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_EMPIRE" Language="pt_BR">
+            <Text>Mostra apenas as rotas com recursos de império ou de tesouro. Primeiro as que trazem mais.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_FACTORY" Language="pt_BR">
+            <Text>Mostra apenas as rotas com recursos de fábrica. Primeiro as que trazem mais.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_RESOURCE" Language="pt_BR">
+            <Text>Mostra apenas as rotas com: {1_Resource}. Primeiro as que trazem mais.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT" Language="pt_BR">
+            <Text>Mostrar o mercador</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP" Language="pt_BR">
+            <Text>Clique para ir até este mercador no mapa. Esta tela será fechada.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL" Language="pt_BR">
+            <Text>Sem vaga para outra rota</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="pt_BR">
+            <Text>Você pode manter {2_Capacity} rota(s) comercial(is) com {1_Leader}, e {3_Used} já estão ativas ou a caminho. Um mercador enviado agora pode chegar sem vaga para ocupar.[N][N]Clique para abrir a diplomacia com {1_Leader}. A ação “Melhorar Relações Comerciais” lá aumenta seu limite de Rotas Comerciais com eles.</Text>
+        </Row>
     </LocalizedText>
 </Database>

@@ -157,6 +157,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="ru_RU">
             <Text>кіннота</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CIVILIAN" Language="ru_RU">
+            <Text>цивільні</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="ru_RU">
             <Text>важкі кораблі</Text>
         </Row>
@@ -310,5 +313,51 @@
         <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="ru_RU">
             <Text></Text>
         </Replace>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT" Language="ru_RU">
+            <Text>Купити купця</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_TOOLTIP" Language="ru_RU">
+            <Text>Купує {1_Unit} у поселенні {2_City} за {3_Cost} золота й вирушає до {4_Target}. Купець дійде сам і відкриє торговий шлях, щойно опиниться досить близько.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS" Language="ru_RU">
+            <Text>Купець коштує {1_Cost} золота, а у вас {2_Gold}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED" Language="ru_RU">
+            <Text>Жодне з ваших поселень зараз не може купити купця.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_ON_THE_WAY" Language="ru_RU">
+            <Text>Ваш купець уже прямує до {2_Target}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_BALANCED" Language="ru_RU">
+            <Text>Показує всі шляхи. Спершу ті, що дають найбільше ресурсів.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_YIELD" Language="ru_RU">
+            <Text>Показує лише шляхи з ресурсами, які дають: {1_Yield}. Спершу ті, де їх найбільше.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_EMPIRE" Language="ru_RU">
+            <Text>Показує лише шляхи з імперськими або скарбовими ресурсами. Спершу ті, де їх найбільше.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_FACTORY" Language="ru_RU">
+            <Text>Показує лише шляхи з фабричними ресурсами. Спершу ті, де їх найбільше.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_RESOURCE" Language="ru_RU">
+            <Text>Показує лише шляхи з ресурсом: {1_Resource}. Спершу ті, де його найбільше.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT" Language="ru_RU">
+            <Text>Показати купця</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP" Language="ru_RU">
+            <Text>Натисніть, щоб перейти до цього купця на карті. Цей екран закриється.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL" Language="ru_RU">
+            <Text>Немає вільного місця для шляху</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="ru_RU">
+            <Text>З лідером {1_Leader} ви можете мати {2_Capacity} торговельних шляхів, і {3_Used} вже діють або в дорозі. Купець, відправлений зараз, може дійти й не мати куди стати.[N][N]Натисніть, щоб відкрити дипломатію з {1_Leader}. Дія «Покращення торговельних відносин» там підвищує ліміт торгових шляхів з ними.</Text>
+        </Row>
     </LocalizedText>
 </Database>

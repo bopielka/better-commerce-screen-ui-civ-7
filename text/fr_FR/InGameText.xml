@@ -147,6 +147,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="fr_FR">
             <Text>cavalerie</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CIVILIAN" Language="fr_FR">
+            <Text>civils</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="fr_FR">
             <Text>navires lourds</Text>
         </Row>
@@ -300,5 +303,51 @@
         <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="fr_FR">
             <Text></Text>
         </Replace>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT" Language="fr_FR">
+            <Text>Acheter un marchand</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_TOOLTIP" Language="fr_FR">
+            <Text>Achète {1_Unit} à {2_City} pour {3_Cost} or et l'envoie à {4_Target}. Il s'y rend seul et ouvre la route commerciale dès qu'il est assez proche.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS" Language="fr_FR">
+            <Text>Un marchand coûte {1_Cost} or et vous avez {2_Gold}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED" Language="fr_FR">
+            <Text>Aucune de vos colonies ne peut acheter un marchand pour le moment.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_ON_THE_WAY" Language="fr_FR">
+            <Text>Un de vos marchands est déjà en route vers {2_Target}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_BALANCED" Language="fr_FR">
+            <Text>Affiche toutes les routes. Celles qui apportent le plus de ressources d'abord.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_YIELD" Language="fr_FR">
+            <Text>N'affiche que les routes avec des ressources qui donnent : {1_Yield}. Celles qui en apportent le plus d'abord.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_EMPIRE" Language="fr_FR">
+            <Text>N'affiche que les routes avec des ressources d'empire ou de trésor. Celles qui en apportent le plus d'abord.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_FACTORY" Language="fr_FR">
+            <Text>N'affiche que les routes avec des ressources d'usine. Celles qui en apportent le plus d'abord.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_RESOURCE" Language="fr_FR">
+            <Text>N'affiche que les routes avec : {1_Resource}. Celles qui en apportent le plus d'abord.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT" Language="fr_FR">
+            <Text>Montrer le marchand</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP" Language="fr_FR">
+            <Text>Cliquez pour rejoindre ce marchand sur la carte. Cet écran se ferme.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL" Language="fr_FR">
+            <Text>Plus de place pour une route</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="fr_FR">
+            <Text>Vous pouvez tenir {2_Capacity} route(s) commerciale(s) avec {1_Leader}, et {3_Used} sont déjà actives ou en chemin. Un marchand envoyé maintenant risque d'arriver sans place libre.[N][N]Cliquez pour ouvrir la diplomatie avec {1_Leader}. L'action « Amélioration des relations commerciales » y augmente votre limite de routes commerciales avec eux.</Text>
+        </Row>
     </LocalizedText>
 </Database>

@@ -1,84 +1,40 @@
 [h1]Better Commerce Screen UI by Najane[/h1]
 
-The Commerce screen decides what every settlement in your empire lives on - and the game makes you do it one drag at a time, with the numbers you need spread over two columns and a scrollbar.
-
-This mod makes it workable. [b]No rules change[/b]: everything it does you could do by hand - it just takes far longer.
+Reworks the Commerce screen - Resources, Trade Routes, Empire, and a new Factory tab - into something you can actually read and act on in one pass. [b]No rules change[/b]: everything here you could already do by hand, just far slower.
 
 [hr][/hr]
 [h2]What you get[/h2]
 
 [list]
-[*][b]The mouse does more[/b] - right-click an assigned resource to return it to the pool, and hold [b]Shift[/b] to do it to every resource of that kind. Shift while assigning fills a settlement instead of placing one. A [b]?[/b] by the buttons lists the shortcuts, since none can be found by looking.
-[*][b]Assign All, Reassign All, Unassign All[/b], plus a priority picker and quick assign on each settlement card.
-[*][b]Optional automation[/b] for resources arriving with the screen closed. Off until you change it.
-[*][b]Trade routes at a glance[/b] - origin, destination and domain on one title line, three to a row, plus a total of the routes you could still open.
-[*][b]Empire resources in numbers[/b] - not "+1 Gold in all settlements" but what that is worth to you.
-[*][b]A new Factory Resources tab[/b] for the Modern age: what slotted resources produce, what idle ones would add.
-[*][b]A running GDP total[/b] - roughly what your assigned Resources earn per turn towards the Economic Victory, broken down by source.
-[*][b]A calmer screen[/b] - icon tabs, no instruction paragraph, and no "resources can be assigned" nag while nothing you hold can go anywhere.
+[*][b]Right-click to unassign[/b], hold [b]Shift[/b] for every resource of that kind, and Shift-assign to fill a settlement in one click.
+[*][b]Assign All / Reassign All / Unassign All[/b], plus a priority picker and quick-assign per settlement.
+[*][b]Optional automation[/b] on resources arriving with the screen closed - off by default.
+[*][b]Camels handled correctly[/b] - the extra slots they grant are never lost mid-reshuffle.
+[*][b]Trade route cards[/b] rebuilt: origin, destination and domain on one line, three cards to a row, a running total of routes you hold vs. could still open.
+[*][b]Filter tabs per section[/b] - show only routes carrying Food, Production, Gold, Science, Culture, Influence, Camels, or Empire/Treasure resources, richest first.
+[*][b]Buy and send a Merchant straight from a route card[/b] - one click, walks there on its own, opens the route itself. Warns you when a leader's trade capacity is already spoken for, and links straight to diplomacy with them.
+[*][b]Empire resources shown in numbers[/b] - not "+1 Gold in all settlements" but what that is actually worth to your empire.
+[*][b]A new Factory Resources tab[/b] (Modern age): what's slotted, what's idle, what each is worth.
+[*][b]A running GDP total[/b] toward the Economic Victory, broken down by source.
+[*][b]Treasure convoys[/b] without every homeland settlement cluttering the "not generating" list.
+[*][b]A calmer screen[/b] overall - icon tabs, no instruction paragraphs, no nags for resources that have nowhere to go.
 [/list]
 
-[hr][/hr]
-[h2]How Assign All decides[/h2]
-
-[b]Unhappiness first[/b] (switchable): any settlement below zero Happiness is fed back up to zero, cities before towns, and the help is spread rather than dumped - settlements at -10, -20 and -30 are levelled out instead of one being rescued while the rest stay in the red.
-
-Then each settlement gets the yield you picked for it on its card. Left on [b]Balanced[/b], a city is fed Production and a town Food. Leftovers go by situational fit, then single-yield resources, then multi-yield, and last those that only cheapen units.
-
-What a resource is worth is read from the game's own data, [b]conditions included[/b]: a bonus needing a city, your capital or a certain building is not counted where it would not happen, and neither is the weaker half of an either/or bonus - Fish pays 8 Food with a Port and 4 without, so it only rates well where the Port is.
+Assignment logic weighs Happiness rescues, each settlement's chosen priority, and every conditional bonus in the game's own data - a resource that only pays with a Port, your capital, or a certain building is never credited where it would not fire.
 
 [hr][/hr]
-[h2]Settings[/h2]
+[h2]Compatibility[/h2]
 
-Under [b]Options - Mods[/b]: how hard to chase Happiness (never / cities only / all), and what to do when a resource arrives with the screen closed:
+Saved games are unaffected and [b]no rules, values or balance change[/b] - safe to add or remove mid-game.
 
-[code]Never                        the mod does nothing on its own
-Place the new resource       just the one that arrived
-Place everything unassigned  the arrival is a cue to tidy the whole pool
-Rebuild every assignment     clears every settlement and starts again[/code]
-
-Anything short of the last never moves a resource you already placed, and nothing happens unless something happens in-game.
-
-Two more, on by default: [b]build a Culture settlement[/b] and [b]build a Gold settlement[/b]. Every resource paying that yield is gathered into the one city already making the most of it, where percentages compound. Settlements with a priority of their own come first.
-
-On the screen itself, [b]Imports first[/b] - off by default, for the [b]Economic Victory[/b] only. A resource in a City is worth +1 GDP a turn; an imported one is worth [b]+1 more on top[/b], twice as much as your own, and neither pays in a Town. It outranks every settlement's priority, so chasing any other victory, leave it off.
+⚠️ [b]Not compatible with Resource+[/b]. Both replace the same screen; run one or the other.
 
 [hr][/hr]
-[h2]Empire resources[/h2]
+[h2]Credits[/h2]
 
-The Empire tab told you what a resource does - "+1 Gold and Happiness in all settlements" - the same whether you hold one settlement or twenty. Now it says what it is worth:
+The automatic-assignment engine is a port of [b]Resource+[/b] by [b]Br4d[/b], used with permission - this mod exists because that one showed what was possible.
 
-[code](icon) GOLD [6]
-One:  +12 (gold)  +12 (happiness)
-All:  +72 (gold)  +72 (happiness)[/code]
-
-Above the tabs, one income total for the empire. Combat bonuses name every unit class they reach, including ones the game's own description omits, and capped or Celebration-only bonuses say so rather than inflating the total.
-
-[hr][/hr]
-[h2]Factory resources[/h2]
-
-A Modern-age resource pays nothing for being owned - it only counts once it sits in a settlement with a Factory, and the game has no screen for them. The new tab shows what is [b]in factories[/b] and what it produces, what is [b]idle[/b] and what it would add, and the GDP it earns.
-
-An optional [b]Factories first[/b] switch places them the way the game rewards: a settlement runs one kind at a time but any number of copies, so each factory starts on the kind that can fill it.
-
-[hr][/hr]
-[h2]Trade routes and treasure convoys[/h2]
-
-A route card used to bury its destination in a sentence; now the title line says all of it and three fit in a row. One line says how many routes you run and how many you could, with a tooltip naming every leader you have room for - split into those you can sign [b]now[/b] and those out of [b]range[/b].
-
-Treasure convoys get the same layout, homeland settlements leave the "not generating" list, and each shows the [b]Gold[/b] and [b]GDP[/b] it pays.
-
-[hr][/hr]
-[h2]Compatibility, source and credits[/h2]
-
-Saved games are unaffected and [b]no rules, values or balance change[/b]. Safe to add or remove mid-game.
-
-⚠️ [b]Not compatible with Resource+.[/b] Both replace the same screen; run one or the other.
-
-Open source, free to reuse: [url=https://github.com/bopielka/better-commerce-screen-ui-civ-7]github.com/bopielka/better-commerce-screen-ui-civ-7[/url]
+[b]Open source[/b], written in full by [b]Opus 5[/b] (Anthropic), free for anyone to reuse:
+[url=https://github.com/bopielka/better-commerce-screen-ui-civ-7]github.com/bopielka/better-commerce-screen-ui-civ-7[/url]
 
 Buy me a coffee: [url=https://tipply.pl/@najane]tipply.pl/@najane[/url]
-
-The automatic assignment logic is a port of [b]Resource+[/b] by [b]Br4d[/b], used with permission.
-
-[i]This mod was written in full by Opus 5, a model by Anthropic.[/i]

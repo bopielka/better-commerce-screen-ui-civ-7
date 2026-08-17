@@ -302,6 +302,9 @@ const STYLE = `
     color: #b39e80;
     font-size: 0.95rem;
     text-align: center;
+    /* Stylized text turns [N] into a real newline, not a <br> - see the note above
+       descriptionFor. Without this the line collapses to a space like any HTML whitespace. */
+    white-space: pre-wrap;
 }
 
 /*
@@ -661,9 +664,24 @@ function cardFor(resource, settlements, computed) {
         inner.appendChild(legend);
     }
     if (computed.length === 0) {
-        // Nothing this module knows how to add up - say what the game says instead.
+        /*
+         * Nothing this module knows how to add up - say what the game says instead.
+         *
+         * ⚠️ `Locale.stylize`, set as `innerHTML` - NOT `Locale.compose` into `textContent`.
+         * A resource's own description carries the game's markup (`[icon:...]`,
+         * `[TIP:...]...[/tip]`), and `compose` only resolves the localisation key; it does
+         * not touch that markup at all. Read into `textContent` it printed as literal
+         * bracketed text instead of an icon and a tooltip - reported as "missing labels on
+         * Hardwood", back when this effect had no branch in empire-effects.js and fell all
+         * the way through to here. `innerHTML = Locale.stylize(...)` is the same call the
+         * game's own tooltip renderer makes for exactly this kind of text; see the note on
+         * `descriptionFor` for why the CSS also needs `white-space: pre-wrap`.
+         *
+         * The strings come from GameInfo.Types/LOC_* keys the game ships, never from a
+         * player, so there is nothing here for that HTML to inject.
+         */
         const fallback = makeElement('div', `${CLASS}-card__fallback`);
-        fallback.textContent = (resource.description ?? []).map((key) => Locale.compose(key)).join(' ');
+        fallback.innerHTML = Locale.stylize(descriptionFor(resource).join('[N]'));
         inner.appendChild(fallback);
     }
     card.appendChild(inner);

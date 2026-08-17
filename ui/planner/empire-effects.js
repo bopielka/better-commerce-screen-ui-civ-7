@@ -66,6 +66,17 @@ const PER_TYPE_PLAYER_YIELD = 'PLAYER_ADJUST_YIELD_PER_RESOURCE_TYPE';
 const PER_COPY_YIELD = 'ADJUST_YIELD_PER_RESOURCE';
 const PER_COPY_COMBAT = 'ADJUST_COMBAT_STRENGTH_PER_RESOURCE';
 const CONSTRUCTIBLE_PRODUCTION = 'ADJUST_CONSTRUCTIBLE_PRODUCTION_PER_RESOURCE';
+/**
+ * Hardwood, and only Hardwood as of this writing - a percentage towards UNIT production
+ * rather than building production, which is why it needed a branch of its own rather than
+ * folding into CONSTRUCTIBLE_PRODUCTION above.
+ *
+ * ⚠️ Left unhandled, this fell all the way through to the card's fallback - the game's own
+ * description, composed but never stylized, so its `[icon:...]` and `[TIP:...]...[/tip]`
+ * markup showed as literal text instead of an icon and a tooltip. Reported as "missing
+ * labels on Hardwood".
+ */
+const UNIT_PRODUCTION = 'ADJUST_UNIT_PRODUCTION_PER_RESOURCE';
 
 /**
  * Which units a combat bonus reaches.
@@ -251,6 +262,35 @@ function unitClassesOf(modifierId) {
     return names.length ? names : tags.map((tag) => Locale.compose(UNIT_CLASS_NAMES[tag]));
 }
 
+/**
+ * What `EFFECT_PLAYER_ADJUST_UNIT_PRODUCTION_PER_RESOURCE` names its target as - an ARGUMENT
+ * on the modifier, not a requirement, and not built from a unit-class tag the way the combat
+ * bonuses above are. Hardwood alone uses two shapes of it across the ages:
+ *
+ *     Antiquity / Exploration   Domain="DOMAIN_SEA"           -> "Naval Units"
+ *     Modern                    UnitClass="UNIT_CLASS_NON_COMBAT" -> "Civilian Units"
+ *
+ * `DOMAIN_SEA` reuses this file's own naval key rather than a name of its own - "naval" means
+ * the same thing whichever argument said so.
+ */
+const DOMAIN_UNIT_NAMES = {
+    DOMAIN_SEA: UNIT_CLASS_NAMES.UNIT_CLASS_NAVAL,
+};
+
+/** Argument values `UnitClass` can carry that are not also combat-modifier tags. */
+const PRODUCTION_UNIT_CLASS_NAMES = {
+    UNIT_CLASS_NON_COMBAT: 'LOC_NAJANE_COMMERCE_UNITS_CIVILIAN',
+};
+
+function unitProductionTargetName(argumentsMap) {
+    const domainKey = DOMAIN_UNIT_NAMES[argumentsMap.get('Domain')];
+    if (domainKey) {
+        return Locale.compose(domainKey);
+    }
+    const classKey = PRODUCTION_UNIT_CLASS_NAMES[argumentsMap.get('UnitClass')];
+    return classKey ? Locale.compose(classKey) : null;
+}
+
 /** What a production bonus is spent on, in the game's own words. */
 function constructibleName(constructibleType) {
     try {
@@ -315,7 +355,14 @@ export function empireEffectTotals(resourceType, copies, settlements = null) {
 
     resourceModifiers(resourceType).forEach((argumentsMap, modifierId) => {
         const effect = effectTypeOf(modifierId);
-        const amount = Number(argumentsMap.get('Amount'));
+        /*
+         * ⚠️ `Percent`, not `Amount`, is what `EFFECT_PLAYER_ADJUST_UNIT_PRODUCTION_PER_RESOURCE`
+         * calls its own figure - checked against the argument names in
+         * resources-gameeffects-v2.xml, not assumed. Every other effect here uses `Amount`;
+         * reading only that silently dropped Hardwood to the fallback, which is how it got
+         * here. A modifier is asked for whichever name it actually carries.
+         */
+        const amount = Number(argumentsMap.get('Amount') ?? argumentsMap.get('Percent'));
         if (!Number.isFinite(amount) || amount === 0) {
             return;
         }
@@ -388,6 +435,34 @@ export function empireEffectTotals(resourceType, copies, settlements = null) {
                 perCopy: amount,
                 scales: true,
                 towards: building ? [building] : [],
+                conditional,
+                active,
+            });
+            return;
+        }
+
+        /*
+         * A percentage towards producing a KIND OF UNIT rather than a building - Hardwood's
+         * naval bonus in Antiquity and Exploration, its civilian one in Modern. Same shape
+         * as the branch above and merged the same way ("percent:${amount}"), because both
+         * ends up rendered as the identical "+X% Production towards {towards}" line; nothing
+         * distinguishes a building's row from a unit's once the number matches.
+         */
+        if (effect.includes(UNIT_PRODUCTION)) {
+            const target = unitProductionTargetName(argumentsMap);
+            const entry = byKey.get(`percent:${amount}`);
+            if (entry) {
+                if (target && !entry.towards.includes(target)) {
+                    entry.towards.push(target);
+                }
+                return;
+            }
+            add(`percent:${amount}`, {
+                kind: 'percent',
+                amount: amount * copies,
+                perCopy: amount,
+                scales: true,
+                towards: target ? [target] : [],
                 conditional,
                 active,
             });

@@ -147,6 +147,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="zh_Hant_HK">
             <Text>騎兵</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CIVILIAN" Language="zh_Hant_HK">
+            <Text>民用</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="zh_Hant_HK">
             <Text>重型艦船</Text>
         </Row>
@@ -300,5 +303,51 @@
         <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="zh_Hant_HK">
             <Text></Text>
         </Replace>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT" Language="zh_Hant_HK">
+            <Text>購買商人</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_TOOLTIP" Language="zh_Hant_HK">
+            <Text>在{2_City}花費{3_Cost}金幣購買{1_Unit}，並派往{4_Target}。商人會自行前往，一旦足夠接近便會開通貿易路線。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS" Language="zh_Hant_HK">
+            <Text>商人需要{1_Cost}金幣，你只有{2_Gold}。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED" Language="zh_Hant_HK">
+            <Text>目前沒有任何聚落可以購買商人。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_ON_THE_WAY" Language="zh_Hant_HK">
+            <Text>你已有商人正在前往{2_Target}。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_BALANCED" Language="zh_Hant_HK">
+            <Text>顯示全部貿易路線，資源最多的排在前面。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_YIELD" Language="zh_Hant_HK">
+            <Text>只顯示帶有產出{1_Yield}資源的貿易路線，數量最多的排在前面。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_EMPIRE" Language="zh_Hant_HK">
+            <Text>只顯示帶有帝國資源或寶藏資源的貿易路線，數量最多的排在前面。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_FACTORY" Language="zh_Hant_HK">
+            <Text>只顯示帶有工廠資源的貿易路線，數量最多的排在前面。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_RESOURCE" Language="zh_Hant_HK">
+            <Text>只顯示帶有{1_Resource}的貿易路線，數量最多的排在前面。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT" Language="zh_Hant_HK">
+            <Text>顯示商人</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP" Language="zh_Hant_HK">
+            <Text>點擊前往地圖上的這位商人。本介面將關閉。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL" Language="zh_Hant_HK">
+            <Text>沒有空餘的貿易路線名額</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="zh_Hant_HK">
+            <Text>你與{1_Leader}最多可保持{2_Capacity}條貿易路線，其中{3_Used}條已在運行或正在途中。現在派出的商人抵達時可能沒有名額可用。[N][N]點擊開啟與{1_Leader}的外交。在那裡執行「改善貿易關係」行動可以提高與其的貿易路線上限。</Text>
+        </Row>
     </LocalizedText>
 </Database>

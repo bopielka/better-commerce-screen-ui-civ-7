@@ -71,7 +71,23 @@ EFFECT_UNIT_ADJUST_COMBAT_STRENGTH_PER_RESOURCE          Saltpeter, Coal, Oil, R
 
 EFFECT_CITY_ADJUST_CONSTRUCTIBLE_PRODUCTION_PER_RESOURCE Coal, Oil
     → a percentage, Amount × copies, towards one kind of building
+
+EFFECT_PLAYER_ADJUST_UNIT_PRODUCTION_PER_RESOURCE        Hardwood (only)
+    → a percentage, Percent × copies, towards a kind of UNIT rather than a building
 ```
+
+⚠️ **`EFFECT_PLAYER_ADJUST_UNIT_PRODUCTION_PER_RESOURCE` names its own figure `Percent`, not
+`Amount`** - the one effect here that does. Reading only `Amount` silently dropped it to the
+card's fallback text (the game's own description, composed but not stylised - "missing labels
+on Hardwood", since `Locale.compose` leaves `[icon:...]` and `[TIP:...]...[/tip]` as literal
+text). `empireEffectTotals` now reads `Amount ?? Percent`.
+
+Its TARGET is also unlike the combat branch above: an **argument** on the modifier
+(`Domain="DOMAIN_SEA"` in Antiquity/Exploration, `UnitClass="UNIT_CLASS_NON_COMBAT"` in
+Modern), not a unit-tag `REQUIREMENT_UNIT_TAG_MATCHES` requirement - so `unitClassesOf` does
+not apply, and `unitProductionTargetName` reads the argument directly. `DOMAIN_SEA` reuses this
+file's own naval name (`LOC_NAJANE_COMMERCE_UNITS_NAVAL`); `UNIT_CLASS_NON_COMBAT` gets a key
+of its own, `LOC_NAJANE_COMMERCE_UNITS_CIVILIAN`.
 
 ### ⚠️ All four suffixes scale with copies
 

@@ -147,6 +147,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="ja_JP">
             <Text>騎乗</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CIVILIAN" Language="ja_JP">
+            <Text>民間</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="ja_JP">
             <Text>重装艦</Text>
         </Row>
@@ -300,5 +303,51 @@
         <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="ja_JP">
             <Text></Text>
         </Replace>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT" Language="ja_JP">
+            <Text>商人を購入</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_TOOLTIP" Language="ja_JP">
+            <Text>{2_City}で{1_Unit}を{3_Cost}ゴールドで購入し、{4_Target}へ送ります。商人は自動で移動し、十分に近づくと交易路を開きます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS" Language="ja_JP">
+            <Text>商人は{1_Cost}ゴールドですが、所持金は{2_Gold}です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED" Language="ja_JP">
+            <Text>現在、商人を購入できる集落がありません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_ON_THE_WAY" Language="ja_JP">
+            <Text>すでにあなたの商人が{2_Target}へ向かっています。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_BALANCED" Language="ja_JP">
+            <Text>すべての交易路を表示します。資源の多いものが上に並びます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_YIELD" Language="ja_JP">
+            <Text>{1_Yield}を生む資源を含む交易路だけを表示します。多いものが上に並びます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_EMPIRE" Language="ja_JP">
+            <Text>帝国資源または財宝資源を含む交易路だけを表示します。多いものが上に並びます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_FACTORY" Language="ja_JP">
+            <Text>工場資源を含む交易路だけを表示します。多いものが上に並びます。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_RESOURCE" Language="ja_JP">
+            <Text>{1_Resource}を含む交易路だけを表示します。多いものが上に並びます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT" Language="ja_JP">
+            <Text>商人を表示</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP" Language="ja_JP">
+            <Text>クリックすると、マップ上のこの商人へ移動します。この画面は閉じます。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL" Language="ja_JP">
+            <Text>交易路の空きがありません</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="ja_JP">
+            <Text>{1_Leader}とは交易路を{2_Capacity}本まで結べますが、すでに{3_Used}本が稼働中または移動中です。いま商人を送っても、着いたときに空きがない可能性があります。[N][N]クリックすると{1_Leader}との外交を開きます。そこにある「交易関係の改善」アクションで、この相手との交易路の上限が増えます。</Text>
+        </Row>
     </LocalizedText>
 </Database>

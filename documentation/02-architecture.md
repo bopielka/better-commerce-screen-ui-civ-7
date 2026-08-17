@@ -54,15 +54,18 @@ import './screen/resources-tab.js';   // registers CommerceResourcesContainer
 import './screen/factory-tab.js';     // replaces CommerceScreen outright
 import './screen/trade-routes.js';    // wraps TradeRouteCard
 
+import { startMerchantOrders } from './engine/merchant-orders.js';
 import { startAutoAssign } from './planner/auto-assign.js';
 import { startAssignNotification } from './screen/assign-notification.js';
 
 startAutoAssign();
 startAssignNotification();
+startMerchantOrders();
 ```
 
-The last two run with the screen closed, so they are started here rather than from a
-component's `onMount`.
+The last three run with the screen closed, so they are started here rather than from a
+component's `onMount`. `startMerchantOrders` in particular looks after a merchant that is
+still walking several turns after the Commerce screen was shut.
 
 ### Action groups and scopes
 

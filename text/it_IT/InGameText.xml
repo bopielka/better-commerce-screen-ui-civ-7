@@ -147,6 +147,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="it_IT">
             <Text>cavalleria</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CIVILIAN" Language="it_IT">
+            <Text>civili</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="it_IT">
             <Text>navi pesanti</Text>
         </Row>
@@ -300,5 +303,51 @@
         <Replace Tag="LOC_COMMERCE_TREASURE_RESOURCES_TITLE" Language="it_IT">
             <Text></Text>
         </Replace>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT" Language="it_IT">
+            <Text>Compra un mercante</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_TOOLTIP" Language="it_IT">
+            <Text>Compra {1_Unit} a {2_City} per {3_Cost} oro e lo invia a {4_Target}. Viaggia da solo e apre la rotta commerciale non appena è abbastanza vicino.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS" Language="it_IT">
+            <Text>Un mercante costa {1_Cost} oro e tu hai {2_Gold}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED" Language="it_IT">
+            <Text>Nessuno dei tuoi insediamenti può comprare un mercante al momento.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_ON_THE_WAY" Language="it_IT">
+            <Text>Un tuo mercante è già in viaggio verso {2_Target}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_BALANCED" Language="it_IT">
+            <Text>Mostra tutte le rotte. Prima quelle che portano più risorse.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_YIELD" Language="it_IT">
+            <Text>Mostra solo le rotte con risorse che danno: {1_Yield}. Prima quelle che ne portano di più.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_EMPIRE" Language="it_IT">
+            <Text>Mostra solo le rotte con risorse dell'impero o del tesoro. Prima quelle che ne portano di più.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_FACTORY" Language="it_IT">
+            <Text>Mostra solo le rotte con risorse da fabbrica. Prima quelle che ne portano di più.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_RESOURCE" Language="it_IT">
+            <Text>Mostra solo le rotte con: {1_Resource}. Prima quelle che ne portano di più.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT" Language="it_IT">
+            <Text>Mostra il mercante</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP" Language="it_IT">
+            <Text>Fai clic per raggiungere questo mercante sulla mappa. Questa schermata si chiude.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL" Language="it_IT">
+            <Text>Nessuno spazio per una rotta</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="it_IT">
+            <Text>Puoi mantenere {2_Capacity} rotta/e commerciale/i con {1_Leader}, e {3_Used} sono già attive o in viaggio. Un mercante inviato ora potrebbe arrivare senza posto libero.[N][N]Fai clic per aprire la diplomazia con {1_Leader}. L'azione «Migliora relazioni commerciali» lì aumenta il tuo limite di rotte commerciali con loro.</Text>
+        </Row>
     </LocalizedText>
 </Database>

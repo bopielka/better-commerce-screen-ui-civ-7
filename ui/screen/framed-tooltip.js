@@ -35,16 +35,46 @@ import { warn } from '../support/diagnostics.js';
 /** How far the frame floats off the control it belongs to. The game's default is 0. */
 const TOOLTIP_OFFSET = 12;
 
-/** One disposer per tooltip; see disposeFramedTooltips. */
-const disposers = [];
+/**
+ * The disposers, kept per SCOPE.
+ *
+ * ⚠️ Per scope, not in one list. A tab tearing its own tooltips down used to dispose every
+ * tooltip on the screen, including ones another tab had just built - so a visit to the Trade
+ * Routes tab left the Resources tab's buttons with dead tooltips for the rest of the session.
+ * A caller disposes what it made and nothing else.
+ */
+const disposers = new Map();
 
-export function disposeFramedTooltips() {
-    while (disposers.length) {
-        try {
-            disposers.pop()();
-        } catch (error) {
-            warn(`disposing a tooltip failed: ${error}`);
+const DEFAULT_SCOPE = 'screen';
+
+/**
+ * Disposes a scope and everything filed underneath it.
+ *
+ * ⚠️ Prefixes matter here. A caller that rebuilds one control at a time gives each its own
+ * scope - "trade-routes:1234" - and disposes just that one before throwing the old element
+ * away; the tab's teardown then passes "trade-routes" and takes the lot. Without the prefix
+ * rule the teardown would leave every per-control scope mounted.
+ *
+ * ⚠️ Disposing before discarding a trigger is not optional. A framed tooltip is anchored to
+ * the element it was built around; remove that element while the frame is open and the frame
+ * stays on screen with nothing to measure against, which the game draws in the top-left corner
+ * of the screen. That is what a click on the buy button used to do.
+ */
+export function disposeFramedTooltips(scope = DEFAULT_SCOPE) {
+    const prefix = `${scope}:`;
+    for (const key of Array.from(disposers.keys())) {
+        if (key !== scope && !key.startsWith(prefix)) {
+            continue;
         }
+        const list = disposers.get(key);
+        while (list?.length) {
+            try {
+                list.pop()();
+            } catch (error) {
+                warn(`disposing a tooltip failed: ${error}`);
+            }
+        }
+        disposers.delete(key);
     }
 }
 
@@ -79,8 +109,13 @@ function textCard(paragraph, isFirst) {
  *
  * @param title  a localisation key for the heading, or null for no heading.
  * @param text   already composed; blank lines split it into cards.
+ * @param scope  which teardown owns it; see `disposeFramedTooltips`.
  */
-export function appendWithFramedTooltip(parent, trigger, { title = null, text = '' } = {}) {
+export function appendWithFramedTooltip(
+    parent,
+    trigger,
+    { title = null, text = '', scope = DEFAULT_SCOPE } = {},
+) {
     const paragraphs = paragraphsOf(text);
     if (paragraphs.length) {
         try {
@@ -113,7 +148,17 @@ export function appendWithFramedTooltip(parent, trigger, { title = null, text = 
                                                     'div',
                                                     'font-title text-secondary uppercase mb-2',
                                                 );
-                                                insert(heading, createComponent(L10n.Compose, { text: title }));
+                                                /*
+                                                 * ⚠️ Stylize, not Compose. `Compose` resolves
+                                                 * the key and stops there, so a name carrying
+                                                 * the game's own markup - every yield name is
+                                                 * "[icon:YIELD_FOOD] Food" in several
+                                                 * languages - printed the tag as literal text
+                                                 * in the heading. Stylize composes AND turns
+                                                 * the markup into what it stands for, which is
+                                                 * what the cards below already did.
+                                                 */
+                                                insert(heading, createComponent(L10n.Stylize, { text: title }));
                                                 parts.push(heading);
                                             }
                                             parts.push(
@@ -132,7 +177,10 @@ export function appendWithFramedTooltip(parent, trigger, { title = null, text = 
             });
 
             if (rendered) {
-                disposers.push(dispose);
+                if (!disposers.has(scope)) {
+                    disposers.set(scope, []);
+                }
+                disposers.get(scope).push(dispose);
                 insert(parent, rendered);
                 return;
             }

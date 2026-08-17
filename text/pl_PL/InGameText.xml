@@ -153,6 +153,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CAVALRY" Language="pl_PL">
             <Text>kawaleria</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_UNITS_CIVILIAN" Language="pl_PL">
+            <Text>cywilne</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_UNITS_HEAVY" Language="pl_PL">
             <Text>ciężkie okręty</Text>
         </Row>
@@ -322,6 +325,52 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION" Language="pl_PL">
             <Text>Zasoby fabryczne w całym imperium.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT" Language="pl_PL">
+            <Text>Kup kupca</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_TOOLTIP" Language="pl_PL">
+            <Text>Kupuje jednostkę {1_Unit} w osadzie {2_City} za {3_Cost} złota i wysyła ją do osady {4_Target}. Kupiec sam tam dojdzie i otworzy szlak handlowy, gdy tylko znajdzie się dostatecznie blisko.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS" Language="pl_PL">
+            <Text>Kupiec kosztuje {1_Cost} złota, a masz {2_Gold}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED" Language="pl_PL">
+            <Text>Żadna z twoich osad nie może teraz kupić kupca.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_BUY_MERCHANT_ON_THE_WAY" Language="pl_PL">
+            <Text>Twój kupiec już zmierza do osady {2_Target}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_BALANCED" Language="pl_PL">
+            <Text>Pokazuj wszystkie szlaki. Najpierw te z największą liczbą surowców.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_YIELD" Language="pl_PL">
+            <Text>Pokazuj tylko szlaki z zasobami, które dają: {1_Yield}. Najpierw te, które mają ich najwięcej.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_EMPIRE" Language="pl_PL">
+            <Text>Pokazuj tylko szlaki z zasobami imperialnymi lub skarbowymi. Najpierw te, które mają ich najwięcej.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_FACTORY" Language="pl_PL">
+            <Text>Pokazuj tylko szlaki z zasobami fabrycznymi. Najpierw te, które mają ich najwięcej.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_SORT_RESOURCE" Language="pl_PL">
+            <Text>Pokazuj tylko szlaki z zasobem: {1_Resource}. Najpierw te, które mają go najwięcej.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT" Language="pl_PL">
+            <Text>Pokaż kupca</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP" Language="pl_PL">
+            <Text>Kliknij, aby przenieść się do tego kupca na mapie. Ten ekran zostanie zamknięty.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL" Language="pl_PL">
+            <Text>Brak wolnego miejsca na szlak</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="pl_PL">
+            <Text>Z przywódcą {1_Leader} możesz mieć {2_Capacity} szlak(ów) handlowych, a {3_Used} już działa lub jest w drodze. Kupiec wysłany teraz może dotrzeć i nie mieć gdzie się wpiąć.[N][N]Kliknij, aby otworzyć dyplomację z {1_Leader}. Akcja „Poprawa stosunków handlowych” podnosi tam limit szlaków handlowych z tym przywódcą.</Text>
         </Row>
     </LocalizedText>
 </Database>

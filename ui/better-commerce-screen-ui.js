@@ -11,7 +11,8 @@ import './screen/factory-tab.js';
 // Wraps the trade route card, which is its own tab and its own mount.
 import './screen/trade-routes.js';
 
-// Both run with the screen closed, so they start here rather than from a component.
+// All three run with the screen closed, so they start here rather than from a component.
+import { startMerchantOrders } from './engine/merchant-orders.js';
 import { startAutoAssign } from './planner/auto-assign.js';
 import { startAssignNotification } from './screen/assign-notification.js';
 
@@ -20,6 +21,9 @@ import { log, warn } from './support/diagnostics.js';
 
 startAutoAssign();
 startAssignNotification();
+// A merchant bought from the Trade Routes tab walks for several turns after that screen has
+// been closed; its standing order is looked after here rather than by the tab.
+startMerchantOrders();
 /*
  * ⚠️ `warn`, not `log`, and it carries the build stamp.
  *
