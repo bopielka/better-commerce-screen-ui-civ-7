@@ -48,12 +48,18 @@ export const HELP_STYLE = `
  * ⚠️ Returns a WRAPPER, not the mark: the framed tooltip has to enclose its trigger. The
  * shortcut list this carries is four thoughts separated by blank lines, which is exactly
  * what the framed form is for - each becomes its own card instead of one wall of text.
+ *
+ * ⚠️ Pass a `scope` wherever the mark is torn down before the screen is - a tab that comes
+ * and goes. Left on the default, its tooltip is only disposed by the screen's own teardown,
+ * and a caller that removes the element sooner strands the frame; disposing the DEFAULT scope
+ * to work around that would take every other tab's tooltips with it. See the note on
+ * `disposeFramedTooltips`.
  */
-export function makeHelpMark(tooltipKey, labelKey) {
+export function makeHelpMark(tooltipKey, labelKey, scope = undefined) {
     const mark = makeElement('div', HELP_CLASS, { 'aria-label': Locale.compose(labelKey) });
     mark.textContent = '?';
 
     const mount = makeElement('div', `${HELP_CLASS}-mount`);
-    appendWithFramedTooltip(mount, mark, { title: labelKey, text: Locale.compose(tooltipKey) });
+    appendWithFramedTooltip(mount, mark, { title: labelKey, text: Locale.compose(tooltipKey), scope });
     return mount;
 }

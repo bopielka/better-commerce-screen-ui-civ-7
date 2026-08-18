@@ -533,9 +533,8 @@ function decorate(card) {
     }
 
     /*
-     * ⚠️ Before the "already decorated" check below, not after it. The button lives in the
-     * card's corner, not in the title row, and Solid rebuilds the two independently - a card
-     * whose row survived a redraw would otherwise never get its button back.
+     * ⚠️ Before the "already decorated" check below, not after it, and AFTER the row has been
+     * marked above - the stack hangs on the title row and is found by that mark.
      */
     try {
         decorateBuyMerchant(card, route, unavailableGroupFor(route));
@@ -680,14 +679,12 @@ function updateMeasuredLayout() {
     markSectionsContainer(container);
 
     /*
-     * ⚠️ Measured from a card that HAS the buy buttons, when there is one.
-     *
-     * The width written here is one rule for every card, and the corner it is measured
-     * against is not the same width on all of them: a card carrying the gold button and the
-     * map pin has a corner several rem wider than one that carries only the portrait. The
-     * first card in the document is often in the "already running" section, which has no
-     * buttons at all - measured against that one, the title line was given room that ran
-     * straight underneath the gold button on the cards that do have it.
+     * ⚠️ What is measured is the room between the title row and the PORTRAIT, and since the
+     * buttons moved into the title row itself that is now the same distance on every card -
+     * the corner holds nothing but the portrait. The sample below therefore no longer has to
+     * be a card that carries buttons; it is kept because picking a card that HAS them is
+     * still the safest sample, and because the buttons sitting inside the measured width is
+     * exactly what makes the name truncate rather than run under them.
      */
     const sampleCard = widestCornerCard();
     const sample = sampleCard?.querySelector(`.${HEAD_CLASS}`);

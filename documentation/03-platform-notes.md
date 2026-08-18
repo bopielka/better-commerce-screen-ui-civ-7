@@ -116,6 +116,7 @@ reassign `model.slotSelectedResource` and put it back on cleanup.
 | `display: grid` — appears nowhere in the entire shipped game | flexbox; do not find out the hard way |
 | `console.log` — never reaches `Logs\UI.log` | `console.error`, via `ui/support/diagnostics.js` |
 | `calc()` **mixing a percentage with a length** — the whole declaration is dropped | keep `calc()` to one unit family, or avoid it |
+| `PlotCoord` — **not a global**, unlike almost every other engine name | `import { PlotCoord } from '/core/ui/utilities/utilities-plotcoord.js'` |
 
 `document.elementsFromPoint` **does** work and is what the game's own drag-and-drop uses to
 resolve dropzones. `MutationObserver`, `requestAnimationFrame`, `CustomEvent` and
@@ -155,6 +156,13 @@ So:
   exists to repair, by doing what `Activatable` would have done from the native DOM event.
 - Native DOM mouse events fire for both cases and carry the modifier state. They drive every
   mouse feature in this mod.
+
+⚠️ **`event.shiftKey` is NOT reliable, and the transcript above records ONE build rather than
+a promise.** On a later build every mousedown and mouseup reported `shiftKey: false` with
+Shift plainly held, while `Input.isShiftDown()` said true throughout — which broke
+Shift-*clicking* while leaving the Shift *highlight* working, because the two ask different
+sources. **Always test `event.shiftKey || isShiftHeld()`**, the way `resources-tab.js` and
+`shift-click.js` both now do.
 
 The engine action is still handled in one place, for one reason: a plain right-click is
 `isCancelInput()` and the panel closes the screen on it. `ui/screen/resources-tab.js`

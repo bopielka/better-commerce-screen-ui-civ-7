@@ -267,8 +267,12 @@ export async function placeResources({ scope = null, targetCityID = null, label 
  * game's to rebuild and reopening the screen does it.
  *
  * Two frames of grace first: the last placement's event may still be in flight.
+ *
+ * ⚠️ Exported for `screen/bulk-assign.js` as well as used here. Anything that drives the
+ * engine directly - rather than through the model's own handlers - leaves the pool to be
+ * repaired afterwards, and Shift-moving a whole kind of resource is exactly that.
  */
-async function verifyScreenMatchesEngine() {
+export async function verifyScreenMatchesEngine() {
     const model = getCommerceModel();
     if (!model) {
         return;

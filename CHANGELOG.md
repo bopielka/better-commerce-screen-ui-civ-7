@@ -5,6 +5,151 @@ Notable changes to **Better Commerce Screen UI**. Newest first.
 ⚠️ **There was no changelog before 1.3.** Earlier releases are not recorded here, and nothing
 below should be read as the mod's full history — it is the history from 1.3 onwards.
 
+## 1.6
+
+### Added
+
+- **Per-resource locks.** A small padlock in the corner of every assigned Resource; click it
+  and that Resource stays where it is through **Unassign all** and **Reassign all**. For the
+  handful of placements that were not the planner's idea and are not up for debate — the
+  Camels holding a settlement's slots open, the Resource put somewhere for an adjacency the
+  planner cannot see — the choice used to be rebuilding them by hand every time or never
+  using the buttons at all.
+  - The mechanism, the unit of locking and the padlock itself are **Resource+**'s, on purpose:
+    a player who has used that mod should recognise this without being told.
+  - **Locks survive a reload** — this is where it parts company with Resource+, whose locks
+    last the session. A lock that quietly evaporated when the save was loaded again would be
+    worse than no lock, because the button it guards against is the one you press without
+    looking. Stored per game seed through `UI.setOption`, like everything else this mod keeps;
+    both halves of the key survive a save (`resourceValue` is the resource's plot index, and a
+    settlement's component id is part of the game state).
+  - No key list is needed to do that, which is why it stays short: nothing ever asks "which
+    pairs are locked", only ever about a pair already in hand, so each is a direct lookup by
+    name. `merchant-orders.js` carries a `localStorage` mirror only because it must find
+    orders belonging to units that no longer exist. Storage is read at most once per pair per
+    session; every later question is answered from memory.
+  - **Taking a Resource out of a Settlement drops its lock.** A lock protects a Resource *in
+    a Settlement*, so once the Resource leaves there is nothing left for it to protect. Kept,
+    it would lie in wait: putting the Resource back into that Settlement later would arrive
+    already pinned without the padlock ever being clicked, and **Unassign all** would start
+    skipping something nobody asked it to skip. Watched at the engine, so it holds however the
+    Resource was moved — including by this mod's own bulk operations.
+  - **Options → Mods carries "Allow resource locking"**, on by default. Switched off the
+    padlocks are gone entirely, not merely inert — and a lock set earlier stops having any
+    effect on a bulk clear, because the option is enforced inside `isResourceLocked` itself
+    rather than at each call site. What was pinned is remembered, so switching it back on
+    during the same session restores it instead of silently losing it.
+  - ⚠️ The padlock is marked as this mod's own for the screen's hit-testing. It overhangs its
+    tile, and the hit-test climbs the DOM — so without that mark a click in the gap *beside* a
+    Resource answered as a click *on* it, and shift-clicking a card to fill it selected a
+    Resource instead of assigning. Drag and drop never showed it, because that goes through
+    the game's own DragAndDrop and never reaches this code.
+  - ⚠️ A settlement holding a lock is emptied **one Resource at a time**. The engine's bulk
+    clear takes a settlement and no list, so it cannot spare anything; settlements with
+    nothing locked still take the fast path.
+- **Shift now moves a whole kind of Resource in every direction**, not only out of the pool.
+  Settlement → settlement and settlement → pool moved exactly one however many of that kind
+  sat beside it, because both the type lookup and the candidate list were read from the
+  unassigned pool: a Resource picked up from a settlement was not found there, so the bulk
+  step bailed out immediately. Candidates now come from wherever the Resource actually is.
+  - Returning to the pool needed a **second method wrapped**. `slotSelectedResource` is where
+    a Resource lands somewhere, which covers both directions that end in a settlement — taking
+    one out to the pool never goes through it. That is `unslotSelectedResource`.
+  - After either bulk step the screen is put back in step with the engine, the same check
+    Assign All and Reassign All already run. These loops drive the engine directly rather than
+    through the model's own handlers, so its differential bookkeeping never runs for them: the
+    settlement cards heal themselves from live state, but the unassigned pool is maintained
+    purely by addition and removal and cannot, and was left drawing Resources where they no
+    longer were.
+- **"Return the factory resources" is one button now.** In the Modern age a settlement with a
+  factory carried a factory icon, a black pill holding the current factory Resource's icon,
+  and a return button — three things wide, in a header that is already the first thing to wrap
+  onto a second line, all saying what the header's own return button says in one. It is the
+  game's own return-button artwork, with the factory mark riding in the top-right corner the
+  way the padlock does on an assigned Resource. ⚠️ The game's display is **hidden, not
+  removed** — it is Solid's and comes back with every redraw of the card.
+- **The settlement header's other three controls lost their frames** to match it. A border and
+  a filled panel each was fine while they were the only things this mod put up there; beside a
+  button that is the game's own artwork and nothing else, they read as a different family of
+  control. They highlight on hover the way it does, too: the factory button swaps to a
+  brighter copy of its own artwork, and these — having no second image to swap to — brighten
+  the icon itself, rather than lighting an olive panel behind it.
+- **A trade route card is laid out in three plain pieces** instead of two that overlapped:
+
+  ```
+  [ domain icon   route -> destination        prices ]   the title row
+  [ resources                                        ]   its own row below
+                                       [ portrait ]      the corner, on the right
+  ```
+
+  The buy buttons moved out of the leader's corner and onto the end of the title row, so the
+  corner holds nothing but the portrait and reads as a right-hand column. The route name takes
+  the slack and truncates with an ellipsis, so a price is never the thing that gets cut.
+  ⚠️ Nothing of the game's own is moved to achieve it — the corner, the title row and the
+  resources row stay exactly where Solid rendered them, and only this mod's own button stack
+  changes parent.
+- **The HUD's Resource Allocation button now says when it is worth opening.** It goes to the
+  full-colour icon once resource assignment is unlocked, and **pulses gently** while an
+  unassigned resource of yours would actually be accepted somewhere.
+  - The two are different questions on purpose. The count the game already prints on that
+    button is how many resources are in the pool, which is not the same as whether any of them
+    can go anywhere — a pool of resources every settlement would refuse still prints a number.
+    The pulse uses the placeability test this mod already had to build for the
+    "Resource Assignments Available" notification.
+  - ⚠️ **Made to sit alongside beezany's Ready or Not**, which colours the same button.
+    `Controls.decorate` keeps a list of decorators, so both mods run and neither replaces the
+    other; the colouring rule here is Ready or Not's rule, to the same image at the same size,
+    under a class of this mod's own — so with both installed the two agree whichever wins the
+    cascade, and with only this one installed the button still colours. The pulse is separate
+    and touches nothing Ready or Not sets.
+- **Treasure Convoys can send themselves home.** A checkbox beside the "?" on the Treasure
+  Convoys tab, **on by default**: a loaded convoy sails to your nearest Homeland Settlement
+  on its own and unloads the moment the engine allows it. A convoy is worth nothing until it
+  unloads — the game's own command is "Scores GDP, awards Gold, and removes the Unit from the
+  game", refused with "Must be within the borders of one of your Homeland Settlements" — so
+  the only skill the player was exercising over one was remembering it existed, several turns
+  after the screen that produced it was closed.
+  - It stays **your** convoy: movement is only ever re-issued at the start of your turn, so
+    one you steer yourself is left where you put it rather than dragged back onto course.
+  - Every pass tries to **unload first** and only sails when unloading is refused; no
+    distance is computed anywhere, because `canStart` is the only thing that knows what
+    "within the borders" means as the borders move.
+  - The convoy is recognised the way the game's own unit flags recognise it —
+    `getAssociatedDisbandCityId()` with `getDisbandBaseAmount()` — rather than by matching a
+    unit type name, which would miss any carrier the local player cannot build.
+  - ⚠️ Carries the same per-turn attempt cap as the merchant orders, and for the same reason:
+    the engine answers a move it cannot honour by firing the very events this listens for, so
+    without the cap a convoy that cannot reach home wakes itself forever and the game hangs.
+  - It unloads on the **first tile of your own territory it reaches**, not at the settlement
+    it was aimed at. Unloading is legal anywhere inside your borders, but a convoy is a naval
+    unit and the only plots of a settlement a ship can be *sent* to are its water and its
+    centre — so the course necessarily names the centre, and a convoy left to finish it sails
+    past perfectly good owned water for several more turns. Reaching our own borders now
+    cancels the rest of the journey (`UNITCOMMAND_CANCEL`, the game's own cancel) and the
+    cargo comes off there.
+  - A convoy is set sailing the turn it appears, not the turn after. `UnitAddedToMap` is the
+    one event outside the turn beginning allowed to start it moving: the "do not fight the
+    player" rule that keeps every other event unload-only exists to avoid overriding a convoy
+    the player steered somewhere, and a convoy one turn old standing in the settlement that
+    built it has no such intent to override.
+
+### Fixed
+
+- **Shift-clicking stopped doing anything at all** — no selection, no bulk assign — while
+  Shift-*hover* kept highlighting normally. In this build the native mouse events report
+  `shiftKey: false` even with Shift plainly held (traced in `UI.log`: every mousedown and
+  mouseup, while `Input.isShiftDown()` said true throughout). `shift-click.js` was the one
+  place that trusted the event's own flag alone; the highlight asks `isShiftHeld()`, which is
+  why only one of the two was being told. ⚠️ This contradicts the input-spy transcript in the
+  platform notes, which recorded `shiftKey=true` on an earlier build — the flag is not
+  something to rely on here.
+- **The resource padlock made clicks beside a Resource behave as clicks on it**, so
+  shift-clicking a settlement card to fill it selected a Resource instead of assigning. The
+  padlock overhangs its tile and the hit-test climbs the DOM, so `closest()` reached the tile
+  from a point that was card, not resource. Controls this mod overlays are now marked and
+  skipped by the hit-test. Drag and drop never showed it, because that goes through the game's
+  own DragAndDrop.
+
 ## 1.5
 
 ### Added

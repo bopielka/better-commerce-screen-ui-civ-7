@@ -26,6 +26,50 @@ const POOL_SELECTOR = '[data-name="commerce-unassigned-resources"]';
 /** The game gives every slotted resource an explicit size to work around a layout bug. */
 const SLOT_SELECTOR = '.size-19';
 
+/**
+ * Controls this mod hangs ON a slot, which must not be mistaken FOR one.
+ *
+ * ⚠️ THE HIT-TESTS BELOW WALK UP THE DOM, so a child of a slot answers as that slot even
+ * where the slot itself is nowhere near the cursor. The resource padlock is positioned to
+ * overhang its tile by 0.3rem, and in that overhanging strip - the gap between tiles, which
+ * is card, not resource - `closest(SLOT_SELECTOR)` still climbed to the tile. Clicking there
+ * therefore SELECTED a resource instead of falling through to the settlement underneath, so
+ * shift-clicking a card to fill it stopped assigning and started picking things up. Drag and
+ * drop was untouched, because that goes through the game's own DragAndDrop and never comes
+ * near these functions - which is exactly the shape the bug report had.
+ *
+ * Anything carrying this attribute is skipped, so a control of ours is invisible to the
+ * screen's own pointing and any future overlay gets the same protection for free.
+ */
+const OVERLAY_ATTRIBUTE = 'data-najane-overlay';
+
+/**
+ * ⚠️ MATCHED ON ITS VALUE, never as a bare `[data-najane-overlay]`. Every attribute selector
+ * this mod relies on carries a value - see CITY_CARD_SELECTOR and POOL_SELECTOR above - and
+ * the bare existence form is not among the ones this renderer is known to implement. Written
+ * bare it took the whole hit-test out: the filter dropped EVERY element, both finders then
+ * answered null for every point, and shift-clicking a resource silently selected nothing at
+ * all. Nothing threw and nothing reached the log, which is what a mis-parsed selector looks
+ * like here. See "not a browser" in documentation/03-platform-notes.md.
+ */
+const OVERLAY_SELECTOR = `[${OVERLAY_ATTRIBUTE}="true"]`;
+
+/**
+ * The elements under a point, with this mod's own overlays taken out.
+ *
+ * ⚠️ A filter that removes EVERYTHING is treated as a filter that failed, and the unfiltered
+ * list is used instead. Taking out one small control can never legitimately empty this list -
+ * there is always a card or a panel under the cursor - so an empty result means the selector
+ * did something other than what it says, and the honest response is to fall back to the
+ * screen's own answer. Overlay-hiding is a refinement; pointing at all is not, and the whole
+ * screen going dead is far worse than a padlock being pointed at.
+ */
+function hitTestElements(x, y) {
+    const hits = Array.from(document.elementsFromPoint(x, y) ?? []);
+    const withoutOverlays = hits.filter((element) => !element.closest?.(OVERLAY_SELECTOR));
+    return withoutOverlays.length > 0 ? withoutOverlays : hits;
+}
+
 let currentModel = null;
 
 export function setCommerceModel(model) {
@@ -102,7 +146,7 @@ export function findSlottedResourceAtPoint(x, y) {
 
     let slotElement = null;
     let cardElement = null;
-    for (const element of document.elementsFromPoint(x, y)) {
+    for (const element of hitTestElements(x, y)) {
         slotElement ??= element.closest?.(SLOT_SELECTOR) ?? null;
         cardElement ??= element.closest?.(CITY_CARD_SELECTOR) ?? null;
         if (slotElement && cardElement) {
@@ -162,7 +206,7 @@ export function findSettlementAtPoint(x, y) {
     }
 
     let cardElement = null;
-    for (const element of document.elementsFromPoint(x, y)) {
+    for (const element of hitTestElements(x, y)) {
         cardElement = element.closest?.(CITY_ACTIVATABLE_SELECTOR) ?? null;
         if (cardElement) {
             break;
@@ -325,7 +369,7 @@ export function findAvailableResourceAtPoint(x, y) {
 
     let slotElement = null;
     let poolElement = null;
-    for (const element of document.elementsFromPoint(x, y)) {
+    for (const element of hitTestElements(x, y)) {
         slotElement ??= element.closest?.(SLOT_SELECTOR) ?? null;
         poolElement ??= element.closest?.(POOL_SELECTOR) ?? null;
         if (slotElement && poolElement) {

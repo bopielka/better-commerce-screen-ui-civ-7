@@ -261,6 +261,36 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="ja_JP">
             <Text>船団1つにつき、本国で荷を降ろした時点で支払われます。</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN" Language="ja_JP">
+            <Text>輸送船団を帰還させる</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="ja_JP">
+            <Text>積荷のある財宝輸送船団は、最寄りの母国の集落へ自動で向かい、可能になり次第すぐに荷を降ろします。[N][N]操作権はあなたのままです。自分で動かした船団はその場に留まり、次の自分のターンの開始時にあらためて送り出されます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="ja_JP">
+            <Text>資源を固定</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP" Language="ja_JP">
+            <Text>この資源をこの集落に留めます。[B]すべて解除[/B]と[B]すべて再配分[/B]はこの資源に触れません。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK" Language="ja_JP">
+            <Text>資源の固定を解除</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP" Language="ja_JP">
+            <Text>この資源を再び動かせるようにします。[B]すべて解除[/B]と[B]すべて再配分[/B]は他と同じように扱います。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS" Language="ja_JP">
+            <Text>資源の固定を有効にする</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION" Language="ja_JP">
+            <Text>配分済みの各資源に小さな錠前を表示します。固定された資源は「すべて配分」「すべて再配分」「すべて解除」を使っても集落に留まります。オフにすると錠前は完全に非表示になります。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR" Language="ja_JP">
+            <Text>工場資源を戻す</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="ja_JP">
+            <Text>この集落の工場資源をすべて未配分のプールに戻します。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="ja_JP">
             <Text>交易路の上限だけが妨げになっている</Text>
         </Row>

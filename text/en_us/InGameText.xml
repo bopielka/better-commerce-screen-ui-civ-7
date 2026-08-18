@@ -302,6 +302,36 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL">
             <Text>Paid out per convoy, once it unloads in your homeland.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN">
+            <Text>Send convoys home</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP">
+            <Text>Loaded Treasure Convoys sail to your nearest Homeland Settlement on their own and unload the moment they are allowed to.[N][N]They stay yours to steer: a convoy you move yourself is left where you put it, and only sent on again at the start of your next turn.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK">
+            <Text>Lock resource</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP">
+            <Text>Keep this Resource in this Settlement. [B]Unassign all[/B] and [B]Reassign all[/B] will leave it where it is.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK">
+            <Text>Unlock resource</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP">
+            <Text>Let this Resource be moved again. [B]Unassign all[/B] and [B]Reassign all[/B] will treat it like any other.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS">
+            <Text>Allow resource locking</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION">
+            <Text>Adds a small padlock to every assigned Resource. A locked Resource stays in its Settlement when you use Assign All, Reassign All or Unassign All. Turn this off to hide the padlocks entirely.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR">
+            <Text>Return Factory Resources</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP">
+            <Text>Return every Factory Resource in this Settlement to the unassigned pool.</Text>
+        </Row>
 
         <!-- Trade routes tab -->
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT">

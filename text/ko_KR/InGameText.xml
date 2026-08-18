@@ -261,6 +261,36 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="ko_KR">
             <Text>수송대 하나당, 본토에서 하역한 시점에 지급됩니다.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN" Language="ko_KR">
+            <Text>수송선단 자동 귀환</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="ko_KR">
+            <Text>화물을 실은 보물 수송선단이 가장 가까운 본토 정착지로 스스로 이동하여 가능해지는 즉시 하역합니다.[N][N]조작권은 그대로 유지됩니다. 직접 움직인 선단은 그 자리에 남으며, 다음 턴이 시작될 때 다시 출발합니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="ko_KR">
+            <Text>자원 고정</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP" Language="ko_KR">
+            <Text>이 자원을 이 정착지에 유지합니다. [B]전체 해제[/B]와 [B]전체 재배정[/B]이 건드리지 않습니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK" Language="ko_KR">
+            <Text>자원 고정 해제</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP" Language="ko_KR">
+            <Text>이 자원을 다시 옮길 수 있게 합니다. [B]전체 해제[/B]와 [B]전체 재배정[/B]이 다른 자원과 똑같이 취급합니다.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS" Language="ko_KR">
+            <Text>자원 고정 허용</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION" Language="ko_KR">
+            <Text>배정된 각 자원에 작은 자물쇠를 표시합니다. 고정된 자원은 전체 배정, 전체 재배정, 전체 해제를 사용해도 정착지에 남습니다. 끄면 자물쇠가 완전히 사라집니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR" Language="ko_KR">
+            <Text>공장 자원 반환</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="ko_KR">
+            <Text>이 정착지의 공장 자원을 모두 미배정 자원 목록으로 되돌립니다.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="ko_KR">
             <Text>교역로 한도만 가로막고 있음</Text>
         </Row>

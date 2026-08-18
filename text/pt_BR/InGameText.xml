@@ -261,6 +261,36 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="pt_BR">
             <Text>Pago por comboio, assim que ele descarrega na sua pátria.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN" Language="pt_BR">
+            <Text>Enviar comboios para casa</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="pt_BR">
+            <Text>Comboios do tesouro carregados navegam sozinhos até o seu assentamento natal mais próximo e descarregam assim que for permitido.[N][N]Você continua no comando: um comboio que você mover fica onde o deixou e só é reenviado no início do seu próximo turno.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="pt_BR">
+            <Text>Travar recurso</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP" Language="pt_BR">
+            <Text>Mantém este recurso neste assentamento. [B]Desatribuir tudo[/B] e [B]Reatribuir tudo[/B] vão deixá-lo onde está.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK" Language="pt_BR">
+            <Text>Destravar recurso</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP" Language="pt_BR">
+            <Text>Permite mover este recurso novamente. [B]Desatribuir tudo[/B] e [B]Reatribuir tudo[/B] vão tratá-lo como qualquer outro.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS" Language="pt_BR">
+            <Text>Permitir travamento de recursos</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION" Language="pt_BR">
+            <Text>Adiciona um pequeno cadeado a cada recurso atribuído. Um recurso travado permanece em seu assentamento ao usar Atribuir tudo, Reatribuir tudo ou Desatribuir tudo. Desative para ocultar os cadeados por completo.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR" Language="pt_BR">
+            <Text>Devolver recursos de fábrica</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="pt_BR">
+            <Text>Devolve todos os recursos de fábrica deste assentamento à reserva não atribuída.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="pt_BR">
             <Text>Só o limite de rotas comerciais atrapalha</Text>
         </Row>

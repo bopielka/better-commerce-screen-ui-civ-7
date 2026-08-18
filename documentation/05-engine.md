@@ -10,6 +10,9 @@ C++ side goes through here.
 | `resource-slots.js` | `BonusResourceSlots` (camels) |
 | `merchant.js` | buying a merchant, walking it, signing the route |
 | `merchant-orders.js` | the standing order a bought merchant carries, turn after turn |
+| `resource-locks.js` | resources pinned in place; obeyed by `unassign.js`, cleared when one leaves |
+| `treasure-convoys.js` | sends loaded Treasure Convoys home and unloads them |
+| `treasure-return-setting.js` | the switch that turns that off; **on** by default |
 | `diplomacy.js` | proposing "Improve Trade Relations" |
 | `wait.js` | waiting for a queued operation to land |
 | `age.js` | which age this is, worked out once |

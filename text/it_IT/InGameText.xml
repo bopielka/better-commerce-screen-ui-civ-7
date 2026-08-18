@@ -261,6 +261,36 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="it_IT">
             <Text>Pagato per convoglio, una volta scaricato in patria.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN" Language="it_IT">
+            <Text>Invia i convogli a casa</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="it_IT">
+            <Text>I convogli del tesoro carichi raggiungono da soli il tuo insediamento madrepatria più vicino e scaricano appena è consentito.[N][N]Restano sotto il tuo controllo: un convoglio che muovi tu rimane dove lo lasci e viene rimandato solo all’inizio del tuo turno successivo.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="it_IT">
+            <Text>Blocca risorsa</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP" Language="it_IT">
+            <Text>Mantieni questa risorsa in questo insediamento. [B]Rimuovi tutto[/B] e [B]Riassegna tutto[/B] la lasceranno dov’è.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK" Language="it_IT">
+            <Text>Sblocca risorsa</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP" Language="it_IT">
+            <Text>Consenti di spostare di nuovo questa risorsa. [B]Rimuovi tutto[/B] e [B]Riassegna tutto[/B] la tratteranno come le altre.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS" Language="it_IT">
+            <Text>Consenti il blocco delle risorse</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION" Language="it_IT">
+            <Text>Aggiunge un piccolo lucchetto a ogni risorsa assegnata. Una risorsa bloccata resta nel suo insediamento quando usi Assegna tutto, Riassegna tutto o Rimuovi tutto. Disattiva per nascondere del tutto i lucchetti.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR" Language="it_IT">
+            <Text>Restituisci risorse da fabbrica</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="it_IT">
+            <Text>Restituisce ogni risorsa da fabbrica di questo insediamento alla riserva non assegnata.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="it_IT">
             <Text>Blocca solo il limite di rotte commerciali</Text>
         </Row>

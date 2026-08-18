@@ -18,13 +18,12 @@
  */
 import { isFactoryFirstEnabled, setFactoryFirstEnabled } from '../planner/factory-first-setting.js';
 import { isImportsFirstEnabled, setImportsFirstEnabled } from '../planner/imports-first-setting.js';
-import { appendWithFramedTooltip } from './framed-tooltip.js';
-import { appendAll, bindActivatable, ensureStyle, makeElement } from '../support/dom.js';
+import { SWITCH_STYLE, makeSwitch } from './switch-control.js';
+import { ensureStyle, makeElement } from '../support/dom.js';
 import { isFactoryAge } from '../engine/age.js';
 import { log } from '../support/diagnostics.js';
 
 const COLUMN_CLASS = 'najane-assign-switches';
-const CLASS = 'najane-assign-switch';
 const STYLE_ID = 'najane-assign-switches-style';
 
 const STYLE = `
@@ -38,68 +37,8 @@ const STYLE = `
     margin-left: 1.1rem;
     pointer-events: auto;
 }
-.${CLASS} {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: row;
-    align-items: center;
-    /*
-     * Two rows have to live inside the height of one button, so these are deliberately
-     * smaller than the bar's other text. Anything taller and the second switch pushes the
-     * bar past the tab strip it is sitting in - see layout.js for that budget.
-     */
-    height: 1.15rem;
-    white-space: nowrap;
-    color: #e5d2ac;
-    font-family: "TitleFont", "TitleFont-JP", "TitleFont-KR", "TitleFont-SC", "TitleFont-TC";
-    font-size: 0.78rem;
-    text-transform: uppercase;
-}
-.${CLASS}__box {
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.05rem;
-    height: 1.05rem;
-    margin-right: 0.4rem;
-    border: 0.1rem solid #9f8b65;
-    border-radius: 0.16rem;
-    background: rgba(21, 27, 39, 0.94);
-    font-size: 0.8rem;
-    line-height: 1;
-}
-.${CLASS}__box:hover { background: rgba(77, 67, 55, 0.98); }
-/* Pass-through, so the switch keeps its own 1.15rem row inside the column. */
-.${CLASS}-mount { display: flex; flex: 0 0 auto; }
-.${CLASS}__box:focus {
-    outline: 0.12rem solid #e5d2ac;
-    outline-offset: 0.08rem;
-}
+${SWITCH_STYLE}
 `;
-
-function makeSwitch({ label, tooltip, isOn, setOn }) {
-    const text = Locale.compose(label);
-    const element = makeElement('div', CLASS, { 'aria-label': text });
-
-    const box = makeElement('div', `${CLASS}__box`);
-    const paint = () => (box.textContent = isOn() ? '✓' : '');
-    paint();
-    bindActivatable(box, () => {
-        setOn(!isOn());
-        paint();
-    });
-
-    // font-fit-shrink is the game's own class: it scales the text down to fit the box.
-    const caption = makeElement('div', 'font-fit-shrink');
-    caption.textContent = text;
-    appendAll(element, box, caption);
-
-    // The tooltip wraps the row; the column below appends whatever comes back.
-    const mount = makeElement('div', `${CLASS}-mount`);
-    appendWithFramedTooltip(mount, element, { title: label, text: Locale.compose(tooltip) });
-    return mount;
-}
 
 /**
  * The switches, or null when there are none to show.

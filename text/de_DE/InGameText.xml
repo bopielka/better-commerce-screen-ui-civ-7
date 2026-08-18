@@ -261,6 +261,36 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="de_DE">
             <Text>Wird je Konvoi ausgezahlt, sobald er im Heimatland entladen wird.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN" Language="de_DE">
+            <Text>Konvois heimschicken</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="de_DE">
+            <Text>Beladene Schatzkonvois fahren von selbst zur nächstgelegenen Heimatsiedlung und laden ab, sobald es erlaubt ist.[N][N]Ihr behaltet die Kontrolle: Ein Konvoi, den Ihr selbst bewegt, bleibt dort stehen und wird erst zu Beginn Eures nächsten Zuges wieder losgeschickt.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="de_DE">
+            <Text>Ressource sperren</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP" Language="de_DE">
+            <Text>Diese Ressource bleibt in dieser Siedlung. [B]Alle freigeben[/B] und [B]Alle neu zuweisen[/B] rühren sie nicht an.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK" Language="de_DE">
+            <Text>Ressource freigeben</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP" Language="de_DE">
+            <Text>Diese Ressource darf wieder bewegt werden. [B]Alle freigeben[/B] und [B]Alle neu zuweisen[/B] behandeln sie wie jede andere.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS" Language="de_DE">
+            <Text>Ressourcen-Sperren erlauben</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION" Language="de_DE">
+            <Text>Fügt jeder zugewiesenen Ressource ein kleines Schloss hinzu. Eine gesperrte Ressource bleibt in ihrer Siedlung, wenn Ihr Alle zuweisen, Alle neu zuweisen oder Alle freigeben verwendet. Ausschalten, um die Schlösser ganz auszublenden.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR" Language="de_DE">
+            <Text>Fabrikressourcen zurückgeben</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="de_DE">
+            <Text>Gebt jede Fabrikressource dieser Siedlung an den nicht zugewiesenen Vorrat zurück.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="de_DE">
             <Text>Nur das Handelsweg-Limit steht im Weg</Text>
         </Row>

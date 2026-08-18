@@ -271,6 +271,36 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="ru_RU">
             <Text>Виплачується за конвой, щойно він розвантажиться на батьківщині.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN" Language="ru_RU">
+            <Text>Відсилати каравани додому</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="ru_RU">
+            <Text>Завантажені каравани зі скарбами самі прямують до найближчого поселення на батьківщині й розвантажуються, щойно це стає можливим.[N][N]Керування лишається за вами: караван, який ви пересунули самі, залишається на місці й вирушає далі лише на початку вашого наступного ходу.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="ru_RU">
+            <Text>Закріпити ресурс</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP" Language="ru_RU">
+            <Text>Залишає цей ресурс у цьому поселенні. [B]Зняти всі[/B] та [B]Перепризначити всі[/B] його не чіпатимуть.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK" Language="ru_RU">
+            <Text>Відкріпити ресурс</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP" Language="ru_RU">
+            <Text>Дозволяє знову переміщати цей ресурс. [B]Зняти всі[/B] та [B]Перепризначити всі[/B] поводитимуться з ним як зі звичайним.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS" Language="ru_RU">
+            <Text>Дозволити закріплення ресурсів</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION" Language="ru_RU">
+            <Text>Додає невеликий замок до кожного призначеного ресурсу. Закріплений ресурс залишається у своєму поселенні під час Призначити всі, Перепризначити всі та Зняти всі. Вимкніть, щоб повністю сховати замки.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR" Language="ru_RU">
+            <Text>Повернути фабричні ресурси</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="ru_RU">
+            <Text>Повертає всі фабричні ресурси цього поселення до нерозподіленого запасу.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="ru_RU">
             <Text>Заважає лише ліміт торгових шляхів</Text>
         </Row>

@@ -47,6 +47,9 @@ const ACTIONS_CLASS = 'najane-card-actions';
  */
 const FACTORY_DISPLAY_INNER_SELECTOR = '.bg-black.rounded-lg';
 
+/** This mod's replacement for it: one button, the same one the rest of the header uses. */
+const FACTORY_BUTTON_CLASS = 'najane-card-factory-clear';
+
 /** Every string is a localisation key; see text/en_us/InGameText.xml. */
 const PRIORITY_TOOLTIP = 'LOC_NAJANE_COMMERCE_PRIORITY_TOOLTIP';
 const PRIORITY_CURRENT = 'LOC_NAJANE_COMMERCE_PRIORITY_CURRENT';
@@ -99,6 +102,56 @@ const STYLE = `
     margin-left: 0.75rem;
 }
 
+/*
+ * "Return the factory resources", as ONE button instead of a row.
+ *
+ * The game draws this as a factory icon, then a black pill holding the current factory
+ * resource's icon and a return button - three things wide, in a header that is already the
+ * first place to wrap onto a second line. All three say the same thing, and the header
+ * already has a return button of its own that says it in one.
+ *
+ * ⚠️ The images are the GAME'S OWN return button, the same pair "FactoryTypeDisplay" and the
+ * settlement's own "return all" both use - so this reads as that button rather than as a new
+ * kind of control. The factory mark rides in the corner, the way the padlock does on an
+ * assigned resource (see resource-locks-ui.js) and for the same reason: it says which button
+ * this is without taking a place in the row.
+ */
+.${FACTORY_BUTTON_CLASS} {
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 auto;
+    /* .size-7, the size the game gives this button; see the ImageButton in factory-type-display. */
+    width: 1.5555555556rem;
+    height: 1.5555555556rem;
+    margin-left: 0.75rem;
+    background-image: url("blp:resource_return_button_default.png");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    pointer-events: auto;
+}
+.${FACTORY_BUTTON_CLASS}:hover {
+    background-image: url("blp:resource_return_button_hover.png");
+}
+.${FACTORY_BUTTON_CLASS}:focus {
+    outline: 0.12rem solid #e5d2ac;
+    outline-offset: 0.08rem;
+}
+.${FACTORY_BUTTON_CLASS}__mark {
+    position: absolute;
+    top: -0.3rem;
+    right: -0.3rem;
+    width: 1rem;
+    height: 1rem;
+    background-image: url("blp:restype_factory_v2.png");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    /* The badge is decoration; the click belongs to the button underneath it. */
+    pointer-events: none;
+}
+
 .${CONTROL_CLASS} {
     /* Not static: the menu below is positioned against this, not against the header. */
     position: relative;
@@ -114,6 +167,25 @@ const STYLE = `
     pointer-events: auto;
 }
 
+/*
+ * ⚠️ NO FRAME AND NO RESTING BACKGROUND, to match the factory button beside them.
+ *
+ * These three used to be boxed - a border and a filled panel each - which was fine while they
+ * were the only things this mod put in the header. The factory button that replaced the
+ * game's own display is the game's artwork and nothing else, so the boxed three suddenly read
+ * as a different family of control sitting next to it. The box goes; the icons stay exactly
+ * as they were.
+ *
+ * ⚠️ HOVER IS BRIGHTNESS, NOT A PANEL. The factory button beside them highlights by swapping
+ * to a brighter copy of its own artwork, and lighting an olive panel behind an icon is a
+ * different gesture entirely - which is what made the two sets look unrelated even after the
+ * frames came off. These have no second image to swap to, so the icon itself is brightened,
+ * which is the same thing said the only way it can be said here.
+ *
+ * "filter: brightness" is the one animated/visual filter PROVEN to work in this renderer from
+ * a stylesheet this mod injects - Holistic QoL+ ships it, and the dock button's pulse uses it.
+ * The radius went with the panel it used to shape.
+ */
 .${CONTROL_CLASS}__trigger,
 .${CONTROL_CLASS}__quick,
 .${CONTROL_CLASS}__unassign {
@@ -122,9 +194,7 @@ const STYLE = `
     justify-content: center;
     box-sizing: border-box;
     min-height: 2.5rem;
-    border: 0.1rem solid #7f735e;
-    border-radius: 0.18rem;
-    background: rgba(21, 27, 39, 0.98);
+    background: transparent;
     pointer-events: auto;
 }
 .${CONTROL_CLASS}__trigger { width: 4.25rem; padding: 0.25rem 0.45rem; }
@@ -132,7 +202,7 @@ const STYLE = `
 .${CONTROL_CLASS}__unassign { width: 2.5rem; margin-left: 0.5rem; }
 .${CONTROL_CLASS}__trigger:hover,
 .${CONTROL_CLASS}__quick:hover,
-.${CONTROL_CLASS}__unassign:hover { background: rgba(77, 67, 55, 0.98); }
+.${CONTROL_CLASS}__unassign:hover { filter: brightness(1.45); }
 
 .${CONTROL_CLASS}__arrow {
     width: 0;
@@ -376,6 +446,32 @@ function hideSettlementReturnButton(cardElement, header) {
     }
 }
 
+/**
+ * One button that empties the settlement of its factory resources.
+ *
+ * ⚠️ Offered only where the game offers it: this is built solely for a card that HAS a factory
+ * display, so a settlement without a factory - or in an age that has none - never sees it. The
+ * engine is asked to do the work through the model's own `clearFactoryResources`, the same
+ * call the button this replaces made, so nothing here reimplements what the game does with it.
+ */
+function createFactoryClearButton(settlement) {
+    const button = makeElement('div', FACTORY_BUTTON_CLASS, {
+        'data-tooltip-content': Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP'),
+        'aria-label': Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_CLEAR'),
+    });
+    button.appendChild(makeElement('div', `${FACTORY_BUTTON_CLASS}__mark`));
+
+    bindActivatable(button, () => {
+        try {
+            getCommerceModel()?.clearFactoryResources?.(settlement.cityID);
+            log('cleared the factory resources of one settlement');
+        } catch (error) {
+            warn(`clearing the factory resources failed: ${error}`);
+        }
+    });
+    return button;
+}
+
 function injectControlsOnce() {
     for (const { settlement, cardElement } of settlementCards()) {
         const header = cardElement.querySelector(CARD_HEADER_SELECTOR);
@@ -403,12 +499,20 @@ function injectControlsOnce() {
             actions.appendChild(createControl(settlement));
         }
 
-        // The cog joins them. This moves a node Solid rendered, which is only safe
-        // because `hasFactory` cannot change while the screen is open, and because a
-        // rebuilt card is a fresh one that comes back through here anyway.
+        /*
+         * The game's factory display goes, and one button of ours takes its place.
+         *
+         * ⚠️ HIDDEN, NEVER REMOVED. It is Solid's, and it comes back with every redraw of the
+         * card; removing it would be a node Solid still believes it owns. Hiding is idempotent
+         * and survives the rebuild, which is the same rule `hideSettlementReturnButton` above
+         * already follows.
+         */
         const factoryDisplay = header.querySelector(FACTORY_DISPLAY_INNER_SELECTOR)?.parentElement;
-        if (factoryDisplay && factoryDisplay.parentElement !== actions) {
-            actions.appendChild(factoryDisplay);
+        if (factoryDisplay) {
+            factoryDisplay.classList.add(HIDDEN_CLASS);
+            if (!actions.querySelector(`.${FACTORY_BUTTON_CLASS}`)) {
+                actions.appendChild(createFactoryClearButton(settlement));
+            }
         }
     }
 }
@@ -438,6 +542,7 @@ export function stopSettlementControls() {
     observer?.disconnect();
     observer = null;
     document.querySelectorAll(`.${CONTROL_CLASS}`).forEach((control) => control.remove());
+    document.querySelectorAll(`.${FACTORY_BUTTON_CLASS}`).forEach((button) => button.remove());
     document.querySelectorAll(`.${HIDDEN_CLASS}`).forEach((el) => el.classList.remove(HIDDEN_CLASS));
     document.querySelectorAll(`.${HEADER_CLASS}`).forEach((el) => el.classList.remove(HEADER_CLASS));
     document.querySelectorAll(`.${NAME_CLASS}`).forEach((el) => el.classList.remove(NAME_CLASS));

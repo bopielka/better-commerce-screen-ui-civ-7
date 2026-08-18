@@ -13,13 +13,31 @@ import { L10n } from '/core/ui-next/components/l10n.js';
 import { TreasureResourceContainer } from '/base-standard/ui-next/screens/commerce/commerce-screen-treasure-tab.js';
 
 import { HELP_CLASS, HELP_STYLE, makeHelpMark } from './help-mark.js';
-import { ensureStyle } from '../support/dom.js';
+import { SWITCH_CLASS, SWITCH_STYLE, makeSwitch } from './switch-control.js';
+import {
+    isTreasureAutoReturnEnabled,
+    setTreasureAutoReturnEnabled,
+} from '../engine/treasure-return-setting.js';
+import { disposeFramedTooltips } from './framed-tooltip.js';
+import { ensureStyle, makeElement } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
 
 /** The tab strip; its parent is the positioned row this tab hangs its "?" in. */
 const TAB_LIST_SELECTOR = '[data-name="TabList"]';
 
 const STYLE_ID = 'najane-treasure-tab-style';
+
+/** Holds the "?" and the auto-return switch together at the left end of the tab row. */
+const LEFT_ROW_CLASS = 'najane-treasure-controls';
+
+/**
+ * ⚠️ Its OWN tooltip scope, not the default. These two controls are torn down every time the
+ * tab is left, which is sooner than the screen's own teardown - so their frames have to be
+ * disposed here, and disposing the DEFAULT scope to do it would take the Resources and Trade
+ * Routes tabs' tooltips with it. That is the exact bug the per-scope split exists for; see
+ * `disposeFramedTooltips`.
+ */
+const TOOLTIP_SCOPE = 'treasure-tab';
 
 /** The card's outer element. Only these cards exist while this tab is the one open. */
 const CARD_SELECTOR = '.focusable-card-activatable';
@@ -44,39 +62,77 @@ ${PANEL_SELECTOR} {
     margin-right: 0 !important;
 }
 ${HELP_STYLE}
+${SWITCH_STYLE}
 /*
  * The same anchor the other tabs use for their own left-hand additions - the tab row is
  * positioned, and the tab strip is centred in it, so the left end is free.
+ *
+ * ⚠️ ONE positioned row holding both, rather than two absolute elements at two hand-picked
+ * offsets. The "?" is a fixed 2.4rem, but the switch beside it is a translated caption whose
+ * width is not knowable from here - it is half again as long in German as in English - so a
+ * left offset computed for one language would either overlap the mark or leave a gap in the
+ * others. A flex row lays them out from the same left edge in every language.
  */
-.${HELP_CLASS} {
+.${LEFT_ROW_CLASS} {
     position: absolute;
     left: 2rem;
     top: 0.15rem;
     z-index: 20;
+    display: flex;
+    flex-direction: row;
+    /* The switch is 1.15rem tall and the mark 2.4rem; this centres it against the mark. */
+    align-items: center;
+    pointer-events: auto;
 }
+/* Inside the row now, so it drops the absolute positioning it carries on other tabs. */
+.${LEFT_ROW_CLASS} .${HELP_CLASS} { position: static; }
+.${LEFT_ROW_CLASS} .${SWITCH_CLASS}-mount { margin-left: 0.9rem; }
 `;
 
 /**
- * A "?" saying what a click on a card does.
+ * The two controls at the left end of the tab row.
  *
- * Clicking a card - its name, one of its resource icons, or the convoy flag - runs
- * `Camera.lookAtPlot` and nothing else, so the map moves BEHIND a screen that stays open.
- * Nothing on screen says so, and the natural reading of a card that visibly responds to a
- * click is that it took you somewhere.
+ * The "?" says what a click on a card does: clicking one - its name, one of its resource
+ * icons, or the convoy flag - runs `Camera.lookAtPlot` and nothing else, so the map moves
+ * BEHIND a screen that stays open. Nothing on screen says so, and the natural reading of a
+ * card that visibly responds to a click is that it took you somewhere.
+ *
+ * The switch beside it turns off sending convoys home by themselves; the mechanism is in
+ * engine/treasure-convoys.js and the setting in engine/treasure-return-setting.js.
  *
  * ⚠️ Idempotent, and it has to be: it is called from the tab's own mount, but the tab row
  * belongs to the screen and survives a tab being left and re-entered.
  */
-function showHelpMark() {
+function showTabControls() {
     const row = document.querySelector(TAB_LIST_SELECTOR)?.parentElement;
-    if (!row || row.querySelector(`.${HELP_CLASS}`)) {
+    if (!row || row.querySelector(`.${LEFT_ROW_CLASS}`)) {
         return;
     }
-    row.appendChild(makeHelpMark('LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP', 'LOC_NAJANE_COMMERCE_TREASURE_CLICK'));
+    const controls = makeElement('div', LEFT_ROW_CLASS);
+    controls.appendChild(
+        makeHelpMark(
+            'LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP',
+            'LOC_NAJANE_COMMERCE_TREASURE_CLICK',
+            TOOLTIP_SCOPE,
+        ),
+    );
+    controls.appendChild(
+        makeSwitch({
+            label: 'LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN',
+            tooltip: 'LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP',
+            isOn: isTreasureAutoReturnEnabled,
+            setOn: setTreasureAutoReturnEnabled,
+            scope: TOOLTIP_SCOPE,
+        }),
+    );
+    row.appendChild(controls);
 }
 
-function hideHelpMark() {
-    document.querySelectorAll(`.${HELP_CLASS}`).forEach((mark) => mark.remove());
+function hideTabControls() {
+    // ⚠️ Before the elements go, and only OUR scope. A frame outliving the control it is
+    // anchored to is drawn in the top-left corner of the screen; see `TOOLTIP_SCOPE`.
+    disposeFramedTooltips(TOOLTIP_SCOPE);
+    document.querySelectorAll(`.${LEFT_ROW_CLASS}`).forEach((element) => element.remove());
 }
 
 /**
@@ -142,12 +198,12 @@ export const TreasureConvoysContainer = (props) => {
 
     onMount(() => {
         styleElement = ensureStyle(STYLE_ID, STYLE);
-        showHelpMark();
+        showTabControls();
     });
     // Scoped by lifetime rather than by selector: the rules above are written for these
     // cards and would reach others, so they exist only while this tab does.
     onCleanup(() => {
-        hideHelpMark();
+        hideTabControls();
         styleElement?.remove();
         styleElement = null;
     });

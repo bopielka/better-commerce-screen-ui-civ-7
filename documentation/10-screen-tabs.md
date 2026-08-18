@@ -10,7 +10,8 @@ The tabs this mod replaces, adds or decorates. The interaction layer is in
 | `empire-tab.js` | 747 | the rebuilt Empire tab |
 | `trade-routes.js` | 747 | the Trade Routes tab, decorated from the outside |
 | `trade-summary.js` | 182 | the routes-running line above the tabs |
-| `treasure-tab.js` | 156 | the Treasure tab, wrapped and its data filtered |
+| `dock-resource-button.js` | 212 | the HUD dock's Resource Allocation button: colour and pulse |
+| `treasure-tab.js` | 212 | the Treasure tab, wrapped, filtered, and its two controls |
 
 ---
 
@@ -773,7 +774,7 @@ is how the tooltip gets attached **without touching the DOM.**
 The figures are read back off the settlement (`getProducedTreasureFleetGold` /
 `…GDP`): the model composes them into the sentence and does not keep them anywhere else.
 
-### Three to a row, and the "?"
+### Three to a row, and the two controls
 
 ⚠️ Same trap as the trade cards: the visible panel is the `CardFrame` **inside** the card
 (`.w-128.min-h-64`), not `.focusable-card-activatable`. The gap lives **inside** the card as
@@ -784,6 +785,21 @@ Clicking a card runs `Camera.lookAtPlot` and nothing else, so **the map moves be
 stays open**. Nothing on screen says so, and the natural reading of a card that visibly responds to
 a click is that it took you somewhere — hence the "?" beside the tabs. It is idempotent, because
 the tab row belongs to the screen and survives a tab being left and re-entered.
+
+Beside the "?" sits the **send-convoys-home** checkbox (`makeSwitch`, shared with the Resources
+button bar via `switch-control.js`). The mechanism it turns off is `engine/treasure-convoys.js`
+and the setting is `engine/treasure-return-setting.js`; it is **on** by default.
+
+⚠️ **Both sit in one positioned flex row, not at two hand-picked `left` offsets.** The "?" is a
+fixed 2.4rem but the caption beside it is translated, and it is half again as long in German as
+in English — an offset computed for one language would overlap the mark or leave a gap in the
+others.
+
+⚠️ **They carry their own tooltip scope (`treasure-tab`).** They are torn down whenever the tab is
+left, which is sooner than the screen's own teardown, so their frames must be disposed here — and
+disposing the *default* scope to do it would take the Resources and Trade Routes tabs' tooltips
+with it. That is the exact bug the per-scope split exists for; see
+[framed tooltips](11-screen-support.md).
 
 The stylesheet is scoped **by lifetime rather than by selector**: its rules are written for these
 cards and would reach others, so they exist only while this tab does.

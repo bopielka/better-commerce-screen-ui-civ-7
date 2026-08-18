@@ -61,11 +61,13 @@ import { startAssignNotification } from './screen/assign-notification.js';
 startAutoAssign();
 startAssignNotification();
 startMerchantOrders();
+startTreasureConvoys();
 ```
 
-The last three run with the screen closed, so they are started here rather than from a
+The last four run with the screen closed, so they are started here rather than from a
 component's `onMount`. `startMerchantOrders` in particular looks after a merchant that is
-still walking several turns after the Commerce screen was shut.
+still walking several turns after the Commerce screen was shut, and `startTreasureConvoys`
+does the same for a Treasure Convoy still sailing home.
 
 ### Action groups and scopes
 

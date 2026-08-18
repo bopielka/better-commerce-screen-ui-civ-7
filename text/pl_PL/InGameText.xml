@@ -308,6 +308,36 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="pl_PL">
             <Text>Tyle dostaniesz za konwój po jego rozładowaniu w ojczyźnie.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN" Language="pl_PL">
+            <Text>Odsyłaj konwoje do domu</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="pl_PL">
+            <Text>Załadowane konwoje skarbów same płyną do najbliższej osady w ojczyźnie i rozładowują się, gdy tylko mogą.[N][N]Nadal nimi kierujesz: konwój, który przesuniesz sam, zostaje tam, gdzie go zostawisz, i rusza dalej dopiero na początku twojej następnej tury.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="pl_PL">
+            <Text>Zablokuj zasób</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP" Language="pl_PL">
+            <Text>Zatrzymuje ten zasób w tej osadzie. [B]Cofnij wszystkie[/B] i [B]Przypisz wszystkie od nowa[/B] go nie ruszą.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK" Language="pl_PL">
+            <Text>Odblokuj zasób</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP" Language="pl_PL">
+            <Text>Pozwala znów przenosić ten zasób. [B]Cofnij wszystkie[/B] i [B]Przypisz wszystkie od nowa[/B] potraktują go jak każdy inny.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS" Language="pl_PL">
+            <Text>Zezwalaj na blokowanie zasobów</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION" Language="pl_PL">
+            <Text>Dodaje małą kłódkę do każdego przypisanego zasobu. Zablokowany zasób zostaje w swojej osadzie przy Przypisz wszystkie, Przypisz wszystkie od nowa i Cofnij wszystkie. Wyłącz, aby całkowicie ukryć kłódki.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR" Language="pl_PL">
+            <Text>Zwróć zasoby fabryczne</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="pl_PL">
+            <Text>Zwraca wszystkie zasoby fabryczne z tej osady do puli nieprzypisanych.</Text>
+        </Row>
 
         <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA" Language="pl_PL">
             <Text>Morski szlak handlowy</Text>

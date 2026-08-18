@@ -25,6 +25,7 @@ import {
     findSlottedResourceAtPoint,
     getCommerceModel,
 } from '../model/screen-model.js';
+import { isShiftHeld } from '../engine/shift.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const LEFT_BUTTON = 0;
@@ -89,7 +90,20 @@ function onMouseUp(event) {
     const dragged = wasDrag(event);
     pressed = false;
 
-    if (!event.shiftKey || dragged) {
+    /*
+     * ⚠️ NOT `event.shiftKey` ALONE. In this build the native mouse events carry
+     * `shiftKey: false` even with Shift plainly held - traced in UI.log, every mousedown and
+     * mouseup, while `Input.isShiftDown()` said true throughout. That is why the Shift
+     * highlight kept working while Shift-clicking did nothing: the highlight asks
+     * `isShiftHeld()`, this asked the event, and only one of the two was being told.
+     *
+     * The engine's answer is the one to trust, and `isShiftHeld` already falls back to DOM key
+     * events if it is ever unavailable. The event's own flag is kept as the first term because
+     * it costs nothing and was observed to be true on an earlier build (see the input spy
+     * transcript in 03-platform-notes.md) - the same belt-and-braces `resources-tab.js` has
+     * always used for right-click unassign, which is precisely why that path never broke.
+     */
+    if (!(event.shiftKey || isShiftHeld()) || dragged) {
         return;
     }
     try {

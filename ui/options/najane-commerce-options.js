@@ -4,10 +4,14 @@ import { CategoryData } from '/core/ui/options/options-helpers.js';
 
 /*
  * ⚠️ The only imports of this mod's own code here, and they are all leaves: a settings
- * module under ui/planner/ holds each value and imports nothing but diagnostics. The
- * dependency runs one way - options write to the planner, the planner never reads the
- * options screen - which is what lets the assignment engine answer these questions with
- * the Commerce screen closed. See the note at the top of factory-first-setting.js.
+ * module under ui/planner/ or ui/engine/ holds each value and imports nothing but
+ * diagnostics. The dependency runs one way - options write to the setting, the setting never
+ * reads the options screen - which is what lets the assignment engine answer these questions
+ * with the Commerce screen closed. See the note at the top of factory-first-setting.js.
+ *
+ * ⚠️ This file also loads in SHELL scope, before any game exists, so a settings module must
+ * do nothing at import time beyond declaring itself - resource-locks.js reads its option
+ * lazily, on the first question, for exactly that reason.
  */
 import {
     happinessPriorityMode,
@@ -19,6 +23,7 @@ import {
     setCultureGatheringEnabled,
     setGoldGatheringEnabled,
 } from '../planner/hoard-setting.js';
+import { isResourceLockingAllowed, setResourceLockingAllowed } from '../engine/resource-locks.js';
 
 /**
  * Mod options for "Better Commerce Screen UI", shown under a "Mods" tab in the options
@@ -215,6 +220,17 @@ Options.addInitCallback(() => {
         updateListener: (_info, value) => (CommerceOptions.skipAssignPrompt = value),
         label: 'LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT',
         description: 'LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION',
+    });
+
+    Options.addOption({
+        category: CategoryType.Mods,
+        group: OPTION_GROUP,
+        type: OptionType.Checkbox,
+        id: 'najane-commerce-allow-resource-locks',
+        initListener: (info) => (info.currentValue = isResourceLockingAllowed()),
+        updateListener: (_info, value) => setResourceLockingAllowed(value),
+        label: 'LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS',
+        description: 'LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION',
     });
 
     Options.addOption({

@@ -33,6 +33,7 @@ import {
     unassignIfAllowed,
 } from './operations.js';
 import { companionCandidates } from './resource-slots.js';
+import { isResourceLocked } from './resource-locks.js';
 import { waitForEngineEvent } from './wait.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -162,10 +163,25 @@ export async function unassignEverySettlement() {
             continue;
         }
 
-        if (requestClearSettlement(city.id)) {
+        /*
+         * ⚠️ THE BULK CLEAR IS ONLY SAFE WHERE NOTHING IS LOCKED. `requestClearSettlement`
+         * takes a settlement and no list - it empties the lot and cannot be asked to spare
+         * anything - so a settlement holding a locked resource has to be emptied one at a
+         * time instead, however much slower that is. Resource+ draws the line in the same
+         * place, for the same reason.
+         */
+        const doomed = assigned.filter((resource) => !isResourceLocked(city.id, resource.value));
+
+        if (doomed.length === 0) {
+            // Every resource here is locked. Nothing to do, and nothing to wait for - the
+            // wait below is for an event this settlement is no longer going to raise.
+            continue;
+        }
+
+        if (doomed.length === assigned.length && requestClearSettlement(city.id)) {
             cleared += assigned.length;
         } else {
-            for (const resource of assigned) {
+            for (const resource of doomed) {
                 if (unassignIfAllowed(city.id, resource.value)) {
                     cleared++;
                 } else {

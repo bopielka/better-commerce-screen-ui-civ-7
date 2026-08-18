@@ -144,7 +144,14 @@ export function forgetPlaceability() {
     cachedAnswer = null;
 }
 
-function anythingCanBePlaced() {
+/**
+ * Whether any unassigned resource of ours would actually be accepted somewhere.
+ *
+ * ⚠️ Exported for `dock-resource-button.js`, which pulses the HUD button on this answer. The
+ * 250ms cache below is what makes that safe to call from an event handler: several engine
+ * events arrive together on a turn boundary and this is the most expensive call in the mod.
+ */
+export function anythingCanBePlaced() {
     if (cachedAnswer !== null && Date.now() - cachedAt < ANSWER_CACHE_MS) {
         return cachedAnswer;
     }

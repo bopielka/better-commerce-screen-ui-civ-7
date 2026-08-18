@@ -261,6 +261,36 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="fr_FR">
             <Text>Versé par convoi, une fois déchargé dans votre patrie.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN" Language="fr_FR">
+            <Text>Renvoyer les convois</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="fr_FR">
+            <Text>Les convois de trésor chargés rejoignent d'eux-mêmes votre colonie natale la plus proche et déchargent dès qu'ils le peuvent.[N][N]Vous en gardez la main : un convoi que vous déplacez vous-même reste où vous l'avez laissé, et n'est relancé qu'au début de votre tour suivant.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="fr_FR">
+            <Text>Verrouiller la ressource</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP" Language="fr_FR">
+            <Text>Garde cette ressource dans cette colonie. [B]Tout retirer[/B] et [B]Tout réattribuer[/B] la laisseront en place.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK" Language="fr_FR">
+            <Text>Déverrouiller la ressource</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP" Language="fr_FR">
+            <Text>Autorise le déplacement de cette ressource. [B]Tout retirer[/B] et [B]Tout réattribuer[/B] la traiteront comme les autres.</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS" Language="fr_FR">
+            <Text>Autoriser le verrouillage des ressources</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION" Language="fr_FR">
+            <Text>Ajoute un petit cadenas à chaque ressource attribuée. Une ressource verrouillée reste dans sa colonie lors de Tout attribuer, Tout réattribuer ou Tout retirer. Désactivez pour masquer complètement les cadenas.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR" Language="fr_FR">
+            <Text>Retirer les ressources d’usine</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="fr_FR">
+            <Text>Renvoie toutes les ressources d'usine de cette colonie vers la réserve non attribuée.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="fr_FR">
             <Text>Seule la limite de routes commerciales bloque</Text>
         </Row>

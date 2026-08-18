@@ -1,5 +1,5 @@
 /**
- * The stack of buttons in a trade route card's corner: buy a merchant, go and look at it - and
+ * The stack of buttons on a trade route card: buy a merchant, go and look at it - and
  * on a card blocked by nothing but the trade limit, propose the treaty that would open a slot
  * and buy the merchant anyway.
  *
@@ -39,11 +39,11 @@
  *
  * Where it sits
  * -------------
- * Inside the card's top-right corner, the box holding the leader's portrait, which this mod
- * turns around (row-reverse) so an appended child lands to the LEFT of the portrait. The
- * buttons are stacked in a column there. The corner is Solid's and a redraw takes the stack
- * with it; the tab's observer puts it back, the same way as everything else this mod adds to
- * these cards.
+ * At the right-hand end of the card's TITLE ROW, after the route name, which truncates to
+ * make room for it. The leader's portrait keeps the top-right corner to itself and the
+ * resources have the row below, so the three do not overlap. The row is Solid's and a redraw
+ * takes the stack with it; the tab's observer puts it back, the same way as everything else
+ * this mod adds to these cards.
  */
 import ContextManager from '/core/ui/context-manager/context-manager.js';
 import { RaiseDiplomacyEvent } from '/base-standard/ui/diplomacy/diplomacy-events.js';
@@ -84,6 +84,15 @@ export const LEADER_LINK_CLASS = 'najane-trade-leader-link';
 
 /** The corner of the card holding the leader portrait; see trade-routes.js. */
 const LEADER_CORNER_SELECTOR = '.absolute.top-1.right-1';
+
+/**
+ * The card's title row, which trade-routes.js marks. The buttons hang on the END of it.
+ *
+ * ⚠️ Named here rather than imported, because trade-routes.js imports THIS module - taking
+ * the constant the other way round would close the cycle. One string in two places is the
+ * cheaper of the two problems, and the row is marked one line above the call that lands here.
+ */
+const HEAD_SELECTOR = '.najane-trade-head';
 const CARD_SELECTOR = '.trade-route-card';
 
 /** The game's own map pin, the one the culture victory tab drops on the map. */
@@ -130,22 +139,33 @@ const COMMERCE_PANEL_CONTEXT = 'screen-resource-allocation';
 
 export const BUY_STYLE = `
 /*
- * The portrait's corner, turned around so the buttons sit to its left. It is a flex-col of
- * two children, the second of which - the relationship plaque - this mod already hides, so
- * reversing the row costs nothing and needs no wrapper of our own.
+ * ⚠️ THE STACK IS IN THE TITLE ROW NOW, not in the portrait's corner, and that is what puts
+ * the card into three plain pieces instead of two overlapping ones:
+ *
+ *     [ domain icon  route -> destination        prices ]   <- the title row
+ *     [ resources                                       ]   <- below it, its own row
+ *                                          [ portrait ]      <- the corner, on the right
+ *
+ * The corner is "position: absolute" and always was; with only the portrait left in it, it
+ * reads as a right-hand column and stops being something the other rows have to dodge. The
+ * title row is given an explicit width that stops short of it - see "updateMeasuredLayout" in
+ * trade-routes.js - and the resources row carries the game's own "mr-13" for the same purpose.
+ *
+ * Nothing is MOVED to achieve this: the corner, the title row and the resources row are all
+ * Solid's, in the order Solid rendered them, and only this mod's own stack changes parent.
+ * See the ⚠️ on "positionGroupHeader" for what moving one of Solid's nodes costs.
  */
-${CARD_SELECTOR} ${LEADER_CORNER_SELECTOR} {
-    flex-direction: row-reverse;
-    /* The buttons sit level with the middle of the portrait rather than hanging off its top. */
-    align-items: center;
-}
 .${STACK_CLASS} {
     display: flex;
+    /* Last in the title row, and the destination before it takes the slack, so it sits right. */
+    flex: 0 0 auto;
     flex-direction: column;
     /* Centred on each other: the price is wider than the pin, and a ragged edge showed it. */
     align-items: center;
     justify-content: center;
-    margin-right: 0.4rem;
+    /* Two buttons make the stack taller than the text beside it; this centres it on the row. */
+    align-self: center;
+    margin-left: 0.5rem;
 }
 .${BUY_CLASS},
 .${LOCATE_CLASS} {
@@ -930,13 +950,37 @@ function renderImproveStack(stack, route, targetCity) {
  *                         has the route's full status list; this is handed the answer rather
  *                         than a second copy of the question.
  */
+/**
+ * Puts the stack at the END of the title row, and puts it back there on every pass.
+ *
+ * ⚠️ APPENDING ONCE IS NOT ENOUGH, which is what put the prices in the middle of the line.
+ * `decorate` in trade-routes.js builds the "-> destination" block into this same row and
+ * appends it AFTER calling this - deliberately, so a card whose row survived a redraw still
+ * gets its buttons back - so whatever this appended stops being last a moment later. Asking
+ * each pass is cheap and self-correcting; guessing the order of two decorators is not.
+ *
+ * ⚠️ Safe to move because the stack is OURS. The row and the destination block are not, and
+ * moving one of Solid's nodes is what the ⚠️ on `positionGroupHeader` is about.
+ */
+function keepLast(head, stack) {
+    if (head.lastElementChild !== stack) {
+        head.appendChild(stack);
+    }
+}
+
 export function decorateBuyMerchant(card, route, unavailableGroup = null) {
-    const corner = card.querySelector(LEADER_CORNER_SELECTOR);
+    /*
+     * ⚠️ The TITLE ROW, not the portrait's corner. See the note on `.${STACK_CLASS}` in
+     * BUY_STYLE for the layout this produces. The row is marked by trade-routes.js one line
+     * before it calls this, so it is there whenever a card has been decorated at all - and
+     * when it has not, there is nothing to hang a button on yet and the next pass will do it.
+     */
+    const head = card.querySelector(HEAD_SELECTOR);
     const mode = route?.startable ? 'available' : (unavailableGroup === 'limit' ? 'improve' : null);
-    if (!corner || !mode) {
+    if (!head || !mode) {
         // A card in neither state keeps no stack - already running, out of range, or blocked
         // by something a treaty cannot fix (being at war, say).
-        const stale = corner?.querySelector(`.${STACK_CLASS}`);
+        const stale = card.querySelector(`.${STACK_CLASS}`);
         if (stale) {
             // ⚠️ Disposed before it goes, like every other place a stack is discarded. A
             // framed tooltip outliving the element it is anchored to is what draws an empty
@@ -953,7 +997,7 @@ export function decorateBuyMerchant(card, route, unavailableGroup = null) {
     }
     const render = mode === 'available' ? renderAvailableStack : renderImproveStack;
 
-    const existing = corner.querySelector(`.${STACK_CLASS}`);
+    const existing = head.querySelector(`.${STACK_CLASS}`);
     if (existing) {
         /*
          * ⚠️ Both checked. The generation covers a price or an order changing; the mode
@@ -965,13 +1009,12 @@ export function decorateBuyMerchant(card, route, unavailableGroup = null) {
             render(existing, route, targetCity);
             existing.dataset.najaneMode = mode;
         }
+        keepLast(head, existing);
         return;
     }
 
     const stack = makeElement('div', STACK_CLASS);
     render(stack, route, targetCity);
     stack.dataset.najaneMode = mode;
-    // ⚠️ Appended, not inserted: the corner is turned around in CSS, so the last child is
-    // the leftmost one on screen. Inserting first would put the stack under the portrait.
-    corner.appendChild(stack);
+    keepLast(head, stack);
 }

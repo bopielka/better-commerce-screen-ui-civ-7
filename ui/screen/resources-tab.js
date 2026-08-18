@@ -57,6 +57,7 @@ import { startShiftClick, stopShiftClick } from './shift-click.js';
 import { startLayout, stopLayout } from './layout.js';
 import { startAssignAllButtons, stopAssignAllButtons } from './assign-all-buttons.js';
 import { startSettlementControls, stopSettlementControls } from './settlement-controls.js';
+import { startResourceLocks, stopResourceLocks } from './resource-locks-ui.js';
 import { startTabIcons } from './tab-icons.js';
 import { isShiftHeld } from '../engine/shift.js';
 import { log, warn } from '../support/diagnostics.js';
@@ -197,6 +198,7 @@ function CommerceResourcesContainerWithRightClickUnassign(props) {
         startLayout();
         startAssignAllButtons();
         startSettlementControls();
+        startResourceLocks();
         // No stop counterpart on purpose - see the note in tab-icons.js.
         startTabIcons();
         log(`right-click unassign active (overridePriority ${overridePriority})`);
@@ -212,6 +214,7 @@ function CommerceResourcesContainerWithRightClickUnassign(props) {
         stopLayout();
         stopAssignAllButtons();
         stopSettlementControls();
+        stopResourceLocks();
         clearCommerceModel(model);
     });
 

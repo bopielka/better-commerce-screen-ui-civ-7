@@ -261,6 +261,36 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_ON_ARRIVAL" Language="zh_Hans_CN">
             <Text>每支运输队在本土卸货后支付。</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN" Language="zh_Hans_CN">
+            <Text>自动遣返运输船队</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="zh_Hans_CN">
+            <Text>满载的财宝船队会自动驶向最近的母国聚落，并在允许时立即卸货。[N][N]你仍可随时接管：由你亲自移动的船队会留在原地，直到你的下一回合开始才会再次出发。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="zh_Hans_CN">
+            <Text>锁定资源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP" Language="zh_Hans_CN">
+            <Text>将此资源保留在该聚落。[B]全部取消分配[/B]与[B]全部重新分配[/B]不会移动它。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK" Language="zh_Hans_CN">
+            <Text>解锁资源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP" Language="zh_Hans_CN">
+            <Text>允许再次移动此资源。[B]全部取消分配[/B]与[B]全部重新分配[/B]会与其他资源一视同仁。</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS" Language="zh_Hans_CN">
+            <Text>允许锁定资源</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>为每个已分配资源添加一个小锁。使用全部分配、全部重新分配或全部取消分配时，被锁定的资源会留在其聚落中。关闭后将完全隐藏这些锁。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR" Language="zh_Hans_CN">
+            <Text>归还工厂资源</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="zh_Hans_CN">
+            <Text>将此聚落的所有工厂资源归还到未分配资源池。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="zh_Hans_CN">
             <Text>只差贸易路线上限</Text>
         </Row>
