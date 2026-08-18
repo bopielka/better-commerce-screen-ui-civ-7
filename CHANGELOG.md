@@ -5,6 +5,80 @@ Notable changes to **Better Commerce Screen UI**. Newest first.
 ⚠️ **There was no changelog before 1.3.** Earlier releases are not recorded here, and nothing
 below should be read as the mod's full history — it is the history from 1.3 onwards.
 
+## 1.5
+
+### Added
+
+- **Propose "Improve Trade Relations" and buy a Merchant, both from a limit-blocked trade route
+  card.** Every card in the "one trade slot away" group under **unavailable trade routes** now
+  carries a button of its own, priced in **both** Influence and Gold. One click:
+  - proposes the treaty with that leader — **the same action the Diplomacy screen offers**, via
+    `ui/engine/diplomacy.js`;
+  - buys a Merchant and sends it **regardless of whether the treaty is accepted**;
+  - the Merchant opens the route itself the moment a slot exists, whether it came from this
+    treaty, a later one, or nothing this mod did at all.
+  - **Both costs are checked before the button lights up** — the treaty's own eligibility (once
+    proposed, the next attempt costs more; a cooldown follows a refusal; the leader must be met
+    and not at war) through the same `canStart` the game's own diplomacy hub calls, and enough
+    Influence and Gold in the bank. Short of either, the button goes dark with both prices still
+    on it, and the tooltip says which is short.
+  - **The treaty can be refused** — proposing it is not the same as it taking effect, and this
+    mod does not pretend otherwise. Nothing here waits to find out: the purchase goes ahead
+    regardless, because the Merchant already knows how to wait on an uncertain outcome.
+- **A blocked trade route's title tooltip now says why.** Out of range, at war, or your Trade
+  Route capacity with that leader is full — in the game's own wording, the same explanations
+  its own card overlay already carries further down, just easier to find. A route blocked for
+  more than one reason at once lists all of them.
+- **The capacity warning can now fix the thing it warns about.** It carries an Influence price
+  next to the attention mark and proposes "Improve Trade Relations" with that leader directly
+  on a click, the same treaty the limit-blocked button offers — without also buying a second
+  Merchant, since this card already has its own gold button for that. When the treaty is not
+  currently on offer — short of Influence, on cooldown, or the pairing does not have it at all
+  — the click falls back to opening diplomacy, exactly what this button always did before.
+
+### Fixed
+
+- **"Factories first" ignored how many copies of each Factory Resource the pool held**, which
+  showed up worst with a single factory: instead of starting it on whichever kind had the most
+  copies waiting, it read as picking one at random. `factoryStockByType` was keying its stock
+  count by the wrong map key (`groupByResourceType`'s compound `type|import`/`type|ours` key,
+  read straight into a variable named `type`) while every lookup in `factoryFirstScore` asked
+  for the bare resource type — so the lookup missed every time, stock silently read as 0 for
+  every kind, and the tier fell back to plain yield value with no notion of stock at all.
+- **"Already running this Diplomatic Action with this Leader" did not say for how long.** On a
+  trade route card that is the whole question — the tooltip now says **this turn**, which is
+  exact: `diplomacy-actions.xml` gives Improve Trade Relations `BaseDuration="0"`, so it
+  resolves at the end of the turn it was proposed in and the next attempt is never further off
+  than that. Swapped by localisation *key* before the text is composed, so it stays translated
+  in all twelve languages, and only on this mod's own cards — the game's own key is untouched
+  and still reads the general way everywhere else in diplomacy.
+- **The Trade Routes tab could be dragged sideways**, so the cards drifted left and right
+  under the cursor. It now scrolls up and down only. The drift had something to reach for
+  because the header naming a group of unavailable routes was 0.6rem wider than its row —
+  `box-sizing: border-box` covers padding and border but never margin, so its full-width rule
+  plus its own side margins overhung the line. The inset is padding now, and the text sits
+  exactly where it did.
+- **Buying a Merchant killed the tooltips on every other card pointing at the same
+  settlement** — which on screen read as "the tooltips stopped working on that one leader's
+  cards", because the several cards naming one settlement are necessarily all that leader's.
+  Each card's buttons file their framed tooltips under a *scope*, which is the bucket its
+  rebuild disposes — and the scope was keyed by the **target settlement**.
+  `projectPossibleTradeRoutes` returns one route per *pairing*, so every settlement of ours in
+  reach of the same foreign settlement gets its own card naming that same target: those cards
+  all shared one bucket. A redraw of any one of them disposed the lot, then remounted only its
+  own, so only the last card rendered for a given settlement kept a live tooltip. The scope is
+  now a serial issued per button stack, which is what the comment above it always claimed it
+  was. A stack discarded without a redraw (a route that stops being actionable) now disposes
+  its tooltips before it goes, too.
+- **A route's own card never noticed its Trade Route capacity had changed** — proposing and
+  winning "Improve Trade Relations" left the card offering to propose it again until the whole
+  Commerce screen was closed and reopened. This mod's own cache now clears on `DiplomacyEventEnded`
+  and `DiplomacyQueueChanged` as well, so a button on that card switches to the right flow on
+  the next redraw. ⚠️ The card's own SECTION still cannot move without reopening the screen —
+  `commerce-screen-model.js` builds the trade route list exactly once, when the screen's model
+  is created, and nothing in the base game ever rebuilds it again while that screen stays open;
+  see the note on `ROUTE_EVENTS` in `trade-routes.js`.
+
 ## 1.4
 
 ### Added

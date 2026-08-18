@@ -347,7 +347,27 @@
             <Text>Kein Handelsroutenplatz frei</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="de_DE">
-            <Text>Mit {1_Leader} kannst du {2_Capacity} Handelsroute(n) halten, und {3_Used} laufen bereits oder sind unterwegs. Ein jetzt entsandter Händler findet womöglich keinen freien Platz vor.[N][N]Klicke, um die Diplomatie mit {1_Leader} zu öffnen. Die Aktion „Handelsbeziehungen verbessern“ erhöht dort dein Handelsroutenlimit mit ihnen.</Text>
+            <Text>Mit {1_Leader} kannst du {2_Capacity} Handelsroute(n) halten, und {3_Used} laufen bereits oder sind unterwegs. Ein jetzt entsandter Händler findet womöglich keinen freien Platz vor.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY" Language="de_DE">
+            <Text>Beziehungen verbessern &amp; Händler kaufen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP" Language="de_DE">
+            <Text>Schlägt {1_Leader} die Aktion „Handelsbeziehungen verbessern“ für {2_InfluenceCost} Einfluss vor - wird sie angenommen, steigt dein Handelsroutenlimit mit ihnen um eins. Kauft unabhängig davon einen Händler für {3_GoldCost} Gold und schickt ihn nach {4_Target}; er eröffnet die Route selbst, sobald ein Platz frei ist, gleich wodurch.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS" Language="de_DE">
+            <Text>Die Verbesserung der Handelsbeziehungen kostet {1_Cost} Einfluss, und du hast {2_Balance}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="de_DE">
+            <Text>Klicke, um {1_Leader} die Aktion „Handelsbeziehungen verbessern“ für {2_Cost} Einfluss vorzuschlagen - das erhöht dein Handelsroutenlimit mit ihnen.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="de_DE">
+            <Text>Klicke, um stattdessen die Diplomatie mit {1_Leader} zu öffnen.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="de_DE">
+            <Text>Ihr führt diese diplomatische Aktion in diesem Zug bereits mit diesem Anführer durch.</Text>
         </Row>
     </LocalizedText>
 </Database>

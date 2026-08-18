@@ -370,7 +370,27 @@
             <Text>Brak wolnego miejsca na szlak</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="pl_PL">
-            <Text>Z przywódcą {1_Leader} możesz mieć {2_Capacity} szlak(ów) handlowych, a {3_Used} już działa lub jest w drodze. Kupiec wysłany teraz może dotrzeć i nie mieć gdzie się wpiąć.[N][N]Kliknij, aby otworzyć dyplomację z {1_Leader}. Akcja „Poprawa stosunków handlowych” podnosi tam limit szlaków handlowych z tym przywódcą.</Text>
+            <Text>Z przywódcą {1_Leader} możesz mieć {2_Capacity} szlak(ów) handlowych, a {3_Used} już działa lub jest w drodze. Kupiec wysłany teraz może dotrzeć i nie mieć gdzie się wpiąć.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY" Language="pl_PL">
+            <Text>Popraw relacje i kup kupca</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP" Language="pl_PL">
+            <Text>Proponuje akcję „Poprawa stosunków handlowych” z {1_Leader} za {2_InfluenceCost} wpływów - jeśli zostanie przyjęta, podniesie to limit szlaków handlowych z tym przywódcą o jeden. Niezależnie od tego kupuje kupca za {3_GoldCost} złota i wysyła go do osady {4_Target}; kupiec sam otworzy szlak, gdy tylko pojawi się wolne miejsce, obojętnie skąd ono przyjdzie.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS" Language="pl_PL">
+            <Text>Poprawa stosunków handlowych kosztuje {1_Cost} wpływów, a masz {2_Balance}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="pl_PL">
+            <Text>Kliknij, aby zaproponować „Poprawę stosunków handlowych” z {1_Leader} za {2_Cost} wpływów - podniesie to limit szlaków handlowych z tym przywódcą.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="pl_PL">
+            <Text>Kliknij, aby zamiast tego otworzyć dyplomację z {1_Leader}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="pl_PL">
+            <Text>To działanie dyplomatyczne względem tej cywilizacji zostało już przez ciebie rozpoczęte w tej turze.</Text>
         </Row>
     </LocalizedText>
 </Database>

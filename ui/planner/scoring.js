@@ -244,16 +244,36 @@ const FACTORY_STOCK_CAP = 40;
  */
 const FACTORY_LEFTOVER_WEIGHT = 1000;
 
-/** How many spare copies of each factory resource the pool still holds. */
+/**
+ * How many spare copies of each factory resource the pool still holds.
+ *
+ * ⚠️ Summed across GROUPS, never read off the map's own key. `groups` is keyed by
+ * `groupByResourceType` as `` `${type}|${imported ? 'import' : 'ours'}` `` - an imported
+ * Coffee and a home-grown one are two separate entries so a settlement's own trade-route
+ * requirement can tell them apart. Destructuring that key straight into a variable named
+ * `type` and using IT to key this map shipped once already: every lookup in
+ * `factoryFirstScore` asks for the bare type (`resourceType(resource)`, e.g.
+ * `"RESOURCE_COFFEE"`), which never matches a key that actually reads
+ * `"RESOURCE_COFFEE|ours"` - so `factoryStock.get(type)` missed on every single call, stock
+ * silently read as 0 for every kind, and the whole "prefer the kind with the most copies"
+ * term in `factoryFirstScore` went dead. With one factory that left `scorePair` - a resource's
+ * YIELD VALUE, nothing about how many copies were waiting - as the only thing deciding which
+ * kind got started, which is exactly the "it picks some random resource" a stock-blind tier
+ * looks like. Reading `resourceType(group[0])` here instead of trusting the map's key, and
+ * summing rather than overwriting, is what makes an imported and a home-grown copy of the
+ * same kind count as the one stock they actually are.
+ */
 function factoryStockByType(groups) {
     const stock = new Map();
     if (!isFactoryFirstEnabled()) {
         return stock;
     }
-    for (const [type, group] of groups) {
-        if (resourceClassOf(group[0]) === FACTORY_CLASS) {
-            stock.set(type, group.length);
+    for (const group of groups.values()) {
+        if (resourceClassOf(group[0]) !== FACTORY_CLASS) {
+            continue;
         }
+        const type = resourceType(group[0]);
+        stock.set(type, (stock.get(type) ?? 0) + group.length);
     }
     return stock;
 }

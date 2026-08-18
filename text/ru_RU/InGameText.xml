@@ -357,7 +357,27 @@
             <Text>Немає вільного місця для шляху</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="ru_RU">
-            <Text>З лідером {1_Leader} ви можете мати {2_Capacity} торговельних шляхів, і {3_Used} вже діють або в дорозі. Купець, відправлений зараз, може дійти й не мати куди стати.[N][N]Натисніть, щоб відкрити дипломатію з {1_Leader}. Дія «Покращення торговельних відносин» там підвищує ліміт торгових шляхів з ними.</Text>
+            <Text>З лідером {1_Leader} ви можете мати {2_Capacity} торговельних шляхів, і {3_Used} вже діють або в дорозі. Купець, відправлений зараз, може дійти й не мати куди стати.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY" Language="ru_RU">
+            <Text>Покращити відносини й купити купця</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP" Language="ru_RU">
+            <Text>Пропонує дію «Покращення торговельних відносин» з {1_Leader} за {2_InfluenceCost} впливу - якщо її приймуть, ліміт торгових шляхів з цим лідером зросте на один. У будь-якому разі купує купця за {3_GoldCost} золота й відправляє його до {4_Target}; купець сам відкриє шлях, щойно з'явиться вільне місце, байдуже звідки воно візьметься.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS" Language="ru_RU">
+            <Text>Покращення торговельних відносин коштує {1_Cost} впливу, а у вас {2_Balance}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="ru_RU">
+            <Text>Натисніть, щоб запропонувати «Покращення торговельних відносин» з {1_Leader} за {2_Cost} впливу - це підвищить ліміт торгових шляхів з цим лідером.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="ru_RU">
+            <Text>Натисніть, щоб натомість відкрити дипломатію з {1_Leader}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="ru_RU">
+            <Text>Ви вже розпочали цю дипломатичну дію з цим лідером цього ходу.</Text>
         </Row>
     </LocalizedText>
 </Database>

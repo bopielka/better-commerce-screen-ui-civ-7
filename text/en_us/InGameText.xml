@@ -389,7 +389,28 @@
             <Text>No Trade Route slot left</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP">
-            <Text>You can hold {2_Capacity} Trade Route(s) with {1_Leader}, and {3_Used} are already running or on the way. A Merchant sent now may arrive with no slot to take.[N][N]Click to open diplomacy with {1_Leader}. The ‘Improve Trade Relations’ action there raises your Trade Route limit with them.</Text>
+            <Text>You can hold {2_Capacity} Trade Route(s) with {1_Leader}, and {3_Used} are already running or on the way. A Merchant sent now may arrive with no slot to take.</Text>
+        </Row>
+
+        <!-- Propose Improve Trade Relations, then buy and send a Merchant regardless -->
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY">
+            <Text>Improve Relations &amp; Buy a Merchant</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP">
+            <Text>Proposes 'Improve Trade Relations' with {1_Leader} for {2_InfluenceCost} Influence - if accepted, it raises your Trade Route limit with them by one. Buys a Merchant for {3_GoldCost} Gold regardless and sends it to {4_Target}; it opens the route itself once a slot exists, whichever of the two brought it.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS">
+            <Text>Improving trade relations costs {1_Cost} Influence and you have {2_Balance}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE">
+            <Text>Click to propose 'Improve Trade Relations' with {1_Leader} for {2_Cost} Influence, raising your Trade Route limit with them.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN">
+            <Text>Click to open diplomacy with {1_Leader} instead.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED">
+            <Text>Already running this Diplomatic Action with this Leader this turn.</Text>
         </Row>
     </EnglishText>
 </Database>

@@ -347,7 +347,27 @@
             <Text>Plus de place pour une route</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="fr_FR">
-            <Text>Vous pouvez tenir {2_Capacity} route(s) commerciale(s) avec {1_Leader}, et {3_Used} sont déjà actives ou en chemin. Un marchand envoyé maintenant risque d'arriver sans place libre.[N][N]Cliquez pour ouvrir la diplomatie avec {1_Leader}. L'action « Amélioration des relations commerciales » y augmente votre limite de routes commerciales avec eux.</Text>
+            <Text>Vous pouvez tenir {2_Capacity} route(s) commerciale(s) avec {1_Leader}, et {3_Used} sont déjà actives ou en chemin. Un marchand envoyé maintenant risque d'arriver sans place libre.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY" Language="fr_FR">
+            <Text>Améliorer les relations et acheter un marchand</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP" Language="fr_FR">
+            <Text>Propose l'action « Amélioration des relations commerciales » avec {1_Leader} pour {2_InfluenceCost} d'influence - si elle est acceptée, votre limite de routes commerciales avec eux augmente d'une unité. Achète malgré tout un marchand pour {3_GoldCost} d'or et l'envoie à {4_Target} ; il ouvrira la route lui-même dès qu'une place se libère, peu importe d'où elle vient.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS" Language="fr_FR">
+            <Text>Améliorer les relations commerciales coûte {1_Cost} d'influence et vous en avez {2_Balance}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="fr_FR">
+            <Text>Cliquez pour proposer « Amélioration des relations commerciales » avec {1_Leader} pour {2_Cost} d'influence, augmentant votre limite de routes commerciales avec eux.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="fr_FR">
+            <Text>Cliquez pour ouvrir la diplomatie avec {1_Leader} à la place.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="fr_FR">
+            <Text>Cette action diplomatique est déjà en cours avec ce dirigeant durant ce tour.</Text>
         </Row>
     </LocalizedText>
 </Database>

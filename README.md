@@ -234,15 +234,35 @@ Clicking a leader's portrait on any card opens diplomacy with them.
 
 Trade capacity is counted per leader, not per settlement — so if one slot is free and a
 merchant of yours is already walking to one of that leader's cities, every other card of theirs
-gets an **attention mark** under the price saying the slot is spoken for. It does not stop
-you: relations can change while a merchant walks. Clicking the mark closes the screen and opens
-diplomacy with that leader, where another slot is earned.
+gets an **attention mark** under the price, priced in Influence, saying the slot is spoken for.
+It does not stop you: relations can change while a merchant walks. Click it and it proposes
+"Improve Trade Relations" with that leader on the spot — the same treaty the button below
+offers — or, if that is not on offer right now, opens diplomacy with them instead, same as it
+always did.
 
 One errand per settlement at a time: while a merchant of yours is walking there the button is
 disabled and a **map pin** appears under it. Click the pin and the screen closes and takes you
 to that merchant. If it is lost at sea or killed on the road, the mod notices, drops the errand
 and gives you the gold button back — the card never claims that help is on the way when it is
 not.
+
+#### Or fix the limit and buy the merchant anyway
+
+The "one trade slot away" group under **unavailable trade routes** carries a button too — the
+same idea, priced in Influence as well as Gold:
+
+```
+(city) (sea)  MEKKA -> BOGDAN      [ 12 ]  [ 325 ]  (leader)
+```
+
+One click **proposes "Improve Trade Relations"** with that leader — the same treaty the
+Diplomacy screen offers — and buys and sends a merchant regardless of whether it is accepted.
+The treaty can be refused; this mod does not pretend otherwise. Nothing waits to find out: the
+merchant is sent anyway, because it already knows how to wait for a slot that might come from
+this treaty, a later one, or nowhere this mod had a hand in. The button only lights up once
+both prices are affordable and the treaty is actually on offer right now — once proposed, the
+next attempt costs more, and a refusal is followed by a cooldown, both checked the same way the
+Diplomacy screen itself checks them.
 
 ### Treasure convoys, without the noise
 

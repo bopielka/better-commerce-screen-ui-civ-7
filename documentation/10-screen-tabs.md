@@ -233,14 +233,57 @@ language that words it differently. The route is looked up instead through
 and `nearestCityId` as **data**.
 
 That projection is real work (it is what builds the whole tab), so it is cached in
-`routesByCityName` and invalidated on `TradeRouteAddedToMap`, `TradeRouteChanged` and
-`LocalPlayerTurnBegin`.
+`routesByCityName` and invalidated on `TradeRouteAddedToMap`, `TradeRouteChanged`,
+`LocalPlayerTurnBegin`, `DiplomacyEventEnded` and `DiplomacyQueueChanged` — the last two solely
+for a proposed "Improve Trade Relations" treaty resolving, listened for the same way
+`panel-diplomacy-actions.js` itself does.
+
+⚠️ **This cache clearing does not move a card between sections.** It only makes THIS MOD's own
+`route.status` — read live from the engine on the next rebuild — correct again, so a button
+this mod draws on that card switches to the right flow straight away. The card's own SECTION
+stays wherever the game drew it: `commerce-screen-model.js` builds `tradeRouteTabData` exactly
+**once**, when the screen's model is created, and nothing in the base game ever rebuilds it
+again for the life of that one screen-open — not on any event, not on a timer. Moving the card
+to reflect new capacity would mean moving it between two different `<For>`s over two different
+arrays, which `reconcileArrays` cannot survive being done to from outside Solid; see the ⚠️ on
+`reorderCards`. The only way the card's own section updates is closing the screen and opening
+it again — true in vanilla play as well, with or without this mod.
 
 ⚠️ The tooltip goes on the **text**, not the row. On the row it also answered for the icons, so
 hovering the domain icon showed the route name instead of what that icon means.
 
 The class and the tooltip are re-applied **every pass**: they are ours, but the row is Solid's and
 a redraw takes both with it.
+
+#### Why a blocked route is blocked
+
+On a card that is neither startable nor already running, the title tooltip gets a second
+paragraph: the reason, **in the game's own words**.
+
+⚠️ **Not written here.** `blockedReasons` reads three keys straight out of
+`CommerceScreenText.xml` — `LOC_COMMERCE_TRADE_STATUS_CAPACITY_TOOLTIP`,
+`_IN_RANGE_TOOLTIP`, `_AT_PEACE_TOOLTIP` — the exact explanations the game's own card overlay
+(`CommerceCriteriaDisplay`, fed by `getTradeRouteDataFromTradeRoute` in
+`commerce-screen-model.js`) already shows on hover, further down the same card. This mod does
+not invent a second wording for something the game already explains; it puts the explanation
+somewhere a player is more likely to see it — the title, not three small lines at the card's
+foot.
+
+⚠️ **No "inapplicable" branch needed.** The game's own model marks a criterion inapplicable
+when a civ trait waives it, but that case never reaches `route.status` at all — the engine
+simply leaves the flag out of the array once a trait bypasses it. A flag present in
+`route.status` is always a real block, so `blockedReasons` only ever needs the plain
+explanation, never the "although you would not ordinarily…" variant.
+
+⚠️ **Composed, never stylized**, and set on the plain `data-tooltip-content` attribute rather
+than a framed tooltip. That attribute's own renderer stylizes whatever is in it — see the note
+on `TOOLTIP_TEXT_SELECTOR` in `trade-summary.js`, which also supplies the `white-space:
+pre-wrap` these line breaks need to actually break. Stylizing the text here as well would
+double-process the `[STYLE:...]` markup the "at war" reason carries.
+
+A route can fail more than one criterion at once — blocked by both range and a war, say — and
+every applicable one is listed, in the order the game's own overlay uses: capacity, range,
+war.
 
 ### Three cards to a row
 
@@ -418,9 +461,10 @@ settlement the route is measured from, walk it to the other empire's settlement,
 route the moment the engine allows it. The journey is looked after by
 [`ui/engine/merchant-orders.js`](05-engine.md); the tab only draws the button.
 
-- **Only on startable cards.** On a card blocked by distance or by the trade limit the
-  merchant would arrive to nothing, so those keep no button at all — the reason is already
-  written across them.
+- **On startable cards, and on cards blocked by nothing but the trade limit** — the latter get
+  the propose-and-buy variant below. On a card blocked by distance, or already running, the
+  merchant would arrive to nothing this mod can promise, so those keep no button at all — the
+  reason is already written across them.
 - **Dark, not hidden, when the settlement cannot sell.** A price that cannot be paid is still
   the answer to "what would this cost", and the tooltip says which of the two reasons it is.
 - **No confirmation dialog**, deliberately: the game's own production list buys with one click
@@ -436,9 +480,16 @@ route the moment the engine allows it. The journey is looked after by
 - **A warning under the price** when that leader's trade capacity is already spoken for —
   every route running plus every merchant on its way to *any* of that leader's settlements. It
   does not disable anything: relations change while a merchant walks, and a player is entitled
-  to gamble on that. Clicking it closes the screen and opens **diplomacy with that leader**,
-  which is where the capacity comes from. The same sentence is added to the price tooltip as
-  its own card, and it says plainly that it can be clicked.
+  to gamble on that. The same sentence is added to the price tooltip as its own card.
+  - **It carries the fix, not just a link.** Priced in Influence next to the attention mark,
+    it proposes "Improve Trade Relations" with that leader directly — the same treaty the
+    limit-blocked button offers, minus the merchant purchase, since this card already has its
+    own gold button for that. `warnActionText` cascades the same way `improveTooltip` does:
+    ready shows the one-click fix; anything else falls back to what this button always did —
+    open diplomacy with that leader — and says so.
+  - ⚠️ Redraws its own stack **synchronously** right after proposing, not on the next decorate
+    pass: `proposeTradeRelations` is not async like a purchase, so there is nothing to wait
+    for — the new price and readiness are already known the instant it returns.
 
 ⚠️ The warning and the map pin share one slot under the price and are never both there: a
 warning is only raised when no merchant of ours is walking to that settlement, which is exactly
@@ -468,14 +519,38 @@ a Solid component built around its trigger; there is no "set the text" on one.
 ⚠️ Which means each card's tooltips get **their own scope**, disposed before the elements they
 are anchored to are thrown away. A frame left mounted around a discarded trigger has nothing to
 measure against and the game draws it in the **top-left corner of the screen** — which is what
-a click on the buy button did until `renderStack` started disposing first. The tab's teardown
-passes the bare scope and takes every card's with it; `disposeFramedTooltips` matches by prefix.
-The sort strip does the same, one scope per section.
+a click on the buy button did before the render functions (`renderAvailableStack`,
+`renderImproveStack`) started disposing first. The tab's teardown passes the bare scope and
+takes every card's with it; `disposeFramedTooltips` matches by prefix. The sort strip does the
+same, one scope per section.
+
+⚠️ **That covers this mod discarding a tooltip on purpose. It does not cover Solid discarding
+one without asking** — which happens whenever the game's own trade route list rebuilds a card,
+and left unhandled once stopped every tooltip on the whole tab, not only the one on the card
+that vanished. A framed tooltip's `createRoot` lives outside Solid's own tree by design (see
+the file note in `framed-tooltip.js`), so Solid removing an ancestor never calls its
+`onCleanup` — the tooltip stays registered in the game's own tooltip stack
+(`TooltipModel` in `core/ui-next/components/tooltip.js`, which tracks *active* tooltips by
+name) with no trigger left to hover away from, and a name that can never come off that stack
+blocks whatever was meant to follow it. `appendWithFramedTooltip` now marks every mount it
+builds with the scope it belongs to; the tab's own `MutationObserver` calls
+`disposeOrphanedTooltips` on every node in `removedNodes` **before** scheduling anything
+else, so a card Solid tears down takes its tooltip's registration with it the same turn.
 
 ⚠️ The in-flight flag lives in a module-level set keyed by TARGET SETTLEMENT, not on the
 button — the stack is rebuilt from scratch on every change, and a flag on the element would be
-thrown away mid-purchase and let a second click through. The click also redraws its own stack
-straight away: a click is not a DOM mutation, so nothing else wakes the observer.
+thrown away mid-purchase and let a second click through. The click also redraws its own stack,
+because a click is not a DOM mutation and nothing else would wake the observer up.
+
+⚠️ **That redraw is deferred one frame (`deferRedraw`), never done inside the click handler
+itself.** A redraw disposes the framed tooltip mounted on the very element the click came
+from, and disposing it BEFORE `bindActivatable`'s own handling of that click has finished —
+it calls `element.blur()` right after the callback returns — tore the trigger out of the
+document mid-handling. Nothing here threw; `UI.log` stayed clean, because the breakage was in
+the game's own tooltip stack (`TooltipModel`), not this mod's code: a registration left with
+no live trigger to answer for it blocked every tooltip queued up behind it on the whole tab,
+not only the one on the button that was clicked. `requestAnimationFrame` runs once the current
+script has fully yielded, giving the click's own handling an uninterrupted turn first.
 
 ⚠️ The map pin uses `ContextManager.pop("screen-resource-allocation")` — the same call the
 screen's own close button makes (`ScreenFrame`, the ContextManager close handler). Moving the
@@ -486,6 +561,41 @@ because players could not tell it had happened.
 sea changes what a card should say and **disturbs nothing on screen**, so the MutationObserver
 never fires — without that listener the card would go on offering to wait for a merchant that
 has drowned.
+
+#### The propose-and-buy button, on limit-blocked cards
+
+```
+[hex] [sea]  MEKKA → BOGDAN      [🏛 12] [💰 325] [leader]
+```
+
+The "one trade slot away" group under **unavailable trade routes** — every card blocked by
+nothing but the trade limit — carries a wider variant of the same button: two prices, Influence
+first. One click:
+
+1. proposes **"Improve Trade Relations"** with that leader — [`ui/engine/diplomacy.js`](05-engine.md);
+2. buys a merchant and sends it, **regardless of whether the proposal is accepted**;
+3. the merchant opens the route itself once a slot exists, from this treaty or anywhere else.
+
+⚠️ **Step 2 does not wait on step 1.** They are independent engine operations — a treaty
+proposal and a city purchase — and neither depends on the other having resolved. Waiting would
+only delay the one part of this that is not in question; see the file note in `diplomacy.js`
+for why the treaty's outcome is never chased.
+
+⚠️ **No warning variant here**, unlike the available flow above. The warning exists to catch a
+*second* purchase on a card that still reads as open; a limit-blocked card never reads that way
+to begin with — there is nothing here to warn about that the card is not already saying.
+
+⚠️ **Ready requires both prices**, and re-checks the treaty fresh at the moment of the click
+(`proposeTradeRelations` calls `canStart` again itself) rather than trusting the cached offer a
+render pass ago priced it with — Influence spent on something else since would make that stale.
+Buying still goes ahead even if the proposal is refused at that final check: the merchant does
+not need it to have succeeded, only to eventually be accepted by *someone*.
+
+⚠️ Measuring the corner's width (`widestCornerCard` above) prefers a card carrying **this**
+button over one carrying the plain gold button, because it is wider — two prices, not one.
+Picking whichever stack came first in the DOM would under-measure a row holding both kinds and
+put the title back under the wider button on the limit-blocked cards, the exact overlap that
+measurement exists to prevent.
 
 ⚠️ The button lives **inside the leader's corner**, which this mod flips to `row-reverse` so
 that an appended child lands to the *left* of the portrait. That is why it is appended rather

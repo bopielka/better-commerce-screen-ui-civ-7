@@ -347,7 +347,27 @@
             <Text>交易路の空きがありません</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="ja_JP">
-            <Text>{1_Leader}とは交易路を{2_Capacity}本まで結べますが、すでに{3_Used}本が稼働中または移動中です。いま商人を送っても、着いたときに空きがない可能性があります。[N][N]クリックすると{1_Leader}との外交を開きます。そこにある「交易関係の改善」アクションで、この相手との交易路の上限が増えます。</Text>
+            <Text>{1_Leader}とは交易路を{2_Capacity}本まで結べますが、すでに{3_Used}本が稼働中または移動中です。いま商人を送っても、着いたときに空きがない可能性があります。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY" Language="ja_JP">
+            <Text>関係改善と商人の購入</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP" Language="ja_JP">
+            <Text>{1_Leader}に「交易関係の改善」を{2_InfluenceCost}影響力で提案します - 受け入れられれば、この相手との交易路の上限が1増えます。結果に関わらず{3_GoldCost}ゴールドで商人を購入し{4_Target}へ送ります。理由を問わず空きができ次第、商人が自ら交易路を開きます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS" Language="ja_JP">
+            <Text>交易関係の改善には{2_InfluenceCost}影響力が必要ですが、所持している影響力は{2_Balance}です。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="ja_JP">
+            <Text>クリックすると{1_Leader}に「交易関係の改善」を{2_Cost}影響力で提案し、この相手との交易路の上限を上げます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="ja_JP">
+            <Text>代わりにクリックして{1_Leader}との外交を開きます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="ja_JP">
+            <Text>このターン、この指導者に対し、すでに同じ外交アクションを実行しています。</Text>
         </Row>
     </LocalizedText>
 </Database>

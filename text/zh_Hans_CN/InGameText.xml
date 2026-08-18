@@ -347,7 +347,27 @@
             <Text>没有空余的贸易路线名额</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="zh_Hans_CN">
-            <Text>你与{1_Leader}最多可保持{2_Capacity}条贸易路线，其中{3_Used}条已在运行或正在途中。现在派出的商人抵达时可能没有名额可用。[N][N]点击打开与{1_Leader}的外交。在那里执行“改善贸易关系”行动可以提高与其的贸易路线上限。</Text>
+            <Text>你与{1_Leader}最多可保持{2_Capacity}条贸易路线，其中{3_Used}条已在运行或正在途中。现在派出的商人抵达时可能没有名额可用。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY" Language="zh_Hans_CN">
+            <Text>改善关系并购买商人</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP" Language="zh_Hans_CN">
+            <Text>向{1_Leader}提议“改善贸易关系”，花费{2_InfluenceCost}影响力——若被接受，将使你与其的贸易路线上限提高1。无论结果如何都会花费{3_GoldCost}金币购买一名商人并派往{4_Target}；一旦出现空余名额，无论来自何处，商人都会自行开通路线。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS" Language="zh_Hans_CN">
+            <Text>改善贸易关系需要{1_Cost}点影响力，你目前拥有{2_Balance}点。</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="zh_Hans_CN">
+            <Text>点击向{1_Leader}提议“改善贸易关系”，花费{2_Cost}影响力，以提高与其的贸易路线上限。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="zh_Hans_CN">
+            <Text>点击改为打开与{1_Leader}的外交。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="zh_Hans_CN">
+            <Text>本回合已经在进行针对此领袖的外交行动。</Text>
         </Row>
     </LocalizedText>
 </Database>

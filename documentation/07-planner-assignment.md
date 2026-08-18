@@ -291,6 +291,22 @@ Coffee in the 3-slot one places 3, the 10-slot one then continues on Coffee for 
 `min(stock, free slots)` sends Coffee to the roomy factory and leaves the small one for Cocoa.
 `FACTORY_LEFTOVER_WEIGHT` then settles ties towards the snugger fit.
 
+⚠️ **`factoryStockByType` read stock off the wrong key, once — and it shipped.**
+`groupByResourceType` keys its groups compound: `` `${type}|${imported ? 'import' : 'ours'}` ``,
+so an imported Coffee and a home-grown one are separate entries (a settlement's own
+imports-first requirement needs to tell them apart). The first version of `factoryStockByType`
+destructured that key straight into a variable it called `type` and used IT to key the stock
+map — so every entry was actually filed under `"RESOURCE_COFFEE|ours"`, never the bare
+`"RESOURCE_COFFEE"` that `factoryFirstScore` asks `factoryStock.get(type)` for. Every lookup
+missed, stock silently read as 0 for every kind, and `wouldLand` — the whole "prefer the kind
+with the most copies" term — was 0 for every candidate alike. With more than one factory the
+symptom was subtle (the tier still preferred *continuing* a running factory, which masked it);
+with exactly one, nothing was left to decide between kinds but `scorePair` — yield value, no
+notion of stock at all — which is indistinguishable from picking at random if you are watching
+for "the kind with the most copies." Fixed by reading `resourceType(group[0])` off each GROUP
+instead of trusting the map's own key, and summing rather than overwriting so an imported and a
+home-grown copy of the same kind count as the one stock they are.
+
 ### Imports first — `importFirstScore`
 
 Off by default, offered in **every** age, and a bet on one victory condition. Towards the Economic

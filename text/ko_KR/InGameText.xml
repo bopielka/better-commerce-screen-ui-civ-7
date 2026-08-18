@@ -347,7 +347,27 @@
             <Text>교역로 자리가 없습니다</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="ko_KR">
-            <Text>{1_Leader}과(와)는 교역로를 {2_Capacity}개까지 유지할 수 있는데, 이미 {3_Used}개가 운영 중이거나 이동 중입니다. 지금 상인을 보내면 도착했을 때 자리가 없을 수 있습니다.[N][N]클릭하면 {1_Leader}과(와)의 외교가 열립니다. 그곳의 '교역 관계 개선' 행동으로 이 상대와의 교역로 한도를 늘릴 수 있습니다.</Text>
+            <Text>{1_Leader}과(와)는 교역로를 {2_Capacity}개까지 유지할 수 있는데, 이미 {3_Used}개가 운영 중이거나 이동 중입니다. 지금 상인을 보내면 도착했을 때 자리가 없을 수 있습니다.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY" Language="ko_KR">
+            <Text>관계 개선 및 상인 구매</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP" Language="ko_KR">
+            <Text>{1_Leader}에게 영향력 {2_InfluenceCost}으로 '교역 관계 개선'을 제안합니다 - 수락되면 이 상대와의 교역로 한도가 1 늘어납니다. 결과와 상관없이 금 {3_GoldCost}으로 상인을 구매해 {4_Target}(으)로 보냅니다. 이유가 무엇이든 자리가 생기는 즉시 상인이 직접 교역로를 엽니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS" Language="ko_KR">
+            <Text>교역 관계 개선에는 영향력 {1_Cost}이(가) 필요하지만 보유 영향력은 {2_Balance}입니다.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="ko_KR">
+            <Text>클릭하면 {1_Leader}에게 영향력 {2_Cost}으로 '교역 관계 개선'을 제안하여 이 상대와의 교역로 한도를 늘립니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="ko_KR">
+            <Text>대신 클릭하면 {1_Leader}과(와)의 외교가 열립니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="ko_KR">
+            <Text>이번 턴에 이미 이 지도자에 대해 이 외교 활동을 실행 중입니다.</Text>
         </Row>
     </LocalizedText>
 </Database>

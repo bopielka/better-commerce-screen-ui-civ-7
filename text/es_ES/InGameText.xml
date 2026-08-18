@@ -347,7 +347,27 @@
             <Text>No queda hueco para otra ruta</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="es_ES">
-            <Text>Puedes mantener {2_Capacity} ruta(s) comercial(es) con {1_Leader}, y {3_Used} ya están activas o en camino. Un mercader enviado ahora podría llegar sin hueco donde encajar.[N][N]Haz clic para abrir la diplomacia con {1_Leader}. La acción «Mejorar relaciones comerciales» de allí aumenta tu límite de rutas comerciales con ellos.</Text>
+            <Text>Puedes mantener {2_Capacity} ruta(s) comercial(es) con {1_Leader}, y {3_Used} ya están activas o en camino. Un mercader enviado ahora podría llegar sin hueco donde encajar.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY" Language="es_ES">
+            <Text>Mejorar relaciones y comprar un mercader</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP" Language="es_ES">
+            <Text>Propone la acción «Mejorar relaciones comerciales» con {1_Leader} por {2_InfluenceCost} de influencia - si se acepta, aumenta en uno tu límite de rutas comerciales con ellos. De todos modos compra un mercader por {3_GoldCost} de oro y lo envía a {4_Target}; abrirá la ruta él solo en cuanto haya un hueco libre, venga de donde venga.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS" Language="es_ES">
+            <Text>Mejorar las relaciones comerciales cuesta {1_Cost} de influencia y tienes {2_Balance}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="es_ES">
+            <Text>Haz clic para proponer «Mejorar relaciones comerciales» con {1_Leader} por {2_Cost} de influencia, aumentando tu límite de rutas comerciales con ellos.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="es_ES">
+            <Text>Haz clic para abrir la diplomacia con {1_Leader} en su lugar.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="es_ES">
+            <Text>Ya estás realizando esta Acción diplomática con este líder en este turno.</Text>
         </Row>
     </LocalizedText>
 </Database>

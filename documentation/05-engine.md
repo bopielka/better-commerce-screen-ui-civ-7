@@ -1,6 +1,6 @@
 # 05 — `ui/engine/` — talking to the game
 
-Eight files. No DOM, no knowledge of the screen's model. Everything that reaches the game's
+Nine files. No DOM, no knowledge of the screen's model. Everything that reaches the game's
 C++ side goes through here.
 
 | File | Purpose |
@@ -10,6 +10,7 @@ C++ side goes through here.
 | `resource-slots.js` | `BonusResourceSlots` (camels) |
 | `merchant.js` | buying a merchant, walking it, signing the route |
 | `merchant-orders.js` | the standing order a bought merchant carries, turn after turn |
+| `diplomacy.js` | proposing "Improve Trade Relations" |
 | `wait.js` | waiting for a queued operation to land |
 | `age.js` | which age this is, worked out once |
 | `shift.js` | is Shift held? |
@@ -259,6 +260,49 @@ was made before the first merchant left.
 keeps its plot and gets a new id, so the order still means what the player meant by it — "that
 place" — and the route command is refused on its own terms if the new owner cannot be traded
 with.
+
+---
+
+## `diplomacy.js` — proposing "Improve Trade Relations"
+
+```js
+tradeRelationsOffer(leaderId)   // → { project, args, cost, canStart, reasons } | null
+influenceBalance()              // → number
+proposeTradeRelations(leaderId, offer)   // → boolean, sent or not — not accepted or not
+```
+
+The treaty that, if the other leader accepts, raises the Trade Route limit with them by one —
+what the gold-plus-Influence button on a limit-blocked trade route card proposes before buying
+a Merchant regardless. See [screen: tabs](10-screen-tabs.md) for the button itself.
+
+⚠️ **Proposing it is not the same as it taking effect.** `DIPLOMACY_ACTION_IMPROVE_TRADE_RELATIONS`
+is `Opposed="true"` in the game's own data (`base-standard/data/diplomacy-actions.xml`) — the
+other leader can refuse it, same as any treaty. `canStart` only answers "may I ask", never
+"will they say yes", and a request that goes through spends the Influence regardless of the
+answer (`RejectionRefundsInfluence="true"` gives it back on a refusal, but only once the
+refusal actually happens).
+
+⚠️ **`BaseDuration="0"` in the data, and it is not read from anywhere here on purpose.** This
+mod does not know how many turns a reply takes and does not claim to. What it sends
+afterwards — a merchant, via `merchant-orders.js` — already retries opening the route every
+turn on its own, which is the right way to wait on an uncertain outcome: do the one thing that
+is certain (send the merchant), and let the part that depends on someone else's answer resolve
+in its own time. `trade-buy-merchant.js`'s `improveAndSend` therefore never waits on the
+proposal before buying — the two are independent operations and neither needs the other to
+have resolved.
+
+⚠️ **Asked through `Game.Diplomacy.getProjectDataForUI`**, the exact call the diplomacy hub's
+own `DiplomacyManager.queryAvailableProjectData` makes to build its list — not reconstructed
+from `GameInfo.DiplomacyActions`. Every rule the game enforces (cost rising after each
+successful use, a cooldown after a refusal, needing to have met them, not at war) already
+comes back through `canStart`'s `Success` / `FailureReasons`; none of it is re-derived here,
+matching `assignRefusalReasons` in `operations.js`.
+
+⚠️ Influence cost is read from `project.targetList1.find(entry => entry.targetID === leaderId)`
+— matched against the `leaderId` THIS call asked about, not against `DiplomacyManager
+.selectedPlayerID` the way the diplomacy hub's own `getCostFromTargetList` does. That helper's
+match only holds while the hub is open with that leader selected, a precondition this mod does
+not have — it is never called from the hub.
 
 ---
 

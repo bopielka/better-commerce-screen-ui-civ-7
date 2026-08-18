@@ -347,7 +347,27 @@
             <Text>Nessuno spazio per una rotta</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="it_IT">
-            <Text>Puoi mantenere {2_Capacity} rotta/e commerciale/i con {1_Leader}, e {3_Used} sono già attive o in viaggio. Un mercante inviato ora potrebbe arrivare senza posto libero.[N][N]Fai clic per aprire la diplomazia con {1_Leader}. L'azione «Migliora relazioni commerciali» lì aumenta il tuo limite di rotte commerciali con loro.</Text>
+            <Text>Puoi mantenere {2_Capacity} rotta/e commerciale/i con {1_Leader}, e {3_Used} sono già attive o in viaggio. Un mercante inviato ora potrebbe arrivare senza posto libero.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY" Language="it_IT">
+            <Text>Migliora le relazioni e compra un mercante</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP" Language="it_IT">
+            <Text>Propone l'azione «Migliora relazioni commerciali» con {1_Leader} per {2_InfluenceCost} influenza - se accettata, aumenta di uno il tuo limite di rotte commerciali con loro. Compra comunque un mercante per {3_GoldCost} oro e lo invia a {4_Target}; aprirà la rotta da solo non appena si libera un posto, da qualunque parte arrivi.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS" Language="it_IT">
+            <Text>Migliorare le relazioni commerciali costa {1_Cost} influenza e tu ne hai {2_Balance}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="it_IT">
+            <Text>Fai clic per proporre «Migliora relazioni commerciali» con {1_Leader} per {2_Cost} influenza, aumentando il tuo limite di rotte commerciali con loro.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="it_IT">
+            <Text>Fai clic per aprire invece la diplomazia con {1_Leader}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="it_IT">
+            <Text>Stai già portando avanti questa azione diplomatica nei confronti di questo leader in questo turno.</Text>
         </Row>
     </LocalizedText>
 </Database>

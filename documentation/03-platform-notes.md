@@ -115,6 +115,7 @@ reassign `model.slotSelectedResource` and put it back on cleanup.
 | Modern append APIs | `appendChild` only — `appendAll()` in `ui/support/dom.js` |
 | `display: grid` — appears nowhere in the entire shipped game | flexbox; do not find out the hard way |
 | `console.log` — never reaches `Logs\UI.log` | `console.error`, via `ui/support/diagnostics.js` |
+| `calc()` **mixing a percentage with a length** — the whole declaration is dropped | keep `calc()` to one unit family, or avoid it |
 
 `document.elementsFromPoint` **does** work and is what the game's own drag-and-drop uses to
 resolve dropzones. `MutationObserver`, `requestAnimationFrame`, `CustomEvent` and
@@ -123,6 +124,15 @@ resolve dropzones. `MutationObserver`, `requestAnimationFrame`, `CustomEvent` an
 `rem` scales with resolution in this UI, so sizing in `rem` keeps proportions across screen
 sizes — `ui/screen/layout.js` relies on this when budgeting horizontal space between the
 button bar and the tab strip.
+
+⚠️ `calc()` works, but **only within one unit family.** Every `calc()` in the entire shipped
+game is length-only (`calc(1rem + 0.2222rem)`, `calc(29.6em + 2.6667rem)`); not one mixes a
+percentage with a length. `calc(100% - 0.6rem)` had the *whole* `width` declaration dropped, so
+the element fell back to `flex-basis: auto` and sized to its own text — which reads on screen as
+a full-width bar suddenly sitting in the first column with cards beside it. To inset a
+full-width box without overflowing its row, use padding: `box-sizing: border-box` covers padding
+and border but **never margin**, so `width: 100%` plus any side margin overhangs the line — and
+one over-wide child anywhere is enough to make the whole scroll area draggable sideways.
 
 ## Input: the engine withholds mouse actions while a modifier is held
 

@@ -75,6 +75,9 @@ const PORTRAIT_CLEARANCE = 10;
 
 /** Our mark on the element the rows wrap inside; applied in updateMeasuredLayout. */
 const ROWS_CLASS = 'najane-trade-rows';
+
+/** The ScrollArea viewport the sections scroll inside; see `markSectionsContainer`. */
+const SCROLL_CLASS = 'najane-trade-scroll';
 /** The two sub-groups this mod adds under the unavailable routes. */
 const GROUP_CLASS = 'najane-trade-group';
 /** Our mark on a card the filter is hiding. */
@@ -192,8 +195,30 @@ ${CARD_ROW_SELECTOR} {
  * then settles to one while keeping the height: the stretch was measured before the cards
  * were resized.
  */
+/*
+ * ⚠️ Up and down ONLY. The ScrollArea's viewport carries the game's own "overflow-auto", which
+ * is both axes - so the tab could be dragged sideways, and the whole section drifted left and
+ * right under the cursor. The cards already add up to exactly the width of the row, so there
+ * was never anything out there worth reaching: the scroll range came from single elements
+ * overhanging their line (the group header's margins, fixed below) and from sub-pixel rounding
+ * on three columns of 33.3333%, which no arithmetic here can rule out on every screen width.
+ *
+ * Locking the axis fixes the drift at the source rather than chasing the last fraction of a
+ * pixel. The vertical axis is untouched, so the tab still scrolls the way it always did, and
+ * the ScrollArea's own track - a SIBLING of this element, not an overlay - is unaffected.
+ */
+.${SCROLL_CLASS} {
+    overflow-x: hidden !important;
+}
 .${ROWS_CLASS} {
     align-content: flex-start !important;
+    /*
+     * Belt for the axis lock above: nothing in here may propose a line wider than the row.
+     * Without it a card whose content refuses to shrink can still stretch the flex line, and a
+     * hidden overflow then CLIPS it rather than scrolling to it - which would hide the right
+     * edge of the third column instead of drifting.
+     */
+    max-width: 100% !important;
     /*
      * ⚠️ And it must not grow. The element carries flex-auto, so it took the section's full
      * height and left a band of empty space under a single row of cards; align-content
@@ -255,13 +280,28 @@ ${CARD_SELECTOR} > * {
 /*
  * The header that names a group of unavailable routes. Full width, so it starts its own line
  * in the wrapping row and the cards it names flow underneath it.
+ *
+ * ⚠️ NO SIDE MARGIN, AND THE INSET IS PADDING INSTEAD. "box-sizing: border-box" covers padding
+ * and border, never margin - so "width: 100%" plus 0.3rem of margin on each side is 0.6rem
+ * WIDER than the row it sits in, and that overhang was enough to make the whole tab scrollable
+ * sideways: one over-wide child anywhere gives the scroll area something to scroll to.
+ *
+ * ⚠️ AND NOT "calc(100% - 0.6rem)" EITHER, which is what this tried first and is why the header
+ * came out shrunk to the width of its own text, sitting in the first column with cards beside
+ * it. This renderer is not a browser: it takes calc() over lengths, but nowhere in the game's
+ * own stylesheets does a calc() mix a PERCENTAGE with a length, and mixing them here had the
+ * whole declaration dropped - leaving the element at flex-basis auto, hence content-width.
+ *
+ * The padding absorbs the inset instead: 0.6rem of padding plus 0.3rem of margin put the text
+ * 0.9rem from the edge, so 0.9rem of padding and no margin leaves the text exactly where it
+ * was. Only the bar's background reaches 0.3rem further each way, out to the row's own edge.
  */
 .${GROUP_CLASS} {
     box-sizing: border-box;
     flex: 0 0 auto;
     width: 100%;
-    padding: 0.35rem 0.6rem;
-    margin: 0.5rem 0.3rem 0.2rem 0.3rem;
+    padding: 0.35rem 0.9rem;
+    margin: 0.5rem 0 0.2rem 0;
     border-radius: 0.2rem;
     background: rgba(21, 27, 39, 0.75);
     color: #b39e80;
@@ -484,7 +524,10 @@ function decorate(card) {
      */
     row.classList.add(HEAD_CLASS);
     title.classList.add(NAME_CLASS);
-    const fullLine = `${name} → ${route.recipient}`;
+    const reasons = route.startable || route.established ? [] : blockedReasons(route);
+    const fullLine = reasons.length
+        ? `${name} → ${route.recipient}[N][N]${reasons.join('[N][N]')}`
+        : `${name} → ${route.recipient}`;
     if (title.getAttribute('data-tooltip-content') !== fullLine) {
         title.setAttribute('data-tooltip-content', fullLine);
     }
@@ -495,7 +538,7 @@ function decorate(card) {
      * whose row survived a redraw would otherwise never get its button back.
      */
     try {
-        decorateBuyMerchant(card, route);
+        decorateBuyMerchant(card, route, unavailableGroupFor(route));
     } catch (error) {
         warn(`adding the buy-a-merchant button failed: ${error}`);
     }
@@ -579,14 +622,24 @@ function scheduleRemeasure() {
  */
 function markSectionsContainer(row) {
     let node = row?.parentElement;
+    let sections = null;
     while (node && node !== document.body) {
-        if (node.classList?.contains('flex-wrap') && node.classList?.contains('flex-auto')) {
+        if (!sections && node.classList?.contains('flex-wrap') && node.classList?.contains('flex-auto')) {
             node.classList.add(ROWS_CLASS);
-            return node;
+            sections = node;
+        } else if (sections && node.classList?.contains('overflow-auto')) {
+            /*
+             * The ScrollArea's viewport - the element that actually scrolls, "flex flex-col
+             * flex-auto overflow-auto w-full" in core/ui-next/components/scroll-area.js. Found
+             * by walking up from OUR sections container rather than by selector, so this only
+             * ever marks the Trade Routes tab's own scroll area and never another tab's.
+             */
+            node.classList.add(SCROLL_CLASS);
+            return sections;
         }
         node = node.parentElement;
     }
-    return null;
+    return sections;
 }
 
 /**
@@ -597,12 +650,26 @@ function markSectionsContainer(row) {
  * match nothing, which here means the measurement quietly going back to being wrong.
  */
 function widestCornerCard() {
+    /*
+     * ⚠️ The "improve" stack (propose-and-buy, two prices) is wider than the plain "available"
+     * one (one price) - so a card carrying THAT is preferred when one exists, not just any
+     * card that happens to carry a stack. Picking the first stack found regardless of kind
+     * would under-measure the row on a screen with both a startable and a limit-blocked card,
+     * and the title on the limit-blocked one would run back under its own wider button - the
+     * exact overlap this measurement exists to prevent.
+     */
+    let anyStack = null;
     for (const card of document.querySelectorAll(CARD_SELECTOR)) {
-        if (card.querySelector(`.${BUY_STACK_CLASS}`)) {
+        const stack = card.querySelector(`.${BUY_STACK_CLASS}`);
+        if (!stack) {
+            continue;
+        }
+        if (stack.dataset.najaneMode === 'improve') {
             return card;
         }
+        anyStack ??= card;
     }
-    return document.querySelector(CARD_SELECTOR);
+    return anyStack ?? document.querySelector(CARD_SELECTOR);
 }
 
 function updateMeasuredLayout() {
@@ -715,6 +782,39 @@ function unavailableGroupFor(route) {
         return 'limit';
     }
     return null;
+}
+
+/**
+ * Why a route cannot be started, in the game's OWN words.
+ *
+ * Not written here - read out of `CommerceScreenText.xml`, the same three explanations the
+ * game's own card overlay shows on hover (`CommerceCriteriaDisplay`, fed by
+ * `getTradeRouteDataFromTradeRoute` in commerce-screen-model.js): capacity, range, at war.
+ * `route.status` only ever carries a flag when the criterion is a REAL block - a civ trait
+ * that waives one keeps its status flag out of the array rather than adding it and marking it
+ * inapplicable - so there is no "inapplicable" case to account for here.
+ *
+ * ⚠️ Composed, never stylized. This is set on the plain `data-tooltip-content` attribute,
+ * whose own renderer stylizes it - see the note on `TOOLTIP_TEXT_SELECTOR` in
+ * trade-summary.js, which also supplies the `white-space: pre-wrap` this needs for the line
+ * breaks between reasons to actually break. Stylizing it here too would double-process the
+ * `[STYLE:...]` markup the "at war" reason carries.
+ *
+ * Ordered the same way the game orders its own overlay: capacity, then range, then war.
+ */
+function blockedReasons(route) {
+    const status = route.status ?? [];
+    const reasons = [];
+    if (status.includes(TradeRouteStatus.NEED_MORE_FRIENDSHIP)) {
+        reasons.push(Locale.compose('LOC_COMMERCE_TRADE_STATUS_CAPACITY_TOOLTIP'));
+    }
+    if (status.includes(TradeRouteStatus.DISTANCE)) {
+        reasons.push(Locale.compose('LOC_COMMERCE_TRADE_STATUS_IN_RANGE_TOOLTIP'));
+    }
+    if (status.includes(TradeRouteStatus.AT_WAR)) {
+        reasons.push(Locale.compose('LOC_COMMERCE_TRADE_STATUS_AT_PEACE_TOOLTIP'));
+    }
+    return reasons;
 }
 
 /**
@@ -1053,7 +1153,32 @@ export function stopTradeRoutes() {
  * order between the two is not ours to rely on - deciding at the moment the count hits
  * zero would tear the decoration down in the middle of a redraw.
  */
-const ROUTE_EVENTS = ['TradeRouteAddedToMap', 'TradeRouteChanged', 'LocalPlayerTurnBegin'];
+/*
+ * ⚠️ `DiplomacyEventEnded` and `DiplomacyQueueChanged` are here for ONE reason: a proposed
+ * "Improve Trade Relations" treaty resolving. Listened for the same way
+ * `panel-diplomacy-actions.js` itself does (`onDiplomacyEventEnded`/`onDiplomacyQueueChanged`
+ * both just set a refresh flag), because nothing narrower exists to ask "did MY trade
+ * capacity with THAT leader just change" - only "something about a diplomatic pairing did".
+ *
+ * ⚠️ THIS DOES NOT MOVE A ROUTE BETWEEN SECTIONS. It only clears THIS MOD's own
+ * `routesByCityName` cache, so `route.status` - read live from
+ * `Trade.projectPossibleTradeRoutes` on the next rebuild - is correct again, and this mod's
+ * OWN button on that card switches to the right flow straight away. The CARD ITSELF stays
+ * wherever the game drew it: `commerce-screen-model.js` builds `tradeRouteTabData` exactly
+ * ONCE, when the screen's model is created, and nothing in the base game ever rebuilds it
+ * again for the life of that one screen-open - not on any event, not on a timer. Moving the
+ * card to reflect the new capacity would mean moving it between two different `<For>`s over
+ * two different arrays, which is the one thing `reconcileArrays` cannot survive being done
+ * to it from outside Solid; see the ⚠️ on `reorderCards`. The only way the CARD'S OWN section
+ * updates is the same one the player already found: close the screen and open it again.
+ */
+const ROUTE_EVENTS = [
+    'TradeRouteAddedToMap',
+    'TradeRouteChanged',
+    'LocalPlayerTurnBegin',
+    'DiplomacyEventEnded',
+    'DiplomacyQueueChanged',
+];
 
 const originalFactory = TradeRouteCard.factory;
 const overridePriority = (TradeRouteCard.overridePriority ?? 0) + 100;

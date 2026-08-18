@@ -347,7 +347,27 @@
             <Text>Sem vaga para outra rota</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_TOOLTIP" Language="pt_BR">
-            <Text>Você pode manter {2_Capacity} rota(s) comercial(is) com {1_Leader}, e {3_Used} já estão ativas ou a caminho. Um mercador enviado agora pode chegar sem vaga para ocupar.[N][N]Clique para abrir a diplomacia com {1_Leader}. A ação “Melhorar Relações Comerciais” lá aumenta seu limite de Rotas Comerciais com eles.</Text>
+            <Text>Você pode manter {2_Capacity} rota(s) comercial(is) com {1_Leader}, e {3_Used} já estão ativas ou a caminho. Um mercador enviado agora pode chegar sem vaga para ocupar.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY" Language="pt_BR">
+            <Text>Melhorar relações e comprar um mercador</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY_TOOLTIP" Language="pt_BR">
+            <Text>Propõe a ação “Melhorar Relações Comerciais” com {1_Leader} por {2_InfluenceCost} de influência - se aceita, aumenta em um seu limite de Rotas Comerciais com eles. De qualquer forma, compra um mercador por {3_GoldCost} de ouro e o envia para {4_Target}; ele abre a rota sozinho assim que surgir uma vaga, não importa de onde ela venha.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_FUNDS" Language="pt_BR">
+            <Text>Melhorar relações comerciais custa {1_Cost} de influência e você tem {2_Balance}.</Text>
+        </Row>
+
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="pt_BR">
+            <Text>Clique para propor “Melhorar Relações Comerciais” com {1_Leader} por {2_Cost} de influência, aumentando seu limite de Rotas Comerciais com eles.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="pt_BR">
+            <Text>Clique para abrir a diplomacia com {1_Leader} em vez disso.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="pt_BR">
+            <Text>Já está executando esta Ação Diplomática com este Líder neste turno.</Text>
         </Row>
     </LocalizedText>
 </Database>

@@ -50,7 +50,7 @@ the language. `text/en_us/InGameText.xml` is 284 lines and is the reference file
 | `LOC_OPTIONS_GROUP_NAJANE_COMMERCE` | ⚠️ the options group heading — the name is derived from the group id, not chosen |
 | `LOC_NAJANE_COMMERCE_*` | everything on screen |
 
-The full list of 110 keys is in `text/en_us/InGameText.xml`. Groups worth knowing:
+The full list of 116 keys is in `text/en_us/InGameText.xml`. Groups worth knowing:
 
 | Group | Keys | Used by |
 |---|---|---|
@@ -65,6 +65,9 @@ The full list of 110 keys is in `text/en_us/InGameText.xml`. Groups worth knowin
 | Buy a merchant | `BUY_MERCHANT` + `_TOOLTIP`, `_FUNDS`, `_BLOCKED`, `_ON_THE_WAY` | `trade-buy-merchant.js` |
 | Sort tabs | `SORT_BALANCED`, `SORT_YIELD`, `SORT_RESOURCE`, `SORT_EMPIRE`, `SORT_FACTORY` | `trade-sort-tabs.js` |
 | Merchant buttons | `SHOW_MERCHANT` + `_TOOLTIP`, `TRADE_FULL` + `_TOOLTIP` | `trade-buy-merchant.js` |
+| Improve & buy | `IMPROVE_AND_BUY` + `_TOOLTIP`, `IMPROVE_FUNDS` | `trade-buy-merchant.js` |
+| Warning fix | `TRADE_FULL_PROPOSE`, `TRADE_FULL_OPEN` | `trade-buy-merchant.js` |
+| Refusal reason | `IMPROVE_STARTED` | `ui/engine/diplomacy.js` (`REASON_OVERRIDES`) |
 | Treasure | `TREASURE_CLICK*`, `TREASURE_ON_ARRIVAL` | `treasure-tab.js` |
 
 ## ⚠️ Strings this mod must own, and why
