@@ -21,6 +21,35 @@ import { warn } from '../support/diagnostics.js';
 
 const IMPROVE_TRADE_RELATIONS = 'DIPLOMACY_ACTION_IMPROVE_TRADE_RELATIONS';
 
+/**
+ * Leaders this mod has proposed to since the turn began, and the reason this file has any
+ * memory at all.
+ *
+ * ⚠️ `Game.PlayerOperations.sendRequest` QUEUES the request; it does not perform it. For the
+ * frame or two before the game core plays it back, `canStart` still answers "yes, you may
+ * propose" - it is describing a game state the request has not reached yet. Redrawing in that
+ * window (which is exactly what a click does) put the button back exactly as it was, bright
+ * and priced, on an action that could no longer be taken: the player pressed it, nothing
+ * appeared to happen, and pressing again did nothing either.
+ *
+ * So the answer is remembered on our side for the one window where the engine's is stale.
+ * This is NOT second-guessing the rules - `BaseDuration="0"` means the action resolves at the
+ * end of the turn it was proposed in, so "proposed this turn" is precisely the engine's own
+ * `LOC_DIPLOMACY_ACTION_FAILURE_DUPLICATE_PROJECT`, said a few frames earlier. Once the core
+ * has caught up the two agree, and this set is only still consulted because agreeing costs
+ * nothing.
+ *
+ * ⚠️ Cleared on `LocalPlayerTurnBegin` - a refused proposal frees the action again, and the
+ * turn boundary is where that happens whichever way it went.
+ */
+const proposedThisTurn = new Set();
+
+try {
+    engine.on('LocalPlayerTurnBegin', () => proposedThisTurn.clear());
+} catch (error) {
+    warn(`could not listen for the turn beginning: ${error}`);
+}
+
 function actionType() {
     return DiplomacyActionTypes[IMPROVE_TRADE_RELATIONS];
 }
@@ -92,6 +121,18 @@ export function tradeRelationsOffer(leaderId) {
     } catch (error) {
         warn(`could not check the trade relations offer for player ${leaderId}: ${error}`);
     }
+    /*
+     * ⚠️ Our own answer wins WHILE A REQUEST IS IN FLIGHT, and only then. See
+     * `proposedThisTurn`: the engine has not been told yet, so its "yes" is about a game state
+     * that no longer exists. The reason given is the engine's own for this case, through the
+     * same override table, so a player never sees two different sentences for one situation.
+     */
+    if (proposedThisTurn.has(leaderId)) {
+        result = {
+            Success: false,
+            FailureReasons: ['LOC_DIPLOMACY_ACTION_FAILURE_DUPLICATE_PROJECT'],
+        };
+    }
 
     return {
         project,
@@ -156,6 +197,9 @@ export function proposeTradeRelations(leaderId, offer) {
             return false;
         }
         Game.PlayerOperations.sendRequest(GameContext.localPlayerID, offer.project.operationType, offer.args);
+        // Before anything redraws: the request is queued, and until the core plays it back
+        // `canStart` will keep saying this is still on offer. See `proposedThisTurn`.
+        proposedThisTurn.add(leaderId);
         return true;
     } catch (error) {
         warn(`proposing Improve Trade Relations with player ${leaderId} failed: ${error}`);

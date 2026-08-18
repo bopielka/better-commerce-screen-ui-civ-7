@@ -238,7 +238,9 @@ gets an **attention mark** under the price, priced in Influence, saying the slot
 It does not stop you: relations can change while a merchant walks. Click it and it proposes
 "Improve Trade Relations" with that leader on the spot — the same treaty the button below
 offers — or, if that is not on offer right now, opens diplomacy with them instead, same as it
-always did.
+always did. Once the proposal is away **every card on the tab redraws**, not just the one you
+clicked — the limit is per leader, so the same warning on that leader's other cards, the group
+headers and the total above the tabs are all drawn from the number that just moved.
 
 One errand per settlement at a time: while a merchant of yours is walking there the button is
 disabled and a **map pin** appears under it. Click the pin and the screen closes and takes you

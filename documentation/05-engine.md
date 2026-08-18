@@ -301,6 +301,20 @@ successful use, a cooldown after a refusal, needing to have met them, not at war
 comes back through `canStart`'s `Success` / `FailureReasons`; none of it is re-derived here,
 matching `assignRefusalReasons` in `operations.js`.
 
+⚠️ **`sendRequest` QUEUES the request; it does not perform it.** For the frame or two before
+the game core plays the operation back, `canStart` still answers "yes, you may propose" — it
+is describing a game state the request has not reached yet. So `proposeTradeRelations` records
+the leader in `proposedThisTurn`, and `tradeRelationsOffer` forces `canStart: false` for
+anyone in that set, with the engine's own `LOC_DIPLOMACY_ACTION_FAILURE_DUPLICATE_PROJECT` as
+the reason (through the same `REASON_OVERRIDES` table, so the player never sees two different
+sentences for one situation). This is **not** second-guessing the rules — `BaseDuration="0"`
+means the action resolves at the end of the turn it was proposed in, so "proposed this turn"
+*is* the engine's own answer, said a few frames earlier. Without it, the redraw a click
+triggers faithfully restored the button bright and priced on an action that could no longer be
+taken. Cleared on `LocalPlayerTurnBegin`: a refusal frees the action again, and the turn
+boundary is where that happens whichever way it went. The engine's real answers arrive with
+`GameCoreEventPlaybackComplete`; see [screen: tabs](10-screen-tabs.md).
+
 ⚠️ Influence cost is read from `project.targetList1.find(entry => entry.targetID === leaderId)`
 — matched against the `leaderId` THIS call asked about, not against `DiplomacyManager
 .selectedPlayerID` the way the diplomacy hub's own `getCostFromTargetList` does. That helper's

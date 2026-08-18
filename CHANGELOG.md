@@ -5,6 +5,39 @@ Notable changes to **Better Commerce Screen UI**. Newest first.
 ⚠️ **There was no changelog before 1.3.** Earlier releases are not recorded here, and nothing
 below should be read as the mod's full history — it is the history from 1.3 onwards.
 
+## 1.7
+
+### Changed
+
+- **Proposing "Improve Trade Relations" from a trade route card now redraws the whole tab**,
+  not just the button that was clicked. A trade limit is per **leader**, so it was never one
+  card's business: every other card of that leader carried the same "no trade route slot left"
+  warning, the "one trade slot away" group under the unavailable routes is drawn from the same
+  numbers, and so is the total above the tabs. Redrawing only the clicked stack left all three
+  saying the old thing until something else happened to disturb the screen.
+  - The same redraw now also runs when a proposed treaty **actually resolves** while the
+    screen is open. Those diplomacy events already cleared this mod's caches; what was missing
+    was anything to redraw afterwards, and on a tab whose cards all belong to the game there
+    may not be a next pass for a long time.
+- **The propose button now goes dark the moment it is pressed**, instead of staying bright and
+  priced on an action that could no longer be taken. "Improve Trade Relations" can be proposed
+  once per turn per leader, and pressing it again did nothing — which, on a button that still
+  looked ready, read as the whole feature being broken.
+  - The cause was one step behind everything else: `sendRequest` **queues** the request rather
+    than performing it, so for a frame or two afterwards the engine still answers "yes, you may
+    propose" — it is describing the state from before the click. Every redraw in that window
+    faithfully restored the old numbers. The proposal is now remembered on this mod's own side
+    for exactly that window, and the tooltip says the game's own reason for it.
+  - The engine's real answers — the new capacity, the next proposal's price — arrive on
+    `GameCoreEventPlaybackComplete`, which is what the game's own diplomacy panel waits for
+    too, so a second redraw runs then.
+
+⚠️ **None of this reopens the screen**, and deliberately so — an earlier attempt did exactly
+that and blacked the whole screen out on every click. What a reopen would additionally fix is
+the card physically moving between the "available" and "unavailable" lists, which the game
+builds once per screen-open and never rebuilds. That stays the player's own close-and-reopen;
+a button on one card is not a reason to take the screen away.
+
 ## 1.6
 
 ### Added

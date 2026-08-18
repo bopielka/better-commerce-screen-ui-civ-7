@@ -45,7 +45,6 @@
  * takes the stack with it; the tab's observer puts it back, the same way as everything else
  * this mod adds to these cards.
  */
-import ContextManager from '/core/ui/context-manager/context-manager.js';
 import { RaiseDiplomacyEvent } from '/base-standard/ui/diplomacy/diplomacy-events.js';
 
 import {
@@ -67,8 +66,35 @@ import {
     orderMerchantTo,
 } from '../engine/merchant-orders.js';
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
+import { closeCommerceScreen } from './close-screen.js';
 import { bindActivatable, clearChildren, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
+
+/**
+ * "The trade capacity with someone just changed" - raised when this mod proposes "Improve
+ * Trade Relations", listened for by ui/screen/trade-routes.js.
+ *
+ * ⚠️ An EVENT rather than a direct call, and rather than reopening the screen. What goes stale
+ * when a limit moves is never one button: every card of that leader carries the same warning,
+ * the group headers under the unavailable routes are drawn from the same numbers, and so is
+ * the total above the tabs. Redrawing the one card that was clicked left all of that behind,
+ * and reopening the screen to fix it blacked out the whole screen for a button on one card.
+ * The tab already knows how to redraw itself in place; this is how it is told to.
+ *
+ * ⚠️ Same shape as `MerchantOrdersChangedEventName` (ui/engine/merchant-orders.js) on purpose:
+ * a plain `CustomEvent` on `window`, declared by the module that RAISES it. trade-routes.js
+ * already imports from this file, so listening costs it no new dependency - and this file
+ * importing the tab's redraw would have made the two circular.
+ */
+export const TradeCapacityChangedEventName = 'najane-trade-capacity-changed';
+
+function announceTradeCapacityChange() {
+    try {
+        window.dispatchEvent(new CustomEvent(TradeCapacityChangedEventName));
+    } catch (error) {
+        warn(`could not announce the trade capacity change: ${error}`);
+    }
+}
 
 export const BUY_CLASS = 'najane-trade-buy';
 
@@ -133,9 +159,6 @@ function scopeForStack(stack) {
     }
     return stack.dataset.najaneScope;
 }
-
-/** The screen this sits on, by the name its frame is registered under. See ScreenFrame. */
-const COMMERCE_PANEL_CONTEXT = 'screen-resource-allocation';
 
 export const BUY_STYLE = `
 /*
@@ -578,17 +601,13 @@ async function improveAndSend(stack, route, targetCity, offer) {
 /**
  * Closes this screen and opens diplomacy with a leader.
  *
- * ⚠️ `ContextManager.pop` with the frame's own panel context, then the game's own
- * `RaiseDiplomacyEvent` on `window` - the diplomacy manager listens for it, so this needs no
- * import of the manager itself. The screen has to go first: the hub is an interface mode over
- * the map, not a panel that can open behind an open screen.
+ * ⚠️ `closeCommerceScreen` (see close-screen.js), then the game's own `RaiseDiplomacyEvent`
+ * on `window` - the diplomacy manager listens for it, so this needs no import of the manager
+ * itself. The screen has to go first: the hub is an interface mode over the map, not a panel
+ * that can open behind an open screen.
  */
 function openDiplomacyWith(leaderId) {
-    try {
-        ContextManager.pop(COMMERCE_PANEL_CONTEXT);
-    } catch (error) {
-        warn(`could not close the Commerce screen: ${error}`);
-    }
+    closeCommerceScreen();
     try {
         window.dispatchEvent(new RaiseDiplomacyEvent(leaderId));
     } catch (error) {
@@ -666,11 +685,22 @@ function warnActionText(warning, offer) {
  * is already on offer on this exact card, unlike the limit-blocked flow where nothing else on
  * the card can buy at all and the two have to be bundled into one click.
  *
- * ⚠️ Re-renders its own stack right after proposing, rather than waiting for the next decorate
- * pass - `proposeTradeRelations` is not async like a purchase, so there is nothing to wait
- * FOR; the price and readiness for a second attempt are already known.
+ * ⚠️ Redraws THE WHOLE TAB once the proposal is away, not just its own stack - by raising
+ * `TradeCapacityChangedEventName`, which trade-routes.js answers with one decorate pass.
+ * A trade limit is per LEADER, so it is never one card's business: every other card of that
+ * leader carries the same warning, the "one trade slot away" group is drawn from the same
+ * numbers, and so is the total above the tabs. Redrawing only the clicked stack left all
+ * three saying the old thing.
+ *
+ * ⚠️ In place, NOT by reopening the screen. Popping and re-pushing does rebuild the game's own
+ * model - it is the only thing that does - but the entire screen blacks out and comes back,
+ * which is far too much for a button on one card. Everything that actually needs to change
+ * here is this mod's own drawing, and that redraws without Solid being involved at all.
+ *
+ * ⚠️ Only on the branch that actually proposed something - nothing changed on the branch that
+ * did not, and the fallback below leaves this screen anyway.
  */
-function buildWarnButton(stack, route, warning, targetCity, scope) {
+function buildWarnButton(warning, scope) {
     const offer = improveOfferFor(warning.leaderId);
     const ready = Boolean(offer?.canStart) && offer.cost <= influenceBalance();
 
@@ -696,8 +726,10 @@ function buildWarnButton(stack, route, warning, targetCity, scope) {
     bindActivatable(button, () => {
         if (ready && proposeTradeRelations(warning.leaderId, offer)) {
             log(`proposed Improve Trade Relations with ${leaderName(warning.leaderId)}`);
+            // Prices, the offer itself and the capacity behind the warning all moved; the
+            // generation bump inside this is what makes the redraw below rebuild the stacks.
             forgetMerchantOffers();
-            renderAvailableStack(stack, route, targetCity);
+            announceTradeCapacityChange();
             return;
         }
         // Not ready, or the fresh canStart inside proposeTradeRelations disagreed with the
@@ -760,10 +792,10 @@ function buildBuyButton(stack, route, targetCity, site, onTheWay, scope) {
 /**
  * Closes the screen and puts the camera on the merchant.
  *
- * ⚠️ `ContextManager.pop` with the frame's own panel context - the same call the screen's
- * close button makes (`ScreenFrame`, the ContextManager close handler). Leaving the screen
- * open and moving the camera behind it is what the treasure cards already do, and the "?" on
- * that tab exists because players could not tell it had happened.
+ * ⚠️ `closeCommerceScreen` (see close-screen.js) - the same call the screen's own close
+ * button makes. Leaving the screen open and moving the camera behind it is what the treasure
+ * cards already do, and the "?" on that tab exists because players could not tell it had
+ * happened.
  */
 function buildLocateButton(unit, targetCity, scope) {
     const button = makeElement('div', LOCATE_CLASS);
@@ -772,11 +804,7 @@ function buildLocateButton(unit, targetCity, scope) {
     button.appendChild(icon);
 
     bindActivatable(button, () => {
-        try {
-            ContextManager.pop(COMMERCE_PANEL_CONTEXT);
-        } catch (error) {
-            warn(`could not close the Commerce screen: ${error}`);
-        }
+        closeCommerceScreen();
         focusUnitOnMap(unit);
     });
 
@@ -912,7 +940,7 @@ function renderAvailableStack(stack, route, targetCity) {
     if (heading.length > 0) {
         stack.appendChild(buildLocateButton(heading[0], targetCity, scope));
     } else if (warning) {
-        stack.appendChild(buildWarnButton(stack, route, warning, targetCity, scope));
+        stack.appendChild(buildWarnButton(warning, scope));
     }
     stack.dataset.najaneGeneration = String(generation);
 }

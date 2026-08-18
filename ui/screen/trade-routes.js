@@ -33,6 +33,7 @@ import {
     BUY_STACK_CLASS,
     BUY_STYLE,
     LEADER_LINK_CLASS,
+    TradeCapacityChangedEventName,
     decorateBuyMerchant,
     decorateLeaderLink,
     forgetMerchantOffers,
@@ -1095,12 +1096,71 @@ ${SORT_STYLE}`);
      * fires and the card would keep offering to wait for a merchant that has drowned.
      */
     window.addEventListener(MerchantOrdersChangedEventName, onOrdersChanged);
+    /*
+     * ⚠️ Same reason, one layer up: a trade limit raised by this mod's own button disturbs
+     * nothing on screen either - the cards are the game's and it has no idea anything
+     * happened - so the observer never fires and every warning drawn from that limit would
+     * keep saying the old number.
+     */
+    window.addEventListener(TradeCapacityChangedEventName, onCapacityChanged);
     log('trade route cards decorated');
 }
 
 function onOrdersChanged() {
     markMerchantStateStale();
     scheduleDecorate();
+}
+
+/**
+ * Everything read from the projection is stale; read it again and redraw.
+ *
+ * ⚠️ The redraw is the half that was missing. `forgetTradeRoutes` alone only empties the
+ * caches, which fixes the NEXT pass - and on a screen whose cards are all the game's, there
+ * may not be a next pass for a long time. Nothing else was going to disturb the DOM.
+ *
+ * ⚠️ Guarded on the tab being open. These listeners outlive one visit (see
+ * `listenForRouteChanges`), and `refreshSummary` would otherwise try to plant a total above
+ * tabs that are no longer on screen.
+ */
+function onRoutesChanged() {
+    forgetTradeRoutes();
+    if (liveCards > 0) {
+        scheduleDecorate();
+    }
+}
+
+/**
+ * ⚠️ TWO passes, not one, and the second is the one that matters.
+ *
+ * `Game.PlayerOperations.sendRequest` QUEUES the request. Everything the engine can be asked
+ * straight afterwards - the trade capacity with that leader, what the next proposal costs,
+ * whether one may be made at all - still describes the game state from BEFORE it, and stays
+ * that way until the game core has played the operation back. A redraw on the next frame is
+ * inside that window, so it faithfully redraws the old numbers: which is exactly what "I
+ * clicked and nothing changed" looked like.
+ *
+ * The first pass is still worth doing - what this mod knows on its own side (that a proposal
+ * is now in flight, so the button must go dark) is true immediately; see `proposedThisTurn`
+ * in ui/engine/diplomacy.js. The second lands when the core catches up and brings the engine's
+ * own answers with it.
+ *
+ * ⚠️ `GameCoreEventPlaybackComplete` is the game's OWN signal for this. `panel-diplomacy-actions.js`
+ * does not refresh when a diplomacy event fires either - it sets a flag and refreshes on this
+ * event, for the same reason.
+ */
+let awaitingCore = false;
+
+function onCapacityChanged() {
+    awaitingCore = true;
+    onRoutesChanged();
+}
+
+function onCorePlaybackComplete() {
+    if (!awaitingCore) {
+        return;
+    }
+    awaitingCore = false;
+    onRoutesChanged();
 }
 
 export function stopTradeRoutes() {
@@ -1111,6 +1171,7 @@ export function stopTradeRoutes() {
         decorateFrame = null;
     }
     window.removeEventListener(MerchantOrdersChangedEventName, onOrdersChanged);
+    window.removeEventListener(TradeCapacityChangedEventName, onCapacityChanged);
     /*
      * ⚠️ Only the elements this mod created. The group containers under the unavailable
      * routes are deliberately left alone: they hold the GAME's cards, and removing a
@@ -1157,17 +1218,18 @@ export function stopTradeRoutes() {
  * both just set a refresh flag), because nothing narrower exists to ask "did MY trade
  * capacity with THAT leader just change" - only "something about a diplomatic pairing did".
  *
- * ⚠️ THIS DOES NOT MOVE A ROUTE BETWEEN SECTIONS. It only clears THIS MOD's own
- * `routesByCityName` cache, so `route.status` - read live from
- * `Trade.projectPossibleTradeRoutes` on the next rebuild - is correct again, and this mod's
- * OWN button on that card switches to the right flow straight away. The CARD ITSELF stays
+ * ⚠️ THIS DOES NOT MOVE A ROUTE BETWEEN SECTIONS. `onRoutesChanged` clears THIS MOD's own
+ * `routesByCityName` cache AND redraws everything this mod put on the tab, so `route.status`
+ * - read live from `Trade.projectPossibleTradeRoutes` - is correct again, and this mod's OWN
+ * buttons, group headers and total all say the new thing straight away. The CARD ITSELF stays
  * wherever the game drew it: `commerce-screen-model.js` builds `tradeRouteTabData` exactly
  * ONCE, when the screen's model is created, and nothing in the base game ever rebuilds it
  * again for the life of that one screen-open - not on any event, not on a timer. Moving the
  * card to reflect the new capacity would mean moving it between two different `<For>`s over
  * two different arrays, which is the one thing `reconcileArrays` cannot survive being done
  * to it from outside Solid; see the ⚠️ on `reorderCards`. The only way the CARD'S OWN section
- * updates is the same one the player already found: close the screen and open it again.
+ * updates is the same one the player already found: close the screen and open it again - and
+ * that is the player's decision, not something to do to them on a click.
  */
 const ROUTE_EVENTS = [
     'TradeRouteAddedToMap',
@@ -1190,10 +1252,22 @@ function listenForRouteChanges() {
     listening = true;
     for (const name of ROUTE_EVENTS) {
         try {
-            engine.on(name, forgetTradeRoutes);
+            engine.on(name, onRoutesChanged);
         } catch (error) {
             warn(`could not listen for ${name}: ${error}`);
         }
+    }
+    /*
+     * ⚠️ Not in ROUTE_EVENTS, because it does not mean "something about the routes changed" -
+     * it means "the game core has finished playing back what it was given", which fires
+     * constantly and about everything. It is listened for only to close the window described
+     * on `onCapacityChanged`, and the flag there is what keeps it from costing anything the
+     * rest of the time.
+     */
+    try {
+        engine.on('GameCoreEventPlaybackComplete', onCorePlaybackComplete);
+    } catch (error) {
+        warn(`could not listen for GameCoreEventPlaybackComplete: ${error}`);
     }
 }
 

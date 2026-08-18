@@ -488,9 +488,34 @@ route the moment the engine allows it. The journey is looked after by
     own gold button for that. `warnActionText` cascades the same way `improveTooltip` does:
     ready shows the one-click fix; anything else falls back to what this button always did —
     open diplomacy with that leader — and says so.
-  - ⚠️ Redraws its own stack **synchronously** right after proposing, not on the next decorate
-    pass: `proposeTradeRelations` is not async like a purchase, so there is nothing to wait
-    for — the new price and readiness are already known the instant it returns.
+  - ⚠️ **Redraws the whole tab**, not just its own stack, by raising
+    `TradeCapacityChangedEventName` — a plain `CustomEvent` on `window` that `trade-routes.js`
+    answers with one `scheduleDecorate` pass. A trade limit is per **leader**, so it is never
+    one card's business: every other card of that leader carries the same warning, the "one
+    trade slot away" group is drawn from the same numbers, and so is the total above the tabs.
+    Redrawing only the clicked stack left all three saying the old thing.
+  - ⚠️ **In place, not by reopening the screen.** Popping and re-pushing
+    `screen-resource-allocation` does rebuild the game's own model — it is the only thing that
+    does — but the entire screen blacks out and comes back, which is far too much for a button
+    on one card. Everything that actually needs to change here is this mod's own drawing, and
+    that redraws without Solid being involved at all. What a reopen would additionally fix —
+    the card physically moving between the "available" and "unavailable" `<For>`s — stays the
+    player's decision to close and reopen, as it was before.
+  - ⚠️ The event is declared in `trade-buy-merchant.js`, the module that **raises** it, same as
+    `MerchantOrdersChangedEventName` in `merchant-orders.js`. `trade-routes.js` already imports
+    from this file, so listening costs no new dependency — and importing the tab's redraw the
+    other way would have made the two circular.
+  - ⚠️ **Two passes, not one.** `sendRequest` queues the request, so everything the engine can
+    be asked on the next frame — the capacity with that leader, the next proposal's price,
+    whether one may be made at all — still describes the state from *before* it. The immediate
+    pass redraws what this mod knows on its own side (a proposal is in flight, so the button
+    goes dark — see `proposedThisTurn` in [`diplomacy.js`](05-engine.md)); the second runs on
+    `GameCoreEventPlaybackComplete`, armed by a flag so it costs a boolean check the rest of
+    the time, and brings the engine's own answers with it. This is the game's own pattern:
+    `panel-diplomacy-actions.js` does not refresh when a diplomacy event fires either — it
+    sets a flag and refreshes on that same event.
+  - ⚠️ Only on the branch that actually proposed something. Nothing changed on the branch that
+    did not, and the fallback leaves this screen anyway.
 
 ⚠️ The warning and the map pin share one slot under the price and are never both there: a
 warning is only raised when no merchant of ours is walking to that settlement, which is exactly
@@ -502,6 +527,10 @@ Tooltips are the game's framed ones, the same as the buttons on the Resources ta
 ⚠️ Diplomacy is opened by dispatching the game's own `RaiseDiplomacyEvent` on `window` — the
 diplomacy manager listens for it — rather than by importing the manager. The screen is popped
 first: the hub is an interface mode over the map, not a panel that opens behind a screen.
+
+⚠️ All three buttons that close this screen go through `closeCommerceScreen` in
+`ui/screen/close-screen.js`, which owns the panel context name — `screen-resource-allocation`,
+still the old one, even though every component says `commerce`.
 
 **The leader's portrait opens the same thing**, on every card including the ones nothing can be
 bought on — "who is this and can I fix it" is the question a blocked card raises hardest. The
