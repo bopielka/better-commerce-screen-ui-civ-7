@@ -43,6 +43,14 @@ DRY_RUN=0
 say() { printf '%s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
+# Double-clicked in Explorer, this runs in a git-bash.exe window that closes the instant
+# the script ends - so a `die` on line 90 looked exactly like "nothing happened". Hold the
+# window open in that case only: git-bash.exe starts an interactive shell ($- contains i),
+# while `./deploy-on-mac.sh` from a terminal or from another script does not.
+if [[ $- == *i* ]]; then
+    trap 'printf "\nPress Enter to close... "; read -r' EXIT
+fi
+
 # --- safety: never let a bad path turn this into a destructive command --------
 [[ -f "$SRC_DIR/$MOD_ID.modinfo" ]] \
     || die "$MOD_ID.modinfo not found in $SRC_DIR - run this from the mod's own folder."
@@ -79,12 +87,21 @@ fi
 #
 # It runs here rather than by hand because by hand is the other half of that failure: a
 # file was checked, edited once more, and deployed unchecked.
-if command -v node >/dev/null 2>&1; then
+#
+# ⚠️ `node` is resolved with `type -P`, NOT called by name. Double-clicking this script in
+# Explorer runs it through git-bash.exe, which starts an INTERACTIVE login shell, and Git
+# for Windows defines `alias node='winpty node.exe'` in interactive shells. winpty refuses
+# to run with redirected stdin/stdout - it prints "stdin is not a tty" and exits 1 - so
+# every check below failed, `die` aborted the run, and the window closed before anyone
+# could read it. From a terminal the same script worked, because aliases are only defined
+# in interactive shells. `type -P` ignores aliases and functions and returns the real .exe.
+NODE_BIN="$(type -P node || true)"
+if [[ -n "$NODE_BIN" ]]; then
     broken=0
     while IFS= read -r file; do
-        node --input-type=module --check < "$SRC_DIR/$file" >/dev/null 2>&1 || {
+        "$NODE_BIN" --input-type=module --check < "$SRC_DIR/$file" >/dev/null 2>&1 || {
             printf 'SYNTAX ERROR: %s\n' "$file" >&2
-            node --input-type=module --check < "$SRC_DIR/$file" 2>&1 | sed -n '1,4p' >&2
+            "$NODE_BIN" --input-type=module --check < "$SRC_DIR/$file" 2>&1 | sed -n '1,4p' >&2
             broken=$((broken + 1))
         }
     done < <(cd "$SRC_DIR" && find ui -name '*.js' -type f | sort)
