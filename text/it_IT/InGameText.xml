@@ -327,6 +327,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="it_IT">
             <Text>Ferma il mercante diretto a {1_City} e annulla il suo incarico. Conserva il movimento che gli resta e puoi inviarlo altrove.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP" Language="it_IT">
+            <Text>Questo mercante raggiungerà la destinazione tra circa {1_Turns} turno/turni.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="it_IT">
             <Text>Rimuovi tutto da {1_City}</Text>
         </Row>

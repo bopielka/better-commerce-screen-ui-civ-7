@@ -337,6 +337,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="ru_RU">
             <Text>Зупиняє купця, який прямує до {1_City}, і скасовує його доручення. Він зберігає залишок руху, і ви можете надіслати його деінде.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP" Language="ru_RU">
+            <Text>Цей купець дістанеться мети приблизно за {1_Turns} хід(ів).</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="ru_RU">
             <Text>Зняти всі ресурси з {1_City}</Text>
         </Row>

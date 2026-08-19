@@ -368,6 +368,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP">
             <Text>Stops the Merchant heading for {1_City} and cancels its errand. It keeps whatever movement it has left and is yours to send anywhere else.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP">
+            <Text>This Merchant reaches its destination in about {1_Turns} turn(s).</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN">
             <Text>Unassign all in {1_City}</Text>
         </Row>

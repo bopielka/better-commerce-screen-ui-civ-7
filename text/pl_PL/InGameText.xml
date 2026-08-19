@@ -374,6 +374,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="pl_PL">
             <Text>Zatrzymuje kupca zmierzającego do {1_City} i anuluje jego zlecenie. Zachowuje pozostały ruch i możesz go wysłać gdzie indziej.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP" Language="pl_PL">
+            <Text>Ten kupiec dotrze do celu za około {1_Turns} tur.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="pl_PL">
             <Text>Cofnij wszystkie zasoby z {1_City}</Text>
         </Row>

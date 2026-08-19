@@ -327,6 +327,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="pt_BR">
             <Text>Interrompe o mercador a caminho de {1_City} e cancela sua incumbência. Ele mantém o movimento restante e pode ser enviado a outro lugar.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP" Language="pt_BR">
+            <Text>Este mercador chegará ao destino em cerca de {1_Turns} turno(s).</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="pt_BR">
             <Text>Desatribuir tudo em {1_City}</Text>
         </Row>

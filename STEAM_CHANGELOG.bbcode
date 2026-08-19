@@ -9,7 +9,12 @@ Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the sourc
 [*][b]A Merchant bought for a route it could already open no longer walks off.[/b] From the Modern Age it can open a route from where it stands — it only has to wait for next turn, because a unit bought this turn has no movement. It now waits instead of setting off across the map.
 [*][b]The settlement card's return button reads "Unassign all in Berlin"[/b], matching the buttons at the top of the screen, instead of the game's oddly-phrased "Return all assignments from the city of Berlin".
 [*][b]Every tooltip this mod adds is now the game's framed one[/b] — settlement controls, the factory button and the tab icons included. A tab icon's tooltip says what is on that screen rather than repeating the tab's name twice.
+[*][b]A card with a Merchant already on the way drops the price[/b] and the locate button shows how many turns until it arrives.
 [*][b]An X beside the locate pin calls a Merchant off[/b] — stops the journey and cancels the errand, without leaving the Commerce screen. It keeps its remaining movement and is free to be sent elsewhere.
+[*][b]Merchants in Antiquity and Exploration now actually set off.[/b] The turn-begin event fires before units get their movement back, so the one pass allowed to start a journey always saw a Merchant with nothing to travel on. The mod now also acts when movement is restored.
+[*][b]The age rule is explicit:[/b] Antiquity and Exploration, the Merchant must reach the settlement; Modern, it opens the route from anywhere once it has movement — and never travels needlessly.
+[*][b]Cancelling a Merchant's journey now clears its order in the Modern age too[/b], so the plus button offers it straight away.
+[*][b]A Merchant bought this turn can be given a job the same turn[/b] — the plus buttons no longer treat "no movement left" as busy. The route opens when the turn begins.
 [*][b]The "raise the limit and send" button no longer walks the Merchant across the map[/b] — the treaty it proposes takes a moment to take effect, and the Merchant used to set off before it did.
 [*][b]A Merchant is judged by what it is doing[/b], not by what the mod wrote down — so the plus appears after reloading a save, and a Merchant you call back stops being reported as "already on its way", and drops its standing order instead of being re-sent next turn.
 [*][b]Fixed:[/b] that button ignored resource locks — a padlocked Resource was swept away by it even though "Unassign all" spared it.

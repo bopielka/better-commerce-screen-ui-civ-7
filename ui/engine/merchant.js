@@ -21,6 +21,7 @@
  * Nothing here keeps state; the standing order that survives from turn to turn lives in
  * ./merchant-orders.js.
  */
+import { isFactoryAge } from './age.js';
 import { waitForEngineEvent } from './wait.js';
 import { warn } from '../support/diagnostics.js';
 
@@ -450,6 +451,56 @@ export function hasSpentItsTurn(unit) {
  * will sign the route next turn - and for the caller the outcome is the same either way: it is
  * not going anywhere now.
  */
+/**
+ * Whether a merchant can open a route from wherever it happens to be standing.
+ *
+ * ⚠️ AN AGE CHECK, deliberately, after two attempts at deriving this from the engine failed.
+ * `canStart` refuses `MAKE_TRADE_ROUTE` with `Success: false` and an EMPTY `FailureReasons`
+ * (traced in UI.log), so nothing in the refusal distinguishes "too far" from "no capacity"
+ * from "no movement" - and without that distinction a refusal cannot be read as an
+ * instruction to travel.
+ *
+ * The rule itself is plain and does not need deriving:
+ *
+ *   Antiquity, Exploration   the merchant must REACH the settlement to open the route
+ *   Modern                   it may open one from anywhere, once it has movement to spend
+ *
+ * ⚠️ `isFactoryAge` is this mod's existing name for the Modern age - it was named for the
+ * Factory tab that first needed it. Reused rather than duplicated; a second age test would be
+ * a second thing to keep in step with the game's own age hashes.
+ */
+/**
+ * How many turns before this merchant can open the route, or null when it cannot be said.
+ *
+ * ⚠️ Read from the engine's own pathfinder rather than estimated. `Units.getPathTo` answers
+ * with a `turns` array carrying one entry per plot - the same numbers the game paints on the
+ * map as it draws a unit's route - so the last of them is the turn it arrives on.
+ *
+ * ⚠️ In the Modern age there is no journey to measure: the merchant opens the route from where
+ * it stands as soon as it has movement, which is the start of next turn. Answering with a path
+ * length there would be describing a walk that is never going to happen.
+ */
+export function turnsUntilRouteOpens(unit, location) {
+    if (routesOpenFromAnywhere()) {
+        return canSignRoute(unit, location) ? 0 : 1;
+    }
+    try {
+        const path = Units.getPathTo(unit.id, location);
+        const turns = path?.turns;
+        if (!turns?.length) {
+            return null;
+        }
+        const arrival = Number(turns[turns.length - 1]);
+        return Number.isFinite(arrival) ? Math.max(arrival, 0) : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+export function routesOpenFromAnywhere() {
+    return isFactoryAge();
+}
+
 export function stopMerchant(unit) {
     try {
         if (!Units.getQueuedOperationDestination?.(unit.id)) {

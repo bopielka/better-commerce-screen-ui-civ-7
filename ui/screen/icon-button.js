@@ -48,6 +48,25 @@ export const ICON_BUTTON_STYLE = `
     pointer-events: auto;
 }
 .${ICON_BUTTON_CLASS}:hover { filter: brightness(1.45); }
+/*
+ * With a figure beside the icon - "3 turns away" and the like.
+ *
+ * ⚠️ The WIDTH gives way, never the height. A button that grew taller to fit a number would
+ * un-level the row it shares, which is the one thing this module exists to prevent; the height
+ * above is deliberately the only fixed dimension that matters.
+ */
+.${ICON_BUTTON_CLASS}--labelled {
+    width: auto;
+    min-width: 2.05rem;
+    padding: 0 0.35rem;
+}
+.${ICON_BUTTON_CLASS}__label {
+    margin-left: 0.25rem;
+    color: #e5d2ac;
+    font-size: 0.95rem;
+    line-height: 1;
+    pointer-events: none;
+}
 .${ICON_BUTTON_CLASS}__icon {
     width: 1.35rem;
     height: 1.35rem;
@@ -74,11 +93,16 @@ export const ICON_BUTTON_STYLE = `
  * @param title     localisation key for the tooltip heading.
  * @param text      already-composed tooltip body.
  * @param scope     which teardown owns the tooltip; see framed-tooltip.js.
+ * @param label     an optional figure to show beside the icon; widens the button, never
+ *                  its height.
  * @param onActivate what the click does.
  * @returns the MOUNT to put in the row, not the button - the tooltip encloses its trigger.
  */
-export function makeIconButton({ icon, tint = null, title, text, scope, onActivate, className = '' }) {
-    const button = makeElement('div', `${ICON_BUTTON_CLASS} ${className}`.trim());
+export function makeIconButton({
+    icon, tint = null, title, text, scope, onActivate, className = '', label = null,
+}) {
+    const classes = [ICON_BUTTON_CLASS, className, label === null ? '' : `${ICON_BUTTON_CLASS}--labelled`];
+    const button = makeElement('div', classes.filter(Boolean).join(' '));
 
     const iconElement = makeElement('div', `${ICON_BUTTON_CLASS}__icon`);
     iconElement.style.backgroundImage = `url(${icon})`;
@@ -86,6 +110,12 @@ export function makeIconButton({ icon, tint = null, title, text, scope, onActiva
         iconElement.style.filter = tint;
     }
     button.appendChild(iconElement);
+
+    if (label !== null) {
+        const labelElement = makeElement('div', `${ICON_BUTTON_CLASS}__label`);
+        labelElement.textContent = label;
+        button.appendChild(labelElement);
+    }
 
     bindActivatable(button, onActivate);
 

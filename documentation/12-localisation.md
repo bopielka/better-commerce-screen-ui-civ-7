@@ -50,7 +50,7 @@ the language. `text/en_us/InGameText.xml` is 284 lines and is the reference file
 | `LOC_OPTIONS_GROUP_NAJANE_COMMERCE` | ⚠️ the options group heading — the name is derived from the group id, not chosen |
 | `LOC_NAJANE_COMMERCE_*` | everything on screen |
 
-The full list of 140 keys is in `text/en_us/InGameText.xml`. Groups worth knowing:
+The full list of 141 keys is in `text/en_us/InGameText.xml`. Groups worth knowing:
 
 | Group | Keys | Used by |
 |---|---|---|

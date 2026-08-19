@@ -327,6 +327,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="es_ES">
             <Text>Detiene al mercader que se dirige a {1_City} y cancela su encargo. Conserva el movimiento que le quede y puedes enviarlo a otro sitio.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP" Language="es_ES">
+            <Text>Este mercader llegará a su destino en unos {1_Turns} turno(s).</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="es_ES">
             <Text>Desasignar todo en {1_City}</Text>
         </Row>

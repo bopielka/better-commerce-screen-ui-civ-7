@@ -327,6 +327,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="ja_JP">
             <Text>{1_City}へ向かっている商人を停止し、その任務を取り消します。残りの移動力はそのままで、別の場所へ送れます。</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP" Language="ja_JP">
+            <Text>この商人は約{1_Turns}ターンで目的地に到着します。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="ja_JP">
             <Text>{1_City}の配分をすべて解除</Text>
         </Row>

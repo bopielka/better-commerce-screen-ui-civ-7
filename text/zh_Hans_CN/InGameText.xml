@@ -327,6 +327,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="zh_Hans_CN">
             <Text>让前往{1_City}的商人停下并取消其任务。它保留剩余移动力，你可以派它去别处。</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP" Language="zh_Hans_CN">
+            <Text>这名商人将在约 {1_Turns} 回合后抵达目的地。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="zh_Hans_CN">
             <Text>取消{1_City}的全部分配</Text>
         </Row>

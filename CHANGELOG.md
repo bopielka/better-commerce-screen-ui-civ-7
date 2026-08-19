@@ -48,6 +48,22 @@ below should be read as the mod's full history — it is the history from 1.3 on
   no idea locks exist — so a padlocked Resource, safe from the **Unassign all** that locks were
   built for, was swept away by the smaller button one row above it. Two buttons that both say
   "return everything here" now mean the same thing by "everything", and the tooltip says so.
+- **A card with a Merchant already on the way drops the price and says when it arrives.** The
+  gold button is not merely dimmed there, it is gone: a second Merchant sent to a settlement
+  that is already spoken for is not something to offer, and a dark button that can only be
+  pressed by mistake is no improvement on no button. The locate button carries the figure on its
+  face and the sentence in its tooltip — *"This Merchant reaches its destination in about N
+  turns"* — which is where the player is already looking when they wonder about the Merchant.
+  - The bare number is on the button and the sentence is in the tooltip: Polish alone needs
+    three forms of "turn" depending on the digit, and the button is a few characters wide.
+  - ⚠️ A label widens `icon-button.js`, never heightens it. Its fixed height is the one thing
+    that module exists to guarantee, and a button that grew to fit a number would un-level the
+    row it shares — which is the very fault the component was extracted to end.
+  - The figure is the engine's own: `Units.getPathTo` returns a turn per plot, the same numbers
+    the game paints along a unit's route, so the last of them is the arrival.
+  - In the Modern age there is no journey to measure — the Merchant opens the route from where
+    it stands as soon as it has movement, so that is what is counted rather than a walk that is
+    never going to happen.
 - **An X beside the locate pin calls a Merchant off.** Wherever a card shows the pin — meaning
   a Merchant really is on its way there — it now sits beside a button that stops the journey
   and cancels the errand, without leaving the Commerce screen to find the unit on the map.
@@ -71,6 +87,40 @@ below should be read as the mod's full history — it is the history from 1.3 on
     patched three times (symmetric padding, matching icon sizes, the missing mount rules) and
     each fix removed one way for them to differ without removing the possibility; one component
     with one set of numbers removes it.
+- **Cancelling a Merchant's journey did nothing to its order in the Modern age.** Two guards in
+  the same function blocked each other there: one bailed out for a Merchant with an order and no
+  movement, the other kept the order whenever the route could still be signed from where the
+  Merchant stood — which in the Modern age is *everywhere*, so it held every single time. The
+  card went on treating the Merchant as spoken for, and the plus button only appeared once its
+  movement came back. The arrival guard now applies only in the ages where arrival is the point.
+  - ⚠️ A cancelled journey and a turn's ordinary housekeeping arrive as the **same** event on a
+    Merchant with nothing queued. Told apart by the step before: a Merchant the player called
+    back *had* a journey a moment ago, and one standing still waiting to sign never did. Without
+    that distinction the order was wiped on the turn rollover, and a cancelled-and-resent
+    Merchant sat doing nothing for the rest of the game.
+- **Merchants in Antiquity and Exploration never set off at all.** `LocalPlayerTurnBegin` fires
+  **before** the engine hands units their movement back, so the one pass allowed to start a
+  journey always saw a Merchant with nothing to travel on, and every pass after it was
+  sign-only. `UnitMovementPointsChanged` is now also a moving pass — movement being restored is
+  itself the moment to act on, and the engine announces it.
+  - ⚠️ Safe against the refusal cascade this file guards against on two counts: the per-turn
+    attempt cap still applies, and a Merchant that already has a course is never given another —
+    without which a Merchant walking normally would re-order itself on every tile it spent.
+- **The age rule is now written down instead of inferred.** Antiquity and Exploration: the
+  Merchant must reach the settlement. Modern: it opens the route from anywhere, once it has
+  movement. Two attempts at deriving this from `canStart` failed — it refuses
+  `MAKE_TRADE_ROUTE` with an **empty** `FailureReasons`, so nothing in the refusal separates
+  "too far" from "no capacity" from "no movement". In the Modern age no journey is ever the
+  answer, so none is issued.
+- **A Merchant bought this turn can be given a job the same turn.** The plus buttons treated
+  "no movement left" as busy, which hid them for a whole turn after buying Merchants — exactly
+  the turn a player is looking for somewhere to send them. No movement only means busy when
+  there is an **order** that explains it: under one it is this mod's own Merchant partway
+  through its errand, including the one told to stand still and sign the route when the turn
+  begins. Without one it means only that the Merchant was bought this turn, and it is as free
+  to be given a job as it will be tomorrow.
+  - Clicking the plus on such a Merchant records the order and leaves it where it is; the route
+    opens when the turn begins.
 - **The "raise the limit and send" button no longer walks the Merchant across the map.** The
   treaty it proposes is *queued*, not done — `sendRequest` returns before the engine has acted
   — so for a moment afterwards the old trade capacity is still what gets reported, the route is

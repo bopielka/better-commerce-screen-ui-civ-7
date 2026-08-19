@@ -59,6 +59,7 @@ import {
     purchaseAndCollectMerchant,
     purchaseSite,
     stopMerchant,
+    turnsUntilRouteOpens,
     tradeCapacityWith,
 } from '../engine/merchant.js';
 import {
@@ -1134,10 +1135,32 @@ function priceRow(priceMount, targetCity, heading, scope) {
 }
 
 function buildLocateButton(unit, targetCity, scope) {
+    /*
+     * ⚠️ A SECOND PARAGRAPH, not a second control. The framed tooltip turns a blank line into
+     * its own inset card (see framed-tooltip.js), so "where is it" and "when does it get there"
+     * are two answers in one place - which is where the player is already looking when they
+     * wonder about the merchant at all.
+     *
+     * Left off entirely when the engine will not say: `turnsUntilRouteOpens` answers null when
+     * there is no path to measure, and an empty card is worse than no card.
+     */
+    const turns = turnsUntilRouteOpens(unit, targetCity.location);
+    const where = Locale.compose('LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP');
+    const when = turns === null
+        ? ''
+        : `[N][N]${Locale.compose('LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP', turns)}`;
+
     return makeIconButton({
         icon: LOCATE_ICON,
         title: 'LOC_NAJANE_COMMERCE_SHOW_MERCHANT',
-        text: Locale.compose('LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP'),
+        text: `${where}${when}`,
+        /*
+         * ⚠️ The bare number, not "3 turns". Polish alone needs three forms of the word
+         * depending on the digit, and this is a button a few characters wide - the sentence
+         * belongs in the tooltip's second card, where it has room to be right in every
+         * language. Left off entirely when there is no path to measure.
+         */
+        label: turns === null ? null : String(turns),
         scope,
         className: LOCATE_CLASS,
         onActivate: () => {
@@ -1260,10 +1283,18 @@ function renderAvailableStack(stack, route, targetCity) {
     const scope = scopeForStack(stack);
     disposeFramedTooltips(scope);
     clearChildren(stack);
-    stack.appendChild(priceRow(
-        buildBuyButton(stack, route, targetCity, site, heading.length, scope),
-        targetCity, heading.length, scope,
-    ));
+    /*
+     * ⚠️ No price at all while a merchant is already walking here. A second one sent to a
+     * settlement that is already spoken for is not something to offer, and a dark button that
+     * can only be pressed by mistake is not an improvement on no button. What the player wants
+     * to know instead - when the first one arrives - is on the locate button's tooltip.
+     */
+    if (heading.length === 0) {
+        stack.appendChild(priceRow(
+            buildBuyButton(stack, route, targetCity, site, heading.length, scope),
+            targetCity, heading.length, scope,
+        ));
+    }
     /*
      * The slot under the price holds whichever of the two applies, and never both: a warning
      * is only raised when no merchant of ours is walking to this settlement, which is exactly

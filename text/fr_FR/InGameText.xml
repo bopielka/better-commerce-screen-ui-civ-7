@@ -327,6 +327,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="fr_FR">
             <Text>Arrête le marchand en route vers {1_City} et annule sa mission. Il conserve les mouvements qu'il lui reste et vous pouvez l'envoyer ailleurs.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP" Language="fr_FR">
+            <Text>Ce marchand atteindra sa destination dans environ {1_Turns} tour(s).</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="fr_FR">
             <Text>Tout retirer de {1_City}</Text>
         </Row>

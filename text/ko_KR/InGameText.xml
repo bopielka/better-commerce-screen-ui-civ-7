@@ -327,6 +327,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="ko_KR">
             <Text>{1_City}(으)로 향하던 상인을 멈추고 임무를 취소합니다. 남은 이동력은 그대로이며 다른 곳으로 보낼 수 있습니다.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP" Language="ko_KR">
+            <Text>이 상인은 약 {1_Turns}턴 후에 목적지에 도착합니다.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="ko_KR">
             <Text>{1_City} 전체 해제</Text>
         </Row>

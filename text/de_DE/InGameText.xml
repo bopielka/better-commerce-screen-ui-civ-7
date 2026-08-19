@@ -327,6 +327,9 @@
         <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="de_DE">
             <Text>Hält den Händler auf dem Weg nach {1_City} an und bricht seinen Auftrag ab. Er behält seine restliche Bewegung und steht Euch frei zur Verfügung.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_ARRIVES_TOOLTIP" Language="de_DE">
+            <Text>Dieser Händler erreicht sein Ziel in etwa {1_Turns} Zug/Zügen.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="de_DE">
             <Text>Alle in {1_City} freigeben</Text>
         </Row>

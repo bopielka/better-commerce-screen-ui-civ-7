@@ -38,6 +38,7 @@ import {
     moveMerchant,
     hasSpentItsTurn,
     readMerchants,
+    routesOpenFromAnywhere,
     signRoute,
     unitKey,
 } from './merchant.js';
@@ -69,8 +70,27 @@ const SIGN_EVENTS = [
     'UnitRemovedFromMap',
 ];
 
-/** Once a turn, a merchant that has stopped short is sent on its way again. */
-const MOVE_EVENTS = ['LocalPlayerTurnBegin'];
+/**
+ * The passes that are allowed to set a merchant walking.
+ *
+ * ⚠️ `UnitMovementPointsChanged` IS ONE OF THEM, and without it the whole thing deadlocks in
+ * the ages where merchants must travel. `LocalPlayerTurnBegin` fires BEFORE the engine hands
+ * the units their movement back - traced in UI.log:
+ *
+ *     turn begins   order=1546 moves=0 mayMove=true    <- the only pass that may move
+ *     a tick later  order=1546 moves=5 mayMove=false   <- movement is back, may not move
+ *
+ * So the one pass permitted to travel always saw a merchant with nothing to travel on, and
+ * every pass after it was sign-only. The merchant sat still, turn after turn, having been
+ * given a perfectly good order. Movement being restored is itself the moment to act on, and
+ * the engine announces it.
+ *
+ * ⚠️ Safe against the cascade this file's header warns about, on two counts: the per-turn
+ * attempt cap still applies, and `advance` will not issue a course to a merchant that already
+ * has one - so a merchant walking normally, which fires this event on every tile it spends,
+ * cannot re-order itself around in circles.
+ */
+const MOVE_EVENTS = ['LocalPlayerTurnBegin', 'UnitMovementPointsChanged'];
 
 let gameKey = null;
 
@@ -217,6 +237,20 @@ const attempts = new Map();
  */
 const commandedAt = new Map();
 
+/**
+ * Merchants seen with a journey queued on the last pass.
+ *
+ * ⚠️ THIS IS WHAT MAKES "THE PLAYER STOPPED IT" A FACT RATHER THAN A GUESS. A cancelled
+ * journey and a turn's ordinary housekeeping both arrive as `UnitOperationsCleared` on a
+ * merchant with nothing queued - identical from the outside. What tells them apart is the
+ * step before: a merchant the player called back HAD a journey a moment ago, and one that was
+ * standing still waiting to sign never did.
+ *
+ * Dropping the order without that distinction wiped it on the turn rollover, which is how a
+ * cancelled-and-resent merchant came to sit doing nothing for the rest of the game.
+ */
+const wasTravelling = new Set();
+
 /** Long enough for a refusal to come back, far shorter than any human decision. */
 const OURS_WINDOW_MS = 1500;
 
@@ -251,6 +285,24 @@ function mayAttempt(key) {
  * exactly where the route can be signed. Dropping its order there would throw the errand away
  * one step from the end, so the sign pass is left to finish it.
  */
+function rememberWhetherTravelling(unit) {
+    const key = unitKey(unit?.id);
+    if (!key) {
+        return;
+    }
+    let queued = false;
+    try {
+        queued = Boolean(Units.getQueuedOperationDestination?.(unit.id));
+    } catch (error) {
+        queued = false;
+    }
+    if (queued) {
+        wasTravelling.add(key);
+    } else {
+        wasTravelling.delete(key);
+    }
+}
+
 function forgetOrderIfAbandoned(unitID) {
     const key = unitKey(unitID);
     if (!key || readOrder(key) < 0) {
@@ -266,14 +318,49 @@ function forgetOrderIfAbandoned(unitID) {
     } catch (error) {
         return;
     }
-    if (!unit || isTravelling(unit)) {
+    if (!unit) {
         return;
     }
-    const city = cityAtPlot(readOrder(key));
-    if (city?.location && canSignRoute(unit, city.location)) {
+    /*
+     * ⚠️ Still carrying a journey: the player REDIRECTED it rather than stopping it, so there
+     * is something in progress and the order is not the thing to remove.
+     */
+    try {
+        if (Units.getQueuedOperationDestination?.(unit.id)) {
+            return;
+        }
+    } catch (error) {
         return;
     }
-    log(`a merchant was called back; its standing order is dropped`);
+    /*
+     * ⚠️ And it has to have been GOING somewhere for this to be a cancellation at all. A
+     * merchant standing still - waiting to sign next turn, which is every Modern-age merchant
+     * between being given its order and getting its movement - has its operations cleared by
+     * the turn rolling over like anything else, and reading that as "the player called it
+     * back" is what silently erased the order overnight.
+     */
+    if (!wasTravelling.has(key)) {
+        return;
+    }
+    wasTravelling.delete(key);
+    /*
+     * ⚠️ Only where arrival is the point. A merchant that has ARRIVED has its operations
+     * cleared too, and in the ages where it had to travel it is now standing exactly where the
+     * route can be signed - dropping its order there would throw the errand away one step from
+     * the end, so the sign pass is left to finish it.
+     *
+     * ⚠️ In the Modern age this test must NOT be applied, and applying it was a bug: a merchant
+     * there can sign from anywhere, so `canSignRoute` is true wherever it stands and the guard
+     * held every single time. Cancelling a merchant's journey did nothing to its order, and the
+     * card went on treating it as spoken for.
+     */
+    if (!routesOpenFromAnywhere()) {
+        const city = cityAtPlot(readOrder(key));
+        if (city?.location && canSignRoute(unit, city.location)) {
+            return;
+        }
+    }
+    log('a merchant was called back; its standing order is dropped');
     clearMerchantOrder(unitID);
 }
 
@@ -284,6 +371,7 @@ export function clearMerchantOrder(unitID) {
     }
     attempts.delete(key);
     commandedAt.delete(key);
+    wasTravelling.delete(key);
     writeOrder(key, 0);
 }
 
@@ -297,23 +385,42 @@ function advance(unit, city, mayMove) {
         log(`trade route opened with ${Locale.compose(city.name ?? '')}`);
         return true;
     }
+
     /*
-     * ⚠️ STAY PUT. The engine has refused, but for a reason no journey can fix: this merchant
-     * is already standing somewhere the route could be opened from and has merely used up the
-     * turn - which is every merchant on the turn it was bought. Walking now would carry it AWAY
-     * from a position that already works, and the order is retried at the start of every turn,
-     * so doing nothing is the whole of the correct behaviour. See `hasSpentItsTurn`.
-     *
-     * ⚠️ It costs the earlier ages nothing. A merchant with no moves left cannot travel this
-     * turn either - a course issued now would simply sit queued until the turn rolled over -
-     * so the only difference is WHERE it is standing when the turn begins, and standing still
-     * is the one position from which both outcomes remain open.
+     * ⚠️ IN THE MODERN AGE, NO JOURNEY IS EVER THE ANSWER. A merchant there opens a route from
+     * wherever it stands, so a refusal is never about distance - it is the trade limit, a war,
+     * or simply this turn's movement already spent. Walking cannot fix any of those, and doing
+     * it anyway is what carried freshly bought merchants off towards the other empire for
+     * nothing. The order stands and is retried when the turn begins.
      */
-    if (hasSpentItsTurn(unit)) {
-        log(`merchant waits for next turn to open the route with ${Locale.compose(city.name ?? '')}`);
+    if (routesOpenFromAnywhere()) {
         return false;
     }
-    if (!mayMove || !mayAttempt(unitKey(unit.id))) {
+
+    /*
+     * Antiquity and Exploration: the merchant has to get there. Out of movement it cannot set
+     * off this turn - a course issued now would only sit queued - so the turn beginning is
+     * left to start it, which is also the pass that is allowed to move.
+     */
+    if (hasSpentItsTurn(unit)) {
+        return false;
+    }
+    if (!mayMove) {
+        return false;
+    }
+    /*
+     * ⚠️ Already walking: leave it. Re-issuing a course to a merchant that has one would
+     * restart the journey it is partway through, and would do so on every movement point it
+     * spends now that spending them wakes this pass.
+     */
+    try {
+        if (Units.getQueuedOperationDestination?.(unit.id)) {
+            return false;
+        }
+    } catch (error) {
+        return false;
+    }
+    if (!mayAttempt(unitKey(unit.id))) {
         return false;
     }
     for (const location of approachLocations(unit, city)) {
@@ -324,6 +431,7 @@ function advance(unit, city, mayMove) {
     }
     return false;
 }
+
 
 let processing = false;
 let scheduled = false;
@@ -384,6 +492,7 @@ function processOrders(mayMove) {
         const merchants = readMerchants();
         pruneOrders(merchants);
         for (const unit of merchants ?? []) {
+            rememberWhetherTravelling(unit);
             const key = unitKey(unit.id);
             const plotIndex = readOrder(key);
             if (plotIndex < 0) {
@@ -494,6 +603,11 @@ export function orderMerchantTo(unit, city, { mayMove = true } = {}) {
  * spoken for. The card cannot know that from its own status - the projection was made before
  * the first merchant left.
  */
+/** Whether this mod has told this merchant to go somewhere. */
+function hasStandingOrder(unit) {
+    return readOrder(unitKey(unit.id)) >= 0;
+}
+
 /**
  * Whether this merchant is actually going somewhere right now.
  *
@@ -522,15 +636,26 @@ export function orderMerchantTo(unit, city, { mayMove = true } = {}) {
  * says - which is also exactly what the player sees on the map.
  */
 function isTravelling(unit) {
-    if (Number(unit?.Movement?.movementMovesRemaining ?? 0) <= 0) {
-        return true;
-    }
     try {
-        return Boolean(Units.getQueuedOperationDestination?.(unit.id));
+        if (Units.getQueuedOperationDestination?.(unit.id)) {
+            return true;
+        }
     } catch (error) {
-        // Cannot tell - assume it is travelling, and leave it be.
+        // Cannot tell whether it is travelling - assume it is, and leave it be.
         return true;
     }
+    /*
+     * ⚠️ Nothing is queued, so out of movement only means "busy" when there is an ORDER that
+     * explains it - and that pairing is the whole point.
+     *
+     * Under an order, no movement is this mod's own merchant partway through its errand,
+     * including the one told to stand still and sign the route when the turn begins. Without
+     * one, no movement means only that it was bought this turn, or has already walked: nobody
+     * sent it anywhere, and it is as free to be given a job as it will be tomorrow. Treating
+     * that as busy hid the plus buttons for a whole turn after buying merchants - which is
+     * exactly the turn a player is looking for somewhere to send them.
+     */
+    return hasStandingOrder(unit) && Number(unit?.Movement?.movementMovesRemaining ?? 0) <= 0;
 }
 
 /** Merchants of ours with nothing to do; see `isTravelling` for what "nothing" means. */
