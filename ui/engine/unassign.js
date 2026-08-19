@@ -153,6 +153,49 @@ export function unassignOne(settlement, slottedResource) {
  *
  * @returns how many resources were released.
  */
+/**
+ * Empties ONE settlement, sparing anything the player has locked.
+ *
+ * ⚠️ This exists because the model's own `clearAllResources` does not know locks exist. The
+ * settlement card's return button used to call that directly, so a padlocked resource - safe
+ * from "Unassign all", which is the button locks were built for - was swept away by the
+ * smaller button one row above it. Two buttons that both say "return everything here" have to
+ * mean the same thing by "everything".
+ *
+ * ⚠️ The bulk clear is used only where nothing is locked, the same rule and the same reason as
+ * in `unassignEverySettlement`: it takes a settlement and no list, so it cannot spare anything.
+ *
+ * @returns how many resources were released.
+ */
+export async function unassignSettlement(cityID) {
+    const city = Cities.get(cityID);
+    const assigned = city?.Resources?.getAssignedResources() ?? [];
+    if (assigned.length === 0) {
+        return 0;
+    }
+    const doomed = assigned.filter((resource) => !isResourceLocked(cityID, resource.value));
+    if (doomed.length === 0) {
+        log('every resource in this settlement is locked; nothing returned');
+        return 0;
+    }
+
+    let cleared = 0;
+    if (doomed.length === assigned.length && requestClearSettlement(cityID)) {
+        cleared = assigned.length;
+    } else {
+        for (const resource of doomed) {
+            if (unassignIfAllowed(cityID, resource.value)) {
+                cleared++;
+            } else {
+                warn(`failed to request unassign for resource ${resource.value}`);
+            }
+        }
+    }
+    await waitForEngineEvent(UNASSIGNED_EVENT);
+    log(`returned ${cleared} resource(s) from one settlement (${assigned.length - doomed.length} locked)`);
+    return cleared;
+}
+
 export async function unassignEverySettlement() {
     let cleared = 0;
     const cities = Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? [];

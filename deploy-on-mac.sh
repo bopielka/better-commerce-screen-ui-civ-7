@@ -154,6 +154,18 @@ if [[ -f "$DESCRIPTION" ]]; then
     say "steam description: $size/$DESCRIPTION_LIMIT characters"
 fi
 
+# The Workshop's change-note field is a separate, larger box. Same failure mode though: it
+# truncates silently, and this file grows by a section every release rather than a line.
+CHANGES="$SRC_DIR/STEAM_CHANGELOG.bbcode"
+CHANGES_LIMIT=8000
+if [[ -f "$CHANGES" ]]; then
+    size=$(wc -c < "$CHANGES" | tr -d '[:space:]')
+    if [[ "$size" -gt "$CHANGES_LIMIT" ]]; then
+        die "STEAM_CHANGELOG.bbcode is $size characters; Steam allows $CHANGES_LIMIT. Drop the oldest section."
+    fi
+    say "steam changelog: $size/$CHANGES_LIMIT characters"
+fi
+
 # --- deploy ------------------------------------------------------------------
 rm -rf "$DEST_DIR"
 mkdir -p "$DEST_DIR"

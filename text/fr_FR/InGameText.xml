@@ -183,6 +183,24 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="fr_FR">
             <Text>Ressources d'usine</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES_DESC" Language="fr_FR">
+            <Text>Attribuez vos ressources aux colonies. À gauche les non attribuées, à droite vos colonies et leurs emplacements.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TRADE_DESC" Language="fr_FR">
+            <Text>Toutes les routes commerciales que vous avez, celles ouvrables dès maintenant et celles qui ne le sont pas encore — et ce que chacune rapporterait.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_DESC" Language="fr_FR">
+            <Text>Ressources qui profitent à tout l'empire, avec ce que chacune vaut réellement par tour.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE_DESC" Language="fr_FR">
+            <Text>Ressources qui profitent à tout l'empire, ainsi que vos ressources de trésor, avec ce que chacune vaut réellement par tour.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE_DESC" Language="fr_FR">
+            <Text>Vos colonies des terres lointaines et les convois de trésor qu'elles produisent.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY_DESC" Language="fr_FR">
+            <Text>Ressources d'usine : lesquelles sont placées, lesquelles sont inutilisées, et ce que chacune rapporte.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="fr_FR">
             <Text>En usine</Text>
         </Row>
@@ -290,6 +308,30 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="fr_FR">
             <Text>Renvoie toutes les ressources d'usine de cette colonie vers la réserve non attribuée.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE" Language="fr_FR">
+            <Text>Envoyer un marchand disponible</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_TOOLTIP" Language="fr_FR">
+            <Text>Envoie vers {1_City} un marchand que vous possédez déjà au lieu d'en acheter un.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE" Language="fr_FR">
+            <Text>Augmenter la limite et envoyer un marchand</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP" Language="fr_FR">
+            <Text>Propose « Améliorer les relations commerciales » à {1_Leader} pour {2_Cost} influence, puis envoie vers {3_City} un marchand que vous possédez déjà. Le traité peut être refusé ; le marchand part malgré tout et ouvre la route dès qu’un emplacement se libère.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND" Language="fr_FR">
+            <Text>Rappeler le marchand</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="fr_FR">
+            <Text>Arrête le marchand en route vers {1_City} et annule sa mission. Il conserve les mouvements qu'il lui reste et vous pouvez l'envoyer ailleurs.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="fr_FR">
+            <Text>Tout retirer de {1_City}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP" Language="fr_FR">
+            <Text>Renvoie vers la réserve toutes les ressources attribuées à {1_City}. Les ressources verrouillées restent en place.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="fr_FR">
             <Text>Seule la limite de routes commerciales bloque</Text>

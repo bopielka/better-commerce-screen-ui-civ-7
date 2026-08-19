@@ -415,6 +415,58 @@ function routeArgs(location) {
     return { X: location.x, Y: location.y };
 }
 
+
+/**
+ * Whether this merchant has already spent its turn.
+ *
+ * ⚠️ ASKED OF THE UNIT, NOT OF THE REFUSAL - and that is the second attempt at this test. The
+ * first asked `canStart` why it had refused, on the reasonable assumption that
+ * "LOC_UNITCOMMAND_NO_MOVES_REMAINING" would come back and could be told apart from
+ * "...NO_NEARBY_CITIES". It does not: for MAKE_TRADE_ROUTE the engine answers Success=false
+ * with `FailureReasons` EMPTY, every time (traced in UI.log). The reasons exist for other
+ * commands - the game's own unit-actions panel reads them - but not for this one, so nothing
+ * can be concluded from them here.
+ *
+ * `Movement.movementMovesRemaining` is the same field the unit flags and the end-turn panel
+ * read, and it answers a question that needs no interpretation.
+ */
+export function hasSpentItsTurn(unit) {
+    try {
+        return Number(unit?.Movement?.movementMovesRemaining ?? 0) <= 0;
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * Stops a merchant where it stands, dropping whatever journey it still had queued.
+ *
+ * ⚠️ `UNITCOMMAND_CANCEL` is the game's OWN cancel - `unit-commands.xml`, icon
+ * `Action_Cancel.png`, the same command its unit action panel offers. Not a zero-distance
+ * `MOVE_TO` standing in for one, which is the obvious trick and is refused.
+ *
+ * ⚠️ Returns true when there was nothing to cancel, too. A merchant can be under a standing
+ * order with no journey queued - ours waits exactly like that when it has spent its turn and
+ * will sign the route next turn - and for the caller the outcome is the same either way: it is
+ * not going anywhere now.
+ */
+export function stopMerchant(unit) {
+    try {
+        if (!Units.getQueuedOperationDestination?.(unit.id)) {
+            return true;
+        }
+        const args = { X: -9999, Y: -9999 };
+        if (Game.UnitCommands.canStart(unit.id, 'UNITCOMMAND_CANCEL', args, false)?.Success !== true) {
+            return false;
+        }
+        Game.UnitCommands.sendRequest(unit.id, 'UNITCOMMAND_CANCEL', args);
+        return true;
+    } catch (error) {
+        warn(`could not stop a merchant: ${error}`);
+        return false;
+    }
+}
+
 export function canSignRoute(unit, location) {
     try {
         return Game.UnitCommands.canStart(unit.id, UnitCommandTypes.MAKE_TRADE_ROUTE, routeArgs(location), false)

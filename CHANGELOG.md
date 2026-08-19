@@ -5,6 +5,120 @@ Notable changes to **Better Commerce Screen UI**. Newest first.
 ⚠️ **There was no changelog before 1.3.** Earlier releases are not recorded here, and nothing
 below should be read as the mod's full history — it is the history from 1.3 onwards.
 
+## 1.8
+
+### Added
+
+- **"Send a spare Merchant" — a plus beside the price**, on both the Gold button of an
+  available route and the Influence-and-Gold button of a limit-blocked one. It appears **only
+  while you actually have a Merchant with nothing to do** — one left over from an earlier Age,
+  say — and sends that one instead of buying another.
+  - A Merchant counts as spare when it carries no standing order of this mod's *and* has no
+    journey of its own queued. `Units.getQueuedOperationDestination` is the same call the
+    game's own map decoration uses to draw a unit's remaining path, so a Merchant the player
+    is steering by hand is left alone.
+  - Sending it makes every plus on the tab disappear at once, which is the only correct answer
+    when the single spare Merchant has just been spoken for. Nothing refreshes by hand:
+    `orderMerchantTo` announces the new order and the tab redraws itself, the path that was
+    already there.
+  - The card that is already waiting on a Merchant does not offer it — one errand per
+    settlement, the same rule the Gold button follows.
+
+### Changed
+
+- **The tooltips on this mod's own controls are the game's framed ones**, everywhere — the
+  settlement card's priority, quick-assign and return buttons, the factory button, and the tab
+  icons. They were drawing the bare box a plain `data-tooltip-content` produces, while the
+  button bar at the top of the screen already used the framed style, so the same actions looked
+  like two different kinds of control depending on where you met them.
+- **A tab icon's tooltip now says what is on that screen** instead of repeating the tab's name
+  in both the heading and the body. The heading answers "which tab is this"; the body answers
+  "what will I find there".
+- **The settlement card's return button says what it does in this mod's words.** It carried
+  the game's `LOC_COMMERCE_UNASSIGN_RESOURCES` — "Return all assignments from the city of
+  Berlin", a sentence about *assignments* rather than resources and phrased unlike anything
+  else on the screen. It now reads **"Unassign all in Berlin"** with a tooltip underneath, the
+  same shape as the "Assign all" / "Unassign all" pair at the top of the screen, because it is
+  the same action for one settlement. Reusing the game's own strings is the rule here; this is
+  the case where the game's own string is the odd one out.
+
+### Fixed
+
+- **That button ignored resource locks.** It called the model's `clearAllResources`, which has
+  no idea locks exist — so a padlocked Resource, safe from the **Unassign all** that locks were
+  built for, was swept away by the smaller button one row above it. Two buttons that both say
+  "return everything here" now mean the same thing by "everything", and the tooltip says so.
+- **An X beside the locate pin calls a Merchant off.** Wherever a card shows the pin — meaning
+  a Merchant really is on its way there — it now sits beside a button that stops the journey
+  and cancels the errand, without leaving the Commerce screen to find the unit on the map.
+  - Both halves are needed: the journey is cancelled (`UNITCOMMAND_CANCEL`, the game's own) so
+    it stops walking, **and** the standing order is dropped so nothing sends it out again at
+    the start of the next turn. Cancelling alone would be undone a turn later; forgetting the
+    order alone would leave it walking somewhere nobody expects it.
+  - The Merchant keeps whatever movement it had left and is free to be sent elsewhere — the
+    plus button picks it up on the next redraw, which the cancel triggers.
+  - ⚠️ **The card beneath no longer sees these presses.** The title row the buttons hang in is
+    the card's own `Activatable`, which fires from `engine-input` rather than from a DOM click
+    — and `bindActivatable` stops click, mousedown and mouseup, none of which is the one that
+    matters. Every press here also ran the card's handler, flying the camera to the settlement
+    the route points at; on the cancel button that was unmistakable. One listener on the button
+    stack covers all of them.
+  - ⚠️ Both icon-only buttons are built by a shared `icon-button.js` with a **fixed** height and
+    a fixed icon box. They were previously assembled from the rules meant for the button that
+    carries a *price* — which holds an icon and a number, so its padding is deliberately
+    lopsided and its height falls out of whatever its contents measure. Borrowed by a button
+    holding one icon, that is an off-centre icon and a pair that never quite lines up. It was
+    patched three times (symmetric padding, matching icon sizes, the missing mount rules) and
+    each fix removed one way for them to differ without removing the possibility; one component
+    with one set of numbers removes it.
+- **The "raise the limit and send" button no longer walks the Merchant across the map.** The
+  treaty it proposes is *queued*, not done — `sendRequest` returns before the engine has acted
+  — so for a moment afterwards the old trade capacity is still what gets reported, the route is
+  refused, and a spare Merchant with movement in hand reads that refusal as distance and sets
+  off for a journey the treaty was about to make unnecessary. That button now orders the
+  Merchant to stay put; the order is retried when the turn begins, by which time the treaty has
+  resolved either way. Every other caller still sets off as before.
+  - ⚠️ It cannot be inferred from the refusal itself: `canStart` answers `MAKE_TRADE_ROUTE` with
+    `Success: false` and an **empty** `FailureReasons`, so nothing distinguishes "no capacity"
+    from "too far". The caller knows what it just requested; the engine does not say.
+- **A Merchant is judged by what it is doing, not by what this mod wrote down.** Two symptoms,
+  one cause: the plus button never appeared after reloading a save, and a Merchant the player
+  called back was still reported as "one is already on its way". Standing orders live in the
+  user options, **outside the save** — this mod declares `AffectsSavedGames = 0` deliberately —
+  so they outlive a reload, and nothing tells them when the player halts or turns a Merchant
+  around. Both answers now come from the unit: a queued destination (what the game's own map
+  decoration reads to draw the remaining path) or no movement left counts as travelling;
+  anything else is free.
+  - **Calling a Merchant back now drops its standing order**, so it stops being re-sent at the
+    start of the next turn. ⚠️ The hard part is that the player halting a Merchant and the
+    engine refusing one of this mod's own move requests look identical — both clear the unit's
+    operations and leave it standing. They are told apart by timing: a refusal arrives in the
+    same breath as the request that caused it, so a clear within a moment of our own request is
+    ours and anything later is the player's.
+  - ⚠️ A Merchant that has just **arrived** also has its operations cleared, and may still have
+    movement in hand — indistinguishable from being stopped, except that it is standing exactly
+    where the route can be signed. Its order is therefore kept when it can still sign, so the
+    errand is not thrown away one step from the end.
+  - ⚠️ A turn stamp was tried first and does not work. The player had done and undone all of it
+    inside a single turn, so the turn never went backwards and there was nothing to detect.
+- **A Merchant bought for a route it could open on the spot walked off anyway.** From the
+  Modern Age a Merchant can open a route from wherever it stands, so buying one is the whole
+  errand — it only has to wait for next turn, because a unit bought this turn has no movement
+  left. That last part was the trap: the engine refused the signature, and the refusal was read
+  as a plain "no", so the fallback walked the Merchant towards the other empire. It left a
+  position that already worked, and the route it could have opened at home arrived several
+  turns late.
+  - The engine says **which** refusal it is — `LOC_UNITCOMMAND_NO_MOVES_REMAINING` is a
+    different reason from `LOC_UNITCOMMAND_TRADE_ROUTE_FAILURE_NO_NEARBY_CITIES` — so it is now
+    asked instead of guessed. Refused only for movement, the Merchant stays where it is and
+    signs when the turn begins; refused for distance, it sets off exactly as before.
+  - ⚠️ No age check anywhere, and none is needed. In an earlier Age a Merchant standing at home
+    is refused for **both** reasons at once, distance among them, so the same test correctly
+    sends it walking. `canStart` is also the only thing that knows about the civs and effects
+    that bend the rule; a hard-coded "Age 3" would be a second, worse copy of it.
+  - ⚠️ The refusal is matched on the **LOC key**, never on the composed sentence — a decision
+    taken by reading translated text breaks in every other language.
+
 ## 1.7
 
 ### Changed

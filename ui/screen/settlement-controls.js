@@ -16,6 +16,8 @@
 import { getCommerceModel, settlementCards } from '../model/screen-model.js';
 import { PRIORITY_OPTIONS, getPriority, priorityLabel, setPriority } from '../planner/priorities.js';
 import { quickAssignSettlement } from '../planner/run.js';
+import { unassignSettlement } from '../engine/unassign.js';
+import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
 import { appendAll, bindActivatable, clearChildren, ensureStyle, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -36,6 +38,16 @@ const HEADER_CLASS = 'najane-card-header';
 const NAME_CLASS = 'najane-card-name';
 /** Holds our three controls and the game's cog, so the four cannot be separated. */
 const ACTIONS_CLASS = 'najane-card-actions';
+
+/**
+ * Whose teardown owns the framed tooltips on these controls.
+ *
+ * ⚠️ Its own scope, never the default. These are torn down whenever the Resources tab is left,
+ * which is sooner than the screen's own teardown - and disposing the DEFAULT scope to clean up
+ * after them would take every other tab's tooltips with it. Same rule, same reason as the
+ * treasure tab's; see `disposeFramedTooltips`.
+ */
+const TOOLTIP_SCOPE = 'settlement-controls';
 
 /**
  * The game's factory display (cog + current factory resource), FactoryTypeDisplay.
@@ -124,7 +136,6 @@ const STYLE = `
     /* .size-7, the size the game gives this button; see the ImageButton in factory-type-display. */
     width: 1.5555555556rem;
     height: 1.5555555556rem;
-    margin-left: 0.75rem;
     background-image: url("blp:resource_return_button_default.png");
     background-position: center;
     background-repeat: no-repeat;
@@ -197,6 +208,15 @@ const STYLE = `
     background: transparent;
     pointer-events: auto;
 }
+/*
+ * Pass-through, so each control keeps its own place in the row. The framed tooltip wraps the
+ * button in a mount, and without this the mount would be the flex item instead of the button.
+ */
+.${CONTROL_CLASS}__trigger-mount,
+.${CONTROL_CLASS}__quick-mount,
+.${CONTROL_CLASS}__unassign-mount { display: flex; flex: 0 0 auto; }
+.${FACTORY_BUTTON_CLASS}-mount { display: flex; flex: 0 0 auto; margin-left: 0.75rem; }
+
 .${CONTROL_CLASS}__trigger { width: 4.25rem; padding: 0.25rem 0.45rem; }
 .${CONTROL_CLASS}__quick,
 .${CONTROL_CLASS}__unassign { width: 2.5rem; margin-left: 0.5rem; }
@@ -311,9 +331,48 @@ function renderPriorityIcon(host, yieldType) {
     host.appendChild(cluster);
 }
 
+/**
+ * ⚠️ This mod's wording, not the game's `LOC_COMMERCE_UNASSIGN_RESOURCES`.
+ *
+ * That key reads "Return all assignments from the city of Berlin" - a sentence about
+ * *assignments* rather than about resources, and phrased unlike anything else on this screen.
+ * The button bar at the top says "Assign all" / "Unassign all" and explains itself in a
+ * tooltip underneath; this is the same action for one settlement, so it says so the same way.
+ * The general rule of reusing the game's own strings is worth breaking exactly where the
+ * game's own string is the odd one out.
+ */
+/**
+ * Wraps a control in a framed tooltip and hands back the mount to put in the row.
+ *
+ * ⚠️ Two of these because the frame takes localisation KEYS for its heading, which is right
+ * for a fixed label - but the unassign button's heading carries a settlement name and is
+ * therefore already composed. `framedText` is the same thing for a string that has been
+ * composed already; passing composed text as a key would print the sentence back as a tag.
+ */
+function framed(button, className, labelKey, tooltipKey) {
+    const mount = makeElement('div', `${className}-mount`);
+    appendWithFramedTooltip(mount, button, {
+        scope: TOOLTIP_SCOPE,
+        title: labelKey,
+        text: Locale.compose(tooltipKey),
+    });
+    return mount;
+}
+
+function framedText(button, className, label, text) {
+    const mount = makeElement('div', `${className}-mount`);
+    appendWithFramedTooltip(mount, button, { scope: TOOLTIP_SCOPE, title: label, text });
+    return mount;
+}
+
 function unassignLabel(settlement) {
     const city = Cities.get(settlement.cityID);
-    return Locale.compose('LOC_COMMERCE_UNASSIGN_RESOURCES', Locale.compose(city?.name ?? ''));
+    return Locale.compose('LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN', Locale.compose(city?.name ?? ''));
+}
+
+function unassignTooltip(settlement) {
+    const city = Cities.get(settlement.cityID);
+    return Locale.compose('LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP', Locale.compose(city?.name ?? ''));
 }
 
 function closeMenus(except = null) {
@@ -335,8 +394,6 @@ function createControl(settlement) {
     const trigger = makeElement('div', `${CONTROL_CLASS}__trigger`, {
         title: currentLabel(selected.type),
         'aria-label': currentLabel(selected.type),
-        'data-tooltip-content': Locale.compose(PRIORITY_TOOLTIP),
-        'data-tooltip-anchor': 'left',
     });
     const triggerIcon = makeElement('div', `${CONTROL_CLASS}__icon-host`);
     renderPriorityIcon(triggerIcon, selected.type);
@@ -356,8 +413,7 @@ function createControl(settlement) {
             'data-tooltip-content': option.type
                 ? Locale.compose(PRIORITY_OPTION_TOOLTIP, label)
                 : Locale.compose(PRIORITY_BALANCED_TOOLTIP),
-            'data-tooltip-anchor': 'left',
-        });
+            });
         const icon = makeElement('div', `${CONTROL_CLASS}__icon-host`);
         renderPriorityIcon(icon, option.type);
         item.appendChild(icon);
@@ -373,28 +429,28 @@ function createControl(settlement) {
     }
 
     const unassign = makeElement('div', `${CONTROL_CLASS}__unassign`, {
-        // The game's own wording for this action, settlement name and all.
         title: unassignLabel(settlement),
         'aria-label': unassignLabel(settlement),
-        'data-tooltip-content': unassignLabel(settlement),
-        'data-tooltip-anchor': 'left',
     });
     const unassignIcon = makeElement('div', `${CONTROL_CLASS}__unassign-icon`);
     unassignIcon.style.backgroundImage = 'url(blp:resource_return_button_default.png)';
     unassign.appendChild(unassignIcon);
     bindActivatable(unassign, () => {
         closeMenus();
-        const model = getCommerceModel();
-        if (model) {
-            model.deselectSelectedResource();
-            model.clearAllResources(settlement.cityID);
-        }
+        /*
+         * ⚠️ This mod's own clear, not the model's `clearAllResources`. That one does not know
+         * locks exist, so a padlocked resource - safe from "Unassign all" - was swept away by
+         * this smaller button instead. See `unassignSettlement`.
+         */
+        getCommerceModel()?.deselectSelectedResource?.();
+        unassignSettlement(settlement.cityID).catch((error) =>
+            warn(`returning a settlement's resources failed: ${error}`),
+        );
     });
 
     const quick = makeElement('div', `${CONTROL_CLASS}__quick`, {
         title: Locale.compose(QUICK_ASSIGN),
         'aria-label': Locale.compose(QUICK_ASSIGN),
-        'data-tooltip-content': Locale.compose(QUICK_ASSIGN_TOOLTIP),
         'data-tooltip-anchor': 'left',
     });
     const quickIcon = makeElement('div', `${CONTROL_CLASS}__quick-icon`);
@@ -410,7 +466,23 @@ function createControl(settlement) {
 
     // The card beneath treats a press as "assign here"; these controls are not that.
     control.addEventListener('engine-input', (event) => event.stopPropagation());
-    appendAll(control, trigger, quick, unassign, menu);
+    /*
+     * ⚠️ Each one wrapped in the game's FRAMED tooltip, the same as the button bar at the top
+     * of the screen - a heading over an inset card, rather than the bare box a plain
+     * `data-tooltip-content` draws. These are the same three actions the bar offers, scoped to
+     * one settlement, so they should not arrive looking like a different kind of control.
+     *
+     * The wrapper is what goes into the row, not the button: see `appendWithFramedTooltip`.
+     */
+    appendAll(
+        control,
+        // Its heading is the settlement's CURRENT priority, so it is already composed.
+        framedText(trigger, `${CONTROL_CLASS}__trigger`, currentLabel(selected.type),
+            Locale.compose(PRIORITY_TOOLTIP)),
+        framed(quick, `${CONTROL_CLASS}__quick`, QUICK_ASSIGN, QUICK_ASSIGN_TOOLTIP),
+        framedText(unassign, `${CONTROL_CLASS}__unassign`, unassignLabel(settlement), unassignTooltip(settlement)),
+        menu,
+    );
     return control;
 }
 
@@ -456,7 +528,6 @@ function hideSettlementReturnButton(cardElement, header) {
  */
 function createFactoryClearButton(settlement) {
     const button = makeElement('div', FACTORY_BUTTON_CLASS, {
-        'data-tooltip-content': Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP'),
         'aria-label': Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_CLEAR'),
     });
     button.appendChild(makeElement('div', `${FACTORY_BUTTON_CLASS}__mark`));
@@ -469,7 +540,10 @@ function createFactoryClearButton(settlement) {
             warn(`clearing the factory resources failed: ${error}`);
         }
     });
-    return button;
+    return framed(
+        button, FACTORY_BUTTON_CLASS,
+        'LOC_NAJANE_COMMERCE_FACTORY_CLEAR', 'LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP',
+    );
 }
 
 function injectControlsOnce() {
@@ -510,7 +584,7 @@ function injectControlsOnce() {
         const factoryDisplay = header.querySelector(FACTORY_DISPLAY_INNER_SELECTOR)?.parentElement;
         if (factoryDisplay) {
             factoryDisplay.classList.add(HIDDEN_CLASS);
-            if (!actions.querySelector(`.${FACTORY_BUTTON_CLASS}`)) {
+            if (!actions.querySelector(`.${FACTORY_BUTTON_CLASS}-mount`)) {
                 actions.appendChild(createFactoryClearButton(settlement));
             }
         }
@@ -542,7 +616,12 @@ export function stopSettlementControls() {
     observer?.disconnect();
     observer = null;
     document.querySelectorAll(`.${CONTROL_CLASS}`).forEach((control) => control.remove());
-    document.querySelectorAll(`.${FACTORY_BUTTON_CLASS}`).forEach((button) => button.remove());
+    document.querySelectorAll(`.${FACTORY_BUTTON_CLASS}-mount`).forEach((mount) => mount.remove());
+    /*
+     * ⚠️ Before the elements go, and only OUR scope. A framed tooltip outliving the control it
+     * is anchored to is drawn in the top-left corner of the screen; see `TOOLTIP_SCOPE`.
+     */
+    disposeFramedTooltips(TOOLTIP_SCOPE);
     document.querySelectorAll(`.${HIDDEN_CLASS}`).forEach((el) => el.classList.remove(HIDDEN_CLASS));
     document.querySelectorAll(`.${HEADER_CLASS}`).forEach((el) => el.classList.remove(HEADER_CLASS));
     document.querySelectorAll(`.${NAME_CLASS}`).forEach((el) => el.classList.remove(NAME_CLASS));

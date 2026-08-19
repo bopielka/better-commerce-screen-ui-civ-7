@@ -50,14 +50,14 @@ the language. `text/en_us/InGameText.xml` is 284 lines and is the reference file
 | `LOC_OPTIONS_GROUP_NAJANE_COMMERCE` | ⚠️ the options group heading — the name is derived from the group id, not chosen |
 | `LOC_NAJANE_COMMERCE_*` | everything on screen |
 
-The full list of 126 keys is in `text/en_us/InGameText.xml`. Groups worth knowing:
+The full list of 140 keys is in `text/en_us/InGameText.xml`. Groups worth knowing:
 
 | Group | Keys | Used by |
 |---|---|---|
 | Buttons | `ASSIGN_ALL`, `REASSIGN_ALL`, `UNASSIGN_ALL` + `_BUSY` + `_TOOLTIP` | `assign-all-buttons.js` |
 | Shortcuts help | `SHORTCUTS`, `SHORTCUTS_TOOLTIP` | the "?" on Resources |
 | Settlement controls | `PRIORITY_*`, `QUICK_ASSIGN*` | `settlement-controls.js` |
-| Tab tooltips | `TAB_RESOURCES`, `TAB_EMPIRE`, `TAB_EMPIRE_TREASURE`, `TAB_TREASURE`, `TAB_FACTORY` | `tab-icons.js` |
+| Tab tooltips | `TAB_RESOURCES`, `TAB_EMPIRE`, `TAB_EMPIRE_TREASURE`, `TAB_TREASURE`, `TAB_FACTORY`, each + `_DESC`, plus `TAB_TRADE_DESC` | `tab-icons.js` |
 | Empire tab | `EMPIRE_ONE`, `EMPIRE_ALL`, `EMPIRE_INCOME`, `EMPIRE_CAPPED`, `EMPIRE_CELEBRATION_ONLY`, `EMPIRE_NO_SCALING` | `empire-tab.js` |
 | Unit classes | `UNITS_AIRCRAFT` … `UNITS_SIEGE`, plus `UNITS_CIVILIAN` (9) | `empire-effects.js` |
 | Factory tab | `FACTORY_*` (17) | `factory-resources.js`, `factory-effects.js`, `assign-switches.js` |
@@ -68,6 +68,8 @@ The full list of 126 keys is in `text/en_us/InGameText.xml`. Groups worth knowin
 | Improve & buy | `IMPROVE_AND_BUY` + `_TOOLTIP`, `IMPROVE_FUNDS` | `trade-buy-merchant.js` |
 | Warning fix | `TRADE_FULL_PROPOSE`, `TRADE_FULL_OPEN` | `trade-buy-merchant.js` |
 | Refusal reason | `IMPROVE_STARTED` | `ui/engine/diplomacy.js` (`REASON_OVERRIDES`) |
+| Settlement unassign | `SETTLEMENT_UNASSIGN` + `_TOOLTIP` | `settlement-controls.js` |
+| Spare merchant | `SEND_SPARE` + `_TOOLTIP` | `trade-buy-merchant.js` |
 | Factory clear | `FACTORY_CLEAR` + `_TOOLTIP` | `settlement-controls.js` |
 | Resource locks | `RESOURCE_LOCK`, `RESOURCE_UNLOCK` + `_TOOLTIP` | `resource-locks-ui.js` |
 | Treasure | `TREASURE_CLICK*`, `TREASURE_ON_ARRIVAL`, `TREASURE_AUTO_RETURN` + `_TOOLTIP` | `treasure-tab.js` |

@@ -16,6 +16,7 @@
  * itself and ignores the declared size. The rule is kept anyway, since it costs nothing
  * and covers a label that reappears before the observer gets to it.
  */
+import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
 import { ensureStyle, makeElement } from '../support/dom.js';
 import { isFactoryAge, isExplorationAge } from '../engine/age.js';
 import { log, warn } from '../support/diagnostics.js';
@@ -26,6 +27,21 @@ const STYLE_ID = 'najane-tab-icons-style';
 
 const TAB_LIST_SELECTOR = '[data-name="TabList"]';
 const TAB_ITEM_SELECTOR = '[data-name="TabListItem"]';
+
+/**
+ * ⚠️ One scope PER TAB, and never the default one.
+ *
+ * The default scope is disposed when the RESOURCES tab unmounts (see `stopAssignAllButtons`),
+ * and these icons deliberately outlive that - the strip belongs to the whole screen, which is
+ * why this module has no teardown at all. Filed under the default they would be torn down the
+ * first time the player switched to Trade Routes, leaving the icons on screen with dead
+ * tooltips for the rest of the session.
+ *
+ * Per tab rather than one shared scope, for the reason trade-buy-merchant.js learned the hard
+ * way: a scope is a disposal bucket, so a rebuild of one tab's tooltip would take its
+ * neighbours' with it.
+ */
+const TOOLTIP_SCOPE = 'tab-icons';
 
 const RESOURCES_ICON = 'blp:radial_resources'; // the green resource leaf
 const TRADE_ICON = 'blp:Action_Trade'; // the two arrows
@@ -61,6 +77,33 @@ function tabIcons() {
  *
  * `null` keeps the tab's own name, which is already exactly right for trade routes.
  */
+/**
+ * One short line per tab saying what is ON that screen.
+ *
+ * ⚠️ NOT the tab's name again. The framed tooltip already puts the name in its heading, so a
+ * body repeating it - which is what this drew at first - is a box that costs a hover and says
+ * nothing. The heading answers "which tab is this"; the body answers "what will I find there".
+ *
+ * ⚠️ Same order and same length as `tabTooltips`, including the null at index 1 for the trade
+ * route tab, whose HEADING comes from the game's own label rather than from a key of ours.
+ */
+function tabDescriptions() {
+    const keys = [
+        'LOC_NAJANE_COMMERCE_TAB_RESOURCES_DESC',
+        'LOC_NAJANE_COMMERCE_TAB_TRADE_DESC',
+        isExplorationAge()
+            ? 'LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE_DESC'
+            : 'LOC_NAJANE_COMMERCE_TAB_EMPIRE_DESC',
+    ];
+    if (isExplorationAge()) {
+        keys.push('LOC_NAJANE_COMMERCE_TAB_TREASURE_DESC');
+    }
+    if (isFactoryAge()) {
+        keys.push('LOC_NAJANE_COMMERCE_TAB_FACTORY_DESC');
+    }
+    return keys;
+}
+
 function tabTooltips() {
     const keys = [
         'LOC_NAJANE_COMMERCE_TAB_RESOURCES',
@@ -81,14 +124,24 @@ const STYLE = `
     /* Belt and braces - the text nodes are removed too, see stripLabel. */
     font-size: 0;
 }
+/*
+ * ⚠️ The icon is INTERACTIVE now, where it used to be "pointer-events: none".
+ *
+ * A framed tooltip is opened by its trigger receiving "mouseover", and an element that takes
+ * no pointer events never receives one - so the icon had to become the thing the cursor is
+ * actually over. Activating the tab still works: the click lands on the icon and bubbles to
+ * the tab item, whose Activatable is listening there, exactly as it did when the label was
+ * text. Nothing here binds or stops the event.
+ */
 .${ICON_CLASS} {
     width: 2rem;
     height: 2rem;
     background-position: center;
     background-repeat: no-repeat;
     background-size: contain;
-    pointer-events: none;
+    pointer-events: auto;
 }
+.${ICON_CLASS}-mount { display: flex; flex: 0 0 auto; }
 `;
 
 let observer = null;
@@ -145,6 +198,7 @@ function applyIcons() {
     }
     const icons = tabIcons();
     const tooltips = tabTooltips();
+    const descriptions = tabDescriptions();
 
     items.forEach((item, index) => {
         const icon = icons[index];
@@ -160,7 +214,8 @@ function applyIcons() {
         const key = tooltips[index];
         const tooltip = key ? Locale.compose(key) : label;
         if (tooltip) {
-            item.setAttribute('data-tooltip-content', tooltip);
+            // ⚠️ No `data-tooltip-content` any more - the framed tooltip below replaces it, and
+            // leaving this would draw a second, plain tooltip alongside the frame.
             item.setAttribute('aria-label', tooltip);
         }
         if (item.querySelector(`.${ICON_CLASS}`)) {
@@ -170,7 +225,30 @@ function applyIcons() {
 
         const iconElement = makeElement('div', ICON_CLASS);
         iconElement.style.backgroundImage = `url(${icon})`;
-        item.appendChild(iconElement);
+
+        /*
+         * ⚠️ The FRAMED tooltip, the same one every other control this mod adds now carries -
+         * a heading over an inset card rather than the bare box `data-tooltip-content` draws.
+         *
+         * ⚠️ It hangs on OUR icon, not on the tab item. The frame has to enclose its trigger,
+         * and the tab item is Solid's; moving one of those is what the ⚠️ on
+         * `positionGroupHeader` in trade-routes.js is about. The icon is ours and safe to wrap.
+         */
+        const scope = `${TOOLTIP_SCOPE}:${index}`;
+        disposeFramedTooltips(scope);
+        const mount = makeElement('div', `${ICON_CLASS}-mount`);
+        /*
+         * ⚠️ The heading is the tab's NAME and the body is what is on it - never the same
+         * string twice. Where this mod has no name of its own for a tab (the trade routes
+         * one), the game's own label is already composed, which `L10n.Stylize` handles.
+         */
+        const description = descriptions[index];
+        appendWithFramedTooltip(mount, iconElement, {
+            scope,
+            title: key ?? tooltip,
+            text: description ? Locale.compose(description) : tooltip,
+        });
+        item.appendChild(mount);
         item.classList.add(ICONIFIED_CLASS);
     });
 

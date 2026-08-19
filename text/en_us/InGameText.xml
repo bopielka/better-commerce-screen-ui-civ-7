@@ -202,6 +202,24 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY">
             <Text>Factory Resources</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES_DESC">
+            <Text>Assign your Resources to Settlements. Unassigned on the left, your Settlements and their slots on the right.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TRADE_DESC">
+            <Text>Every Trade Route you hold, could open now, or cannot open yet — and what each one would bring in.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_DESC">
+            <Text>Resources that pay the whole empire, with what each is actually worth per turn.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE_DESC">
+            <Text>Resources that pay the whole empire, plus your Treasure Resources, with what each is actually worth per turn.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE_DESC">
+            <Text>Your distant-lands Settlements and the Treasure Convoys they produce.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY_DESC">
+            <Text>Factory Resources: which are slotted, which are idle, and what each one earns.</Text>
+        </Row>
 
         <!-- Factory Resources tab -->
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING">
@@ -331,6 +349,30 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP">
             <Text>Return every Factory Resource in this Settlement to the unassigned pool.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE">
+            <Text>Send a spare Merchant</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_TOOLTIP">
+            <Text>Send a Merchant you already have to {1_City} instead of buying one.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE">
+            <Text>Raise the limit and send a spare Merchant</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP">
+            <Text>Proposes "Improve Trade Relations" with {1_Leader} for {2_Cost} Influence, then sends a Merchant you already have to {3_City}. The treaty can be refused; the Merchant goes either way and opens the route as soon as a slot exists.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND">
+            <Text>Call the Merchant off</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP">
+            <Text>Stops the Merchant heading for {1_City} and cancels its errand. It keeps whatever movement it has left and is yours to send anywhere else.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN">
+            <Text>Unassign all in {1_City}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP">
+            <Text>Returns every Resource assigned in {1_City} to the pool. Locked Resources stay where they are.</Text>
         </Row>
 
         <!-- Trade routes tab -->

@@ -183,6 +183,24 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="it_IT">
             <Text>Risorse fabbrica</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES_DESC" Language="it_IT">
+            <Text>Assegna le risorse agli insediamenti. A sinistra quelle non assegnate, a destra i tuoi insediamenti e i loro slot.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TRADE_DESC" Language="it_IT">
+            <Text>Tutte le rotte commerciali che possiedi, quelle apribili subito e quelle non ancora — e cosa porterebbe ciascuna.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_DESC" Language="it_IT">
+            <Text>Risorse che giovano a tutto l'impero, con quanto vale davvero ciascuna per turno.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE_DESC" Language="it_IT">
+            <Text>Risorse che giovano a tutto l'impero, più le tue risorse del tesoro, con quanto vale davvero ciascuna per turno.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE_DESC" Language="it_IT">
+            <Text>I tuoi insediamenti nelle terre lontane e i convogli del tesoro che producono.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY_DESC" Language="it_IT">
+            <Text>Risorse da fabbrica: quali sono inserite, quali inutilizzate e quanto rende ciascuna.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="it_IT">
             <Text>In fabbrica</Text>
         </Row>
@@ -290,6 +308,30 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="it_IT">
             <Text>Restituisce ogni risorsa da fabbrica di questo insediamento alla riserva non assegnata.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE" Language="it_IT">
+            <Text>Invia un mercante libero</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_TOOLTIP" Language="it_IT">
+            <Text>Invia a {1_City} un mercante che possiedi già invece di comprarne uno.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE" Language="it_IT">
+            <Text>Alza il limite e invia un mercante libero</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP" Language="it_IT">
+            <Text>Propone "Migliora relazioni commerciali" a {1_Leader} per {2_Cost} influenza, poi invia a {3_City} un mercante che possiedi già. Il trattato può essere rifiutato; il mercante parte comunque e apre la rotta appena si libera uno slot.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND" Language="it_IT">
+            <Text>Richiama il mercante</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="it_IT">
+            <Text>Ferma il mercante diretto a {1_City} e annulla il suo incarico. Conserva il movimento che gli resta e puoi inviarlo altrove.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="it_IT">
+            <Text>Rimuovi tutto da {1_City}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP" Language="it_IT">
+            <Text>Restituisce alla riserva ogni risorsa assegnata a {1_City}. Le risorse bloccate restano dove sono.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="it_IT">
             <Text>Blocca solo il limite di rotte commerciali</Text>

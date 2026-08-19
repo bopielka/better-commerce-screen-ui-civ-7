@@ -161,13 +161,32 @@ mid-game.
 
 ```
 README.md                 the player- and author-facing document
-CHANGELOG.md              currently empty
+CHANGELOG.md              the full history, with reasoning
+STEAM_CHANGELOG.bbcode    ⚠️ the SHORT form of it; see below. 8000-character limit
 TODO.md                   ⚠️ "For AI agents: Don't edit this file unless asked."
 documentation/            this folder
 steam-description.bbcode  the Workshop page, 6000-character limit
 deploy.sh, deploy-on-mac.sh
 .idea/, .git/
 ```
+
+### ⚠️ The changelog is written TWICE
+
+Every entry added to `CHANGELOG.md` is condensed into `STEAM_CHANGELOG.bbcode` **in the same
+pass**. Skip it once and the two drift apart within a release or two, at which point nobody
+knows which is right.
+
+| | `CHANGELOG.md` | `STEAM_CHANGELOG.bbcode` |
+|---|---|---|
+| Audience | whoever maintains this next | a player on the Workshop page |
+| Carries | the cause, the ⚠️ notes, the approaches that failed | what changed, one bullet each |
+| Fixes | one entry per fix, explained | folded into a single "Fixed:" bullet per version |
+| Format | Markdown, newest first | BBCode, `[h2]` per version, house style from `steam-description.bbcode` |
+
+`deploy-on-mac.sh` prints both character counts and refuses to deploy over either limit. When
+the Steam file approaches 8000, **drop the oldest version section** rather than trimming the
+recent ones — old releases are what nobody reads, and the full history is in the Markdown file
+either way.
 
 There is currently no `config/` directory; the deploy script tolerates a content directory that
 does not exist.

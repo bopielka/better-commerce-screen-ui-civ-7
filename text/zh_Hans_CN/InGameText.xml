@@ -183,6 +183,24 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="zh_Hans_CN">
             <Text>工厂资源</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES_DESC" Language="zh_Hans_CN">
+            <Text>在此将资源分配给聚落。左侧是未分配资源，右侧是你的聚落及其空位。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TRADE_DESC" Language="zh_Hans_CN">
+            <Text>你已有的、现在可开通的以及尚不可开通的贸易路线，以及各自的收益。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_DESC" Language="zh_Hans_CN">
+            <Text>惠及全帝国的资源，以及每项每回合的实际价值。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE_DESC" Language="zh_Hans_CN">
+            <Text>惠及全帝国的资源与财宝资源，以及每项每回合的实际价值。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE_DESC" Language="zh_Hans_CN">
+            <Text>你在远方土地的聚落，以及它们生产的财宝船队。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY_DESC" Language="zh_Hans_CN">
+            <Text>工厂资源：哪些已装入、哪些闲置，以及各自的收益。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="zh_Hans_CN">
             <Text>已入工厂</Text>
         </Row>
@@ -290,6 +308,30 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="zh_Hans_CN">
             <Text>将此聚落的所有工厂资源归还到未分配资源池。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE" Language="zh_Hans_CN">
+            <Text>派遣闲置商人</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_TOOLTIP" Language="zh_Hans_CN">
+            <Text>派遣你已拥有的商人前往{1_City}，无需购买新的。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE" Language="zh_Hans_CN">
+            <Text>提高上限并派遣闲置商人</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP" Language="zh_Hans_CN">
+            <Text>以 {2_Cost} 影响力向{1_Leader}提议「改善贸易关系」，随后派遣你已拥有的商人前往{3_City}。条约可能被拒绝；商人无论如何都会出发，并在出现空位时立即开通路线。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND" Language="zh_Hans_CN">
+            <Text>召回商人</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="zh_Hans_CN">
+            <Text>让前往{1_City}的商人停下并取消其任务。它保留剩余移动力，你可以派它去别处。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="zh_Hans_CN">
+            <Text>取消{1_City}的全部分配</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP" Language="zh_Hans_CN">
+            <Text>将{1_City}中已分配的所有资源归还到资源池。被锁定的资源会留在原处。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="zh_Hans_CN">
             <Text>只差贸易路线上限</Text>

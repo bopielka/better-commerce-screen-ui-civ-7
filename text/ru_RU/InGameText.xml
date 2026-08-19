@@ -193,6 +193,24 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="ru_RU">
             <Text>Фабричні ресурси</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES_DESC" Language="ru_RU">
+            <Text>Тут ви призначаєте ресурси поселенням. Ліворуч непризначені, праворуч ваші поселення та їхні комірки.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TRADE_DESC" Language="ru_RU">
+            <Text>Усі торгові шляхи: наявні, ті, які можна відкрити зараз, і ще недоступні — разом з тим, що вони дадуть.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_DESC" Language="ru_RU">
+            <Text>Ресурси, що діють на всю імперію, і скільки кожен насправді дає за хід.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE_DESC" Language="ru_RU">
+            <Text>Ресурси, що діють на всю імперію, та ресурси скарбів — і скільки кожен насправді дає за хід.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE_DESC" Language="ru_RU">
+            <Text>Ваші поселення в далеких землях і каравани зі скарбами, які вони виробляють.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY_DESC" Language="ru_RU">
+            <Text>Фабричні ресурси: які задіяні, які простоюють і скільки дає кожен.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="ru_RU">
             <Text>На фабриках</Text>
         </Row>
@@ -300,6 +318,30 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="ru_RU">
             <Text>Повертає всі фабричні ресурси цього поселення до нерозподіленого запасу.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE" Language="ru_RU">
+            <Text>Надіслати вільного купця</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_TOOLTIP" Language="ru_RU">
+            <Text>Надсилає до {1_City} купця, який у вас уже є, замість купувати нового.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE" Language="ru_RU">
+            <Text>Підняти ліміт і надіслати вільного купця</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP" Language="ru_RU">
+            <Text>Пропонує {1_Leader} «Покращення торговельних відносин» за {2_Cost} впливу, а потім надсилає до {3_City} купця, який у вас уже є. Угоду можуть відхилити; купець вирушає в будь-якому разі й відкриє шлях, щойно з’явиться вільне місце.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND" Language="ru_RU">
+            <Text>Відкликати купця</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="ru_RU">
+            <Text>Зупиняє купця, який прямує до {1_City}, і скасовує його доручення. Він зберігає залишок руху, і ви можете надіслати його деінде.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="ru_RU">
+            <Text>Зняти всі ресурси з {1_City}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP" Language="ru_RU">
+            <Text>Повертає до пулу всі ресурси, призначені в {1_City}. Закріплені ресурси лишаються на місці.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="ru_RU">
             <Text>Заважає лише ліміт торгових шляхів</Text>

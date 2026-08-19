@@ -208,6 +208,24 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="pl_PL">
             <Text>Zasoby fabryczne</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES_DESC" Language="pl_PL">
+            <Text>Przypisujesz tu zasoby do osad. Po lewej nieprzypisane, po prawej twoje osady i ich miejsca.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TRADE_DESC" Language="pl_PL">
+            <Text>Wszystkie szlaki handlowe: te, które masz, te do otwarcia od ręki i te jeszcze niedostępne — wraz z tym, co przyniosą.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_DESC" Language="pl_PL">
+            <Text>Zasoby działające na całe imperium, wraz z tym, ile naprawdę dają na turę.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE_DESC" Language="pl_PL">
+            <Text>Zasoby działające na całe imperium oraz zasoby skarbowe, wraz z tym, ile naprawdę dają na turę.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE_DESC" Language="pl_PL">
+            <Text>Twoje osady w odległych ziemiach i konwoje skarbów, które produkują.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY_DESC" Language="pl_PL">
+            <Text>Zasoby fabryczne: które są wstawione, które leżą bezczynnie i ile każdy daje.</Text>
+        </Row>
 
         <!-- Zakładka zasobów fabrycznych -->
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="pl_PL">
@@ -337,6 +355,30 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="pl_PL">
             <Text>Zwraca wszystkie zasoby fabryczne z tej osady do puli nieprzypisanych.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE" Language="pl_PL">
+            <Text>Wyślij wolnego kupca</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_TOOLTIP" Language="pl_PL">
+            <Text>Wysyła do {1_City} kupca, którego już masz, zamiast kupować nowego.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE" Language="pl_PL">
+            <Text>Zwiększ limit i wyślij wolnego kupca</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP" Language="pl_PL">
+            <Text>Proponuje {1_Leader} „Poprawę stosunków handlowych" za {2_Cost} wpływów, a następnie wysyła do {3_City} kupca, którego już masz. Traktat może zostać odrzucony; kupiec i tak wyrusza i otworzy szlak, gdy tylko pojawi się wolne miejsce.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND" Language="pl_PL">
+            <Text>Odwołaj kupca</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="pl_PL">
+            <Text>Zatrzymuje kupca zmierzającego do {1_City} i anuluje jego zlecenie. Zachowuje pozostały ruch i możesz go wysłać gdzie indziej.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="pl_PL">
+            <Text>Cofnij wszystkie zasoby z {1_City}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP" Language="pl_PL">
+            <Text>Zwraca do puli wszystkie zasoby przypisane w {1_City}. Zablokowane zasoby zostają na miejscu.</Text>
         </Row>
 
         <Row Tag="LOC_NAJANE_COMMERCE_ROUTE_SEA" Language="pl_PL">

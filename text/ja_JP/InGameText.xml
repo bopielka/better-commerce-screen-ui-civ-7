@@ -183,6 +183,24 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="ja_JP">
             <Text>工場資源</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES_DESC" Language="ja_JP">
+            <Text>資源を集落に配分します。左が未配分、右が集落とその枠です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TRADE_DESC" Language="ja_JP">
+            <Text>保有中・今すぐ開設できる・まだ開設できない交易路と、それぞれの収入です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_DESC" Language="ja_JP">
+            <Text>帝国全体に効く資源と、それぞれが1ターンに実際に生む価値です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE_DESC" Language="ja_JP">
+            <Text>帝国全体に効く資源と財宝資源、それぞれが1ターンに実際に生む価値です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE_DESC" Language="ja_JP">
+            <Text>遠方の地の集落と、そこが生み出す財宝輸送船団です。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY_DESC" Language="ja_JP">
+            <Text>工場資源：配置済み・未使用の別と、それぞれの収入です。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="ja_JP">
             <Text>工場内</Text>
         </Row>
@@ -290,6 +308,30 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="ja_JP">
             <Text>この集落の工場資源をすべて未配分のプールに戻します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE" Language="ja_JP">
+            <Text>手すきの商人を送る</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_TOOLTIP" Language="ja_JP">
+            <Text>購入する代わりに、すでに所有している商人を{1_City}へ送ります。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE" Language="ja_JP">
+            <Text>上限を上げて手すきの商人を送る</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP" Language="ja_JP">
+            <Text>{1_Leader}に影響力{2_Cost}で「通商関係の改善」を提案し、続けてすでに所有している商人を{3_City}へ送ります。条約は拒否されることがありますが、商人はいずれにせよ出発し、枠が空き次第、交易路を開設します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND" Language="ja_JP">
+            <Text>商人を呼び戻す</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="ja_JP">
+            <Text>{1_City}へ向かっている商人を停止し、その任務を取り消します。残りの移動力はそのままで、別の場所へ送れます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="ja_JP">
+            <Text>{1_City}の配分をすべて解除</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP" Language="ja_JP">
+            <Text>{1_City}に配分されている資源をすべてプールに戻します。固定された資源はそのまま残ります。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="ja_JP">
             <Text>交易路の上限だけが妨げになっている</Text>

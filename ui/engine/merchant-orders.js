@@ -32,9 +32,11 @@
  */
 import {
     approachLocations,
+    canSignRoute,
     isMerchant,
     localMerchants,
     moveMerchant,
+    hasSpentItsTurn,
     readMerchants,
     signRoute,
     unitKey,
@@ -203,6 +205,21 @@ function cityAtPlot(plotIndex) {
 
 const attempts = new Map();
 
+/**
+ * When this mod last told a merchant to move, per unit.
+ *
+ * ⚠️ THIS IS WHAT TELLS OUR OWN REFUSALS APART FROM THE PLAYER'S HAND. Both look identical from
+ * the outside: `UnitOperationsCleared` fires either way, and the merchant ends up standing
+ * still with an order it is not pursuing. But an engine refusal arrives in the same breath as
+ * the request that caused it, while a player calling a merchant back happens whenever they
+ * feel like it - so a clear that lands within a moment of our own request is ours, and
+ * anything later is theirs.
+ */
+const commandedAt = new Map();
+
+/** Long enough for a refusal to come back, far shorter than any human decision. */
+const OURS_WINDOW_MS = 1500;
+
 function currentTurn() {
     try {
         return Number(Game.turn);
@@ -225,12 +242,48 @@ function mayAttempt(key) {
     return true;
 }
 
+/**
+ * Drops the order of a merchant the player has called back or halted.
+ *
+ * ⚠️ Only when it can no longer do the job from where it stands. A merchant that ARRIVES has
+ * its operation cleared too, and on the turn it arrives it may still have movement in hand -
+ * which is indistinguishable from having been stopped, except that this one is standing
+ * exactly where the route can be signed. Dropping its order there would throw the errand away
+ * one step from the end, so the sign pass is left to finish it.
+ */
+function forgetOrderIfAbandoned(unitID) {
+    const key = unitKey(unitID);
+    if (!key || readOrder(key) < 0) {
+        return;
+    }
+    // Our own request being refused, not the player's doing; the attempt cap handles those.
+    if (Date.now() - (commandedAt.get(key) ?? 0) <= OURS_WINDOW_MS) {
+        return;
+    }
+    let unit = null;
+    try {
+        unit = Units.get(unitID);
+    } catch (error) {
+        return;
+    }
+    if (!unit || isTravelling(unit)) {
+        return;
+    }
+    const city = cityAtPlot(readOrder(key));
+    if (city?.location && canSignRoute(unit, city.location)) {
+        return;
+    }
+    log(`a merchant was called back; its standing order is dropped`);
+    clearMerchantOrder(unitID);
+}
+
 export function clearMerchantOrder(unitID) {
     const key = unitKey(unitID);
     if (!key) {
         return;
     }
     attempts.delete(key);
+    commandedAt.delete(key);
     writeOrder(key, 0);
 }
 
@@ -244,11 +297,28 @@ function advance(unit, city, mayMove) {
         log(`trade route opened with ${Locale.compose(city.name ?? '')}`);
         return true;
     }
+    /*
+     * ⚠️ STAY PUT. The engine has refused, but for a reason no journey can fix: this merchant
+     * is already standing somewhere the route could be opened from and has merely used up the
+     * turn - which is every merchant on the turn it was bought. Walking now would carry it AWAY
+     * from a position that already works, and the order is retried at the start of every turn,
+     * so doing nothing is the whole of the correct behaviour. See `hasSpentItsTurn`.
+     *
+     * ⚠️ It costs the earlier ages nothing. A merchant with no moves left cannot travel this
+     * turn either - a course issued now would simply sit queued until the turn rolled over -
+     * so the only difference is WHERE it is standing when the turn begins, and standing still
+     * is the one position from which both outcomes remain open.
+     */
+    if (hasSpentItsTurn(unit)) {
+        log(`merchant waits for next turn to open the route with ${Locale.compose(city.name ?? '')}`);
+        return false;
+    }
     if (!mayMove || !mayAttempt(unitKey(unit.id))) {
         return false;
     }
     for (const location of approachLocations(unit, city)) {
         if (moveMerchant(unit, location)) {
+            commandedAt.set(unitKey(unit.id), Date.now());
             return false;
         }
     }
@@ -362,7 +432,18 @@ function scheduleProcess(mayMove = false) {
  * Files the order and acts on it at once - a merchant bought in a settlement that is already
  * within reach opens its route on the same click rather than after a turn.
  */
-export function orderMerchantTo(unit, city) {
+/**
+ * @param mayMove whether this merchant may set off NOW if the route cannot be signed yet.
+ *
+ * ⚠️ Pass false when something you have just requested is about to change the answer. A
+ * treaty proposal is the case this exists for: `sendRequest` only QUEUES, so for a moment
+ * afterwards the engine still reports the old trade capacity and refuses the route - and a
+ * merchant with movement in hand reads that refusal as "too far" and walks off towards the
+ * other empire for a journey the treaty was about to make unnecessary. Standing still costs
+ * nothing: the order is retried at the start of every turn, by which time the treaty has
+ * resolved one way or the other.
+ */
+export function orderMerchantTo(unit, city, { mayMove = true } = {}) {
     if (!isMerchant(unit) || !city?.location) {
         return false;
     }
@@ -384,7 +465,14 @@ export function orderMerchantTo(unit, city) {
     // refusals looping, not to ration what the player asked for. It is also the one pass
     // outside the turn beginning that is allowed to set the merchant walking.
     attempts.delete(key);
-    if (advance(unit, city, true)) {
+
+    /*
+     * ⚠️ `advance` may quite correctly decide to do NOTHING. A merchant bought this turn has
+     * no movement left, and from the Modern age it does not need any - it is already standing
+     * somewhere the route can be opened from, so the right answer is to wait where it is and
+     * sign when the turn begins, not to set off. See `hasSpentItsTurn` in merchant.js.
+     */
+    if (advance(unit, city, mayMove)) {
         clearMerchantOrder(unit.id);
     }
     return true;
@@ -406,13 +494,89 @@ export function orderMerchantTo(unit, city) {
  * spoken for. The card cannot know that from its own status - the projection was made before
  * the first merchant left.
  */
+/**
+ * Whether this merchant is actually going somewhere right now.
+ *
+ * ⚠️ THE ONE PLACE THE UNIT'S REAL STATE IS READ, and both questions this module answers are
+ * built on it - "which merchants are free?" and "which are on their way to that settlement?".
+ * Kept as one predicate because the two are opposites: answered separately they drifted into
+ * claiming the same merchant was simultaneously idle and en route.
+ *
+ * ⚠️ The standing order is NOT evidence of travel. Orders live in the user options, outside the
+ * save (this mod declares `AffectsSavedGames = 0` deliberately), so they outlive a reloaded
+ * save - and the player can stop or turn a merchant around at any moment without the store
+ * hearing about it. Both were reported: buttons that never appeared after a reload, and
+ * merchants reported "on the way" long after being called back.
+ *
+ * Two questions, both about the unit and both about now:
+ *
+ *   a queued destination   it is on its way somewhere. `Units.getQueuedOperationDestination`
+ *                          is what the game's own map decoration reads to draw the path a unit
+ *                          still has to walk, so this is true exactly while the player would
+ *                          see that path.
+ *   no movement left       it may be mid-errand this turn - including this mod's own "wait
+ *                          here and sign the route when the turn begins". Counted as travel,
+ *                          the conservative half: it errs towards leaving a merchant alone.
+ *
+ * A merchant with movement in hand and nowhere queued is doing nothing, whatever the store
+ * says - which is also exactly what the player sees on the map.
+ */
+function isTravelling(unit) {
+    if (Number(unit?.Movement?.movementMovesRemaining ?? 0) <= 0) {
+        return true;
+    }
+    try {
+        return Boolean(Units.getQueuedOperationDestination?.(unit.id));
+    } catch (error) {
+        // Cannot tell - assume it is travelling, and leave it be.
+        return true;
+    }
+}
+
+/** Merchants of ours with nothing to do; see `isTravelling` for what "nothing" means. */
+export function idleMerchants() {
+    return localMerchants().filter((unit) => !isTravelling(unit));
+}
+
+/**
+ * The spare merchant that would reach `city` soonest, or null when there is none.
+ *
+ * Nearest by plot distance rather than by path length: a path is only knowable for a
+ * destination the unit can currently reach, and the whole point of the button this feeds is
+ * that from the Modern age the distance may not matter at all.
+ */
+export function nearestIdleMerchant(city) {
+    const spare = idleMerchants();
+    if (spare.length === 0 || !city?.location) {
+        return null;
+    }
+    let best = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const unit of spare) {
+        let distance = Number.POSITIVE_INFINITY;
+        try {
+            distance = GameplayMap.getPlotDistance(
+                unit.location.x, unit.location.y, city.location.x, city.location.y,
+            );
+        } catch (error) {
+            distance = Number.POSITIVE_INFINITY;
+        }
+        if (distance < bestDistance) {
+            best = unit;
+            bestDistance = distance;
+        }
+    }
+    return best ?? spare[0];
+}
+
 export function merchantsBoundForPlayer(leaderId) {
     if (leaderId === undefined || leaderId === null) {
         return [];
     }
     return localMerchants().filter((unit) => {
         const plotIndex = readOrder(unitKey(unit.id));
-        return plotIndex >= 0 && cityAtPlot(plotIndex)?.owner === leaderId;
+        // Same rule as `merchantsBoundFor`: a halted merchant is not spoken for.
+        return plotIndex >= 0 && isTravelling(unit) && cityAtPlot(plotIndex)?.owner === leaderId;
     });
 }
 
@@ -426,7 +590,15 @@ export function merchantsBoundFor(city) {
     } catch (error) {
         return [];
     }
-    return localMerchants().filter((unit) => readOrder(unitKey(unit.id)) === plotIndex);
+    /*
+     * ⚠️ The order AND the unit, never the order alone. A merchant the player has called back
+     * or halted still carries its order - nothing tells the store otherwise - and reporting it
+     * as "one is already on its way" is what left cards refusing to offer a second merchant
+     * for a delivery that had been cancelled. See `isTravelling`.
+     */
+    return localMerchants().filter(
+        (unit) => readOrder(unitKey(unit.id)) === plotIndex && isTravelling(unit),
+    );
 }
 
 let listening = false;
@@ -454,6 +626,26 @@ export function startMerchantOrders() {
     };
     SIGN_EVENTS.forEach((name) => listen(name, false));
     MOVE_EVENTS.forEach((name) => listen(name, true));
+
+    /*
+     * ⚠️ Per unit, unlike everything above. These two are the ONLY events that carry which
+     * merchant they are about (`{ unit }`, the same payload the game's own unit-actions panel
+     * reads), and this needs that: the question is not "has anything changed" but "has THIS
+     * merchant been called back". They are already listened for above as sign-only passes;
+     * this is a second listener with a different job, not a replacement.
+     */
+    for (const name of ['UnitOperationsCleared', 'UnitOperationDeactivated']) {
+        try {
+            engine.on(name, (data) => {
+                const unitID = data?.unit;
+                if (unitID) {
+                    forgetOrderIfAbandoned(unitID);
+                }
+            });
+        } catch (error) {
+            warn(`could not listen for ${name}: ${error}`);
+        }
+    }
     // A game loaded mid-session brings its own seed, and with it its own orders.
     try {
         engine.on('GameStarted', () => {

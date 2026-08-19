@@ -183,6 +183,24 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY" Language="de_DE">
             <Text>Fabrikressourcen</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_RESOURCES_DESC" Language="de_DE">
+            <Text>Weist Euren Siedlungen Ressourcen zu. Links die nicht zugewiesenen, rechts Eure Siedlungen und ihre Plätze.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TRADE_DESC" Language="de_DE">
+            <Text>Jede Handelsroute, die Ihr habt, jetzt eröffnen könnt oder noch nicht — und was sie einbringen würde.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_DESC" Language="de_DE">
+            <Text>Ressourcen, die dem ganzen Reich nützen, mit ihrem tatsächlichen Wert pro Runde.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_EMPIRE_TREASURE_DESC" Language="de_DE">
+            <Text>Ressourcen, die dem ganzen Reich nützen, samt Euren Schatzressourcen, mit ihrem tatsächlichen Wert pro Runde.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_TREASURE_DESC" Language="de_DE">
+            <Text>Eure Siedlungen in fernen Landen und die Schatzkonvois, die sie hervorbringen.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TAB_FACTORY_DESC" Language="de_DE">
+            <Text>Fabrikressourcen: welche eingesetzt sind, welche brachliegen und was jede einbringt.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_WORKING" Language="de_DE">
             <Text>In Fabriken</Text>
         </Row>
@@ -290,6 +308,30 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_CLEAR_TOOLTIP" Language="de_DE">
             <Text>Gebt jede Fabrikressource dieser Siedlung an den nicht zugewiesenen Vorrat zurück.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE" Language="de_DE">
+            <Text>Freien Händler entsenden</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_TOOLTIP" Language="de_DE">
+            <Text>Schickt einen Händler, den Ihr bereits habt, nach {1_City}, statt einen zu kaufen.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE" Language="de_DE">
+            <Text>Limit erhöhen und freien Händler entsenden</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP" Language="de_DE">
+            <Text>Schlägt {1_Leader} "Handelsbeziehungen verbessern" für {2_Cost} Einfluss vor und schickt dann einen Händler, den Ihr bereits habt, nach {3_City}. Der Vertrag kann abgelehnt werden; der Händler zieht ohnehin los und eröffnet die Route, sobald ein Platz frei ist.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND" Language="de_DE">
+            <Text>Händler zurückrufen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP" Language="de_DE">
+            <Text>Hält den Händler auf dem Weg nach {1_City} an und bricht seinen Auftrag ab. Er behält seine restliche Bewegung und steht Euch frei zur Verfügung.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN" Language="de_DE">
+            <Text>Alle in {1_City} freigeben</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP" Language="de_DE">
+            <Text>Gibt jede in {1_City} zugewiesene Ressource an den Vorrat zurück. Gesperrte Ressourcen bleiben, wo sie sind.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_BLOCKED_LIMIT" Language="de_DE">
             <Text>Nur das Handelsweg-Limit steht im Weg</Text>

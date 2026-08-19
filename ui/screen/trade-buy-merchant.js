@@ -58,14 +58,18 @@ import {
     goldBalance,
     purchaseAndCollectMerchant,
     purchaseSite,
+    stopMerchant,
     tradeCapacityWith,
 } from '../engine/merchant.js';
 import {
+    clearMerchantOrder,
     merchantsBoundFor,
     merchantsBoundForPlayer,
+    nearestIdleMerchant,
     orderMerchantTo,
 } from '../engine/merchant-orders.js';
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
+import { ICON_BUTTON_STYLE, makeIconButton } from './icon-button.js';
 import { closeCommerceScreen } from './close-screen.js';
 import { bindActivatable, clearChildren, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
@@ -105,6 +109,40 @@ const STACK_CLASS = BUY_STACK_CLASS;
 const LOCATE_CLASS = `${BUY_CLASS}-locate`;
 const WARN_CLASS = `${BUY_CLASS}-warn`;
 const IMPROVE_CLASS = `${BUY_CLASS}-improve`;
+/** "Send the merchant you already have" - the plus beside the price. */
+const SEND_CLASS = `${BUY_CLASS}-send`;
+/**
+ * The limit-blocked variant of it, which carries a price and therefore is not a small square.
+ *
+ * ⚠️ A CLASS OF ITS OWN rather than a modifier on `SEND_CLASS`. That one is a fixed 1.7rem box
+ * with a large glyph, and a modifier would spend its life overriding those back; this simply
+ * joins the rules the priced buttons already share, so it cannot drift from them.
+ */
+const SEND_WIDE_CLASS = `${BUY_CLASS}-send-wide`;
+/** "Call that merchant off" - the X beside the locate pin. */
+const CANCEL_CLASS = `${BUY_CLASS}-cancel`;
+/** Holds the pin and the X side by side. */
+const ERRAND_ROW_CLASS = `${BUY_CLASS}-errand-row`;
+
+/**
+ * The green of the "send a spare merchant" plus.
+ *
+ * ⚠️ One constant, two buttons. The bare plus and the priced one are the same offer written
+ * two ways, so the mark that identifies them has to be the same green - and it had drifted
+ * already, because the priced one simply inherited the price button's parchment colour and
+ * nobody had said otherwise.
+ */
+const SEND_PLUS_COLOUR = '#9ad48f';
+
+/**
+ * ⚠️ And its size, for the same reason as its colour. The priced button inherits 0.95rem from
+ * the rule it shares with the gold button, so the two pluses came out visibly different - the
+ * bare one larger. They are one offer written two ways; the mark that identifies it is the
+ * same mark, so neither its colour nor its size may be stated twice.
+ */
+const SEND_PLUS_SIZE = '1.15rem';
+/** Holds the price and the plus side by side, so the plus reads as an alternative to it. */
+const PRICE_ROW_CLASS = `${BUY_CLASS}-price-row`;
 /** Our mark on a leader portrait that has been wired to diplomacy. */
 export const LEADER_LINK_CLASS = 'najane-trade-leader-link';
 
@@ -123,6 +161,12 @@ const CARD_SELECTOR = '.trade-route-card';
 
 /** The game's own map pin, the one the culture victory tab drops on the map. */
 const LOCATE_ICON = 'blp:culture_pin_major';
+
+/**
+ * The game's own cancel mark - `unit-commands.xml` gives exactly this icon to
+ * `UNITCOMMAND_CANCEL`, which is the command this button sends.
+ */
+const CANCEL_ICON = 'blp:Action_Cancel.png';
 
 /** The game's own attention mark; `misc-icons.xml`, ID "ATTENTION". */
 const WARN_ICON = 'blp:fonticon_attention';
@@ -161,6 +205,7 @@ function scopeForStack(stack) {
 }
 
 export const BUY_STYLE = `
+${ICON_BUTTON_STYLE}
 /*
  * ⚠️ THE STACK IS IN THE TITLE ROW NOW, not in the portrait's corner, and that is what puts
  * the card into three plain pieces instead of two overlapping ones:
@@ -190,8 +235,131 @@ export const BUY_STYLE = `
     align-self: center;
     margin-left: 0.5rem;
 }
+/*
+ * The price and the plus, side by side. The plus is an ALTERNATIVE to paying, not a second
+ * step after it, so it belongs on the same line rather than under it.
+ */
+.${PRICE_ROW_CLASS} {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    /*
+     * ⚠️ STRETCH, not centre. The price button takes its height from its own contents - an
+     * icon and a number - and no figure written here could match that in every language and at
+     * every UI scale. Stretching hands the plus whatever height the price turned out to be, so
+     * the two are equal by construction rather than by a number that happens to agree today.
+     */
+    align-items: stretch;
+}
+/*
+ * "Use the merchant you already have."
+ *
+ * ⚠️ Sized and framed like the locate pin rather than like the price, because it is the same
+ * kind of thing: one action, no number. It only ever appears when a spare merchant exists, so
+ * it is never a dark button explaining why it cannot be pressed - if there is nothing to send,
+ * there is nothing here at all.
+ */
+.${SEND_CLASS} {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    min-width: 1.7rem;
+    /* Height comes from the price button beside it; see the note on the row above. */
+    margin-left: 0.3rem;
+    padding: 0;
+    border: 0.08rem solid rgba(179, 158, 128, 0.55);
+    border-radius: 0.25rem;
+    background: rgba(21, 27, 39, 0.82);
+    color: ${SEND_PLUS_COLOUR};
+    font-size: ${SEND_PLUS_SIZE};
+    line-height: 1;
+    pointer-events: auto;
+}
+.${SEND_CLASS}:hover { filter: brightness(1.45); }
+/*
+ * The limit-blocked variant: a plus AND the Influence price of raising the limit.
+ *
+ * ⚠️ It goes on its OWN ROW under the price button rather than beside it - the title row it
+ * would otherwise share is already carrying a route name that truncates, and a second price
+ * on that line would put every card's name into an ellipsis.
+ *
+ * Everything about its SIZE comes from the rules above, which it was added to: the same
+ * padding, border and font as the gold button, and the same 1.35rem icon as the two prices on
+ * the improve button. Restating those numbers here is how it came out visibly smaller than the
+ * button it sits under.
+ */
+/*
+ * The pin and the X are one pair: "where is it" and "call it off". Side by side, because they
+ * are two halves of the same question about the same merchant - and both only exist while
+ * there IS one on its way.
+ */
+.${ERRAND_ROW_CLASS} {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    /* Clear of the price button directly above, which it otherwise sat flush against. */
+    margin-top: 0.3rem;
+}
+/*
+ * ⚠️ Everything about its SIZE comes from the shared rule above and from an icon the same
+ * 1.35rem as the pin's. It was first written as a text glyph with a padding of its own, and
+ * came out both taller than the pin and empty - "✕" is not in these fonts, and nothing draws
+ * a character the font does not have.
+ */
+/*
+ * ⚠️ SYMMETRIC PADDING, unlike every other button here - and that is the whole of what made
+ * these two look wrong.
+ *
+ * The shared rule above is written for a button holding an icon AND a number, so it is
+ * deliberately lopsided: 0.25rem before the icon, 0.4rem after the digits. On a button that is
+ * nothing but an icon, that lopsidedness IS the icon being off-centre - which is exactly how
+ * the cancel mark read. Both of these carry one icon and nothing else, so both get an equal
+ * margin on each side.
+ *
+ * The vertical padding and the icon size are left as the priced button's, which is what makes
+ * all three the same height: height here is 0.15rem + 1.35rem + 0.15rem in every case, and no
+ * figure needs to be kept in step by hand.
+ */
+
+.${CANCEL_CLASS} { margin-left: 0.3rem; }
+
+
+.${SEND_WIDE_CLASS} { margin-top: 0.25rem; }
+.${SEND_WIDE_CLASS}__plus {
+    margin-right: 0.3rem;
+    color: ${SEND_PLUS_COLOUR};
+    font-size: ${SEND_PLUS_SIZE};
+    line-height: 1;
+}
+.${SEND_WIDE_CLASS}__cost { pointer-events: none; }
+.${SEND_WIDE_CLASS}--blocked { opacity: 0.45; }
+.${SEND_WIDE_CLASS}:hover { filter: brightness(1.45); }
+/* Passes the row's stretch through to the button, which is this mount's only child. */
+
+/*
+ * ⚠️ EVERY mount, in one rule, and this is not tidiness - it is the fix for buttons that sat
+ * crooked next to each other.
+ *
+ * A framed tooltip hands back a wrapper rather than the button (see "appendWithFramedTooltip"),
+ * so what actually sits in a row here is always the mount. Three of the six had this rule and
+ * three did not, which meant the pin was a BLOCK in the same flex row as a FLEX cancel button:
+ * two different ways of seating a child, and a couple of pixels of difference in where each
+ * one landed. Listing them together is what stops the next mount being forgotten.
+ */
+
+/* Every mount that is NOT an icon button; the icon buttons carry their own, see icon-button.js. */
+.${BUY_CLASS}-mount,
+.${WARN_CLASS}-mount,
+.${IMPROVE_CLASS}-mount,
+.${SEND_WIDE_CLASS}-mount { display: flex; flex: 0 0 auto; }
+/* The bare plus is the one exception: it shares a row with the price and matches its height. */
+.${SEND_CLASS}-mount { display: flex; flex: 0 0 auto; align-items: stretch; }
+
 .${BUY_CLASS},
-.${LOCATE_CLASS} {
+.${SEND_WIDE_CLASS} {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -206,10 +374,6 @@ export const BUY_STYLE = `
     white-space: nowrap;
     /* The card underneath is an Activatable; without this the click never reaches us. */
     pointer-events: auto;
-}
-.${LOCATE_CLASS} {
-    margin-top: 0.25rem;
-    padding: 0.15rem 0.3rem;
 }
 /* The portrait answers to a click now; say so before it is clicked. */
 .${LEADER_LINK_CLASS} { cursor: pointer; pointer-events: auto; }
@@ -259,13 +423,11 @@ export const BUY_STYLE = `
  */
 .${WARN_CLASS}__influence-icon { margin-left: 0.3rem; }
 .${WARN_CLASS}__cost { margin-left: 0.15rem; pointer-events: none; }
-.${BUY_CLASS}:hover,
-.${LOCATE_CLASS}:hover {
+.${BUY_CLASS}:hover {
     border-color: #e5d2ac;
     background: rgba(37, 47, 66, 0.92);
 }
-.${BUY_CLASS}:focus,
-.${LOCATE_CLASS}:focus {
+.${BUY_CLASS}:focus {
     outline: 0.12rem solid #e5d2ac;
     outline-offset: 0.08rem;
 }
@@ -273,14 +435,6 @@ export const BUY_STYLE = `
     width: 1.5rem;
     height: 1.5rem;
     margin-right: 0.15rem;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: contain;
-    pointer-events: none;
-}
-.${LOCATE_CLASS}__icon {
-    width: 1.35rem;
-    height: 1.35rem;
     background-position: center;
     background-repeat: no-repeat;
     background-size: contain;
@@ -301,7 +455,13 @@ export const BUY_STYLE = `
 }
 /* A merchant already walking there. The card says so on the button itself. */
 .${BUY_CLASS}--sent { color: #9fd7a0; border-color: rgba(159, 215, 160, 0.55); }
-.${LOCATE_CLASS} { color: #9fd7a0; border-color: rgba(159, 215, 160, 0.55); }
+/*
+ * ⚠️ Colour ONLY. Everything about this button's geometry belongs to icon-button.js, and the
+ * three rules that used to live here - a margin, a padding, and a shared hover - are exactly
+ * what kept it sitting lower than the button beside it long after the component was supposed
+ * to have made that impossible. A leftover rule outlives the reasoning that put it there.
+ */
+.${LOCATE_CLASS} { border-color: rgba(159, 215, 160, 0.55); }
 /* A purchase in flight: the unit does not exist yet, so a second click must not land. */
 .${BUY_CLASS}--busy { opacity: 0.45; }
 
@@ -333,7 +493,8 @@ export const BUY_STYLE = `
     background: rgba(21, 27, 39, 0.82);
 }
 .${IMPROVE_CLASS}--busy { opacity: 0.45; }
-.${IMPROVE_CLASS}__icon {
+.${IMPROVE_CLASS}__icon,
+.${SEND_WIDE_CLASS}__icon {
     width: 1.35rem;
     height: 1.35rem;
     background-position: center;
@@ -797,24 +958,193 @@ function buildBuyButton(stack, route, targetCity, site, onTheWay, scope) {
  * cards already do, and the "?" on that tab exists because players could not tell it had
  * happened.
  */
-function buildLocateButton(unit, targetCity, scope) {
-    const button = makeElement('div', LOCATE_CLASS);
-    const icon = makeElement('div', `${LOCATE_CLASS}__icon`);
-    icon.style.backgroundImage = `url(${LOCATE_ICON})`;
-    button.appendChild(icon);
+/**
+ * Sends a merchant you already own, instead of buying one.
+ *
+ * Only ever built when there IS one to send - see `idleMerchants` for what counts as spare -
+ * so it is never a dark button explaining an absence. A merchant left over from the previous
+ * age is invisible on this screen and costs nothing; without this the only way to use it was
+ * to close the screen, find it on the map, and walk it there by hand, while the card went on
+ * offering to buy a second one.
+ *
+ * ⚠️ Nothing refreshes this button by hand. `orderMerchantTo` announces the new order, the tab
+ * hears it and redraws every card - so the plus vanishes from ALL of them at once, which is
+ * the only correct answer when the single spare merchant has just been spoken for.
+ */
+function buildSendSpareButton(targetCity, spare, scope) {
+    const button = makeElement('div', SEND_CLASS);
+    button.textContent = '+';
 
     bindActivatable(button, () => {
-        closeCommerceScreen();
-        focusUnitOnMap(unit);
+        // Re-asked at the click: the screen may have been sitting open while this merchant
+        // was given something else to do.
+        const live = nearestIdleMerchant(targetCity);
+        if (!live) {
+            return;
+        }
+        if (orderMerchantTo(live, targetCity)) {
+            log(`sent a spare merchant to ${Locale.compose(targetCity.name ?? '')}`);
+            markMerchantStateStale();
+        }
     });
 
-    const mount = makeElement('div', `${LOCATE_CLASS}-mount`);
+    const mount = makeElement('div', `${SEND_CLASS}-mount`);
     appendWithFramedTooltip(mount, button, {
         scope,
-        title: 'LOC_NAJANE_COMMERCE_SHOW_MERCHANT',
-        text: Locale.compose('LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP'),
+        title: 'LOC_NAJANE_COMMERCE_SEND_SPARE',
+        text: Locale.compose('LOC_NAJANE_COMMERCE_SEND_SPARE_TOOLTIP', Locale.compose(targetCity.name ?? '')),
     });
     return mount;
+}
+
+/**
+ * Raise the trade limit, then send the merchant you already have.
+ *
+ * ⚠️ The same two steps the gold button on this card performs, minus the purchase. That button
+ * proposes "Improve Trade Relations" and then buys a merchant; this one proposes the identical
+ * treaty and then sends a merchant already standing idle, so the Influence is spent either way
+ * and only the Gold is saved. The order matters and is the same in both: the treaty first,
+ * because it is what makes a slot for the route to occupy.
+ *
+ * ⚠️ It does NOT wait to see whether the treaty is accepted, for the reason set out in the
+ * file note: the merchant knows how to wait on an uncertain outcome, and `merchant-orders.js`
+ * retries opening the route every turn until a slot exists - from this treaty or any other.
+ */
+/**
+ * Calls a merchant off the errand this mod gave it.
+ *
+ * Two things, and both are needed: the journey is cancelled so it stops walking, and the
+ * standing order is dropped so nothing sends it out again at the start of the next turn.
+ * Cancelling alone would be undone a turn later; forgetting the order alone would leave it
+ * walking to a settlement nobody is expecting it at.
+ *
+ * ⚠️ Only offered beside the pin, which is only drawn while a merchant really is on its way -
+ * so this is never a button explaining that there is nothing to call off.
+ */
+function buildCancelErrandButton(unit, targetCity, scope) {
+    return makeIconButton({
+        icon: CANCEL_ICON,
+        /*
+         * Red, as an action that undoes something should be. The game's mark is pale, so it is
+         * flattened first and then tinted - the same three-step filter Ready or Not uses to
+         * recolour the golden-age ring, which is where this idiom is known to work.
+         */
+        tint: 'grayscale(1) brightness(1.7) fxs-color-tint(#e0564a)',
+        title: 'LOC_NAJANE_COMMERCE_CANCEL_ERRAND',
+        text: Locale.compose('LOC_NAJANE_COMMERCE_CANCEL_ERRAND_TOOLTIP', Locale.compose(targetCity.name ?? '')),
+        scope,
+        className: CANCEL_CLASS,
+        onActivate: () => {
+            stopMerchant(unit);
+            clearMerchantOrder(unit.id);
+            log(`called a merchant off its errand to ${Locale.compose(targetCity.name ?? '')}`);
+            // `clearMerchantOrder` announces the change; the tab redraws every card off that.
+            markMerchantStateStale();
+        },
+    });
+}
+
+/** The pin and the X together; see `.${ERRAND_ROW_CLASS}`. */
+function errandRow(unit, targetCity, scope) {
+    const row = makeElement('div', ERRAND_ROW_CLASS);
+    row.appendChild(buildLocateButton(unit, targetCity, scope));
+    row.appendChild(buildCancelErrandButton(unit, targetCity, scope));
+    return row;
+}
+
+function buildSendSpareImproveButton(stack, route, targetCity, offer, scope) {
+    const affordable = Boolean(offer?.canStart) && offer.cost <= influenceBalance();
+
+    const button = makeElement('div', SEND_WIDE_CLASS);
+    button.classList.toggle(`${SEND_WIDE_CLASS}--blocked`, !affordable);
+
+    const plus = makeElement('div', `${SEND_WIDE_CLASS}__plus`);
+    plus.textContent = '+';
+    button.appendChild(plus);
+
+    const icon = makeElement('div', `${SEND_WIDE_CLASS}__icon`);
+    const url = influenceIcon();
+    if (url) {
+        icon.style.backgroundImage = `url(${url})`;
+    }
+    button.appendChild(icon);
+    const cost = makeElement('div', `${SEND_WIDE_CLASS}__cost`);
+    cost.textContent = offer ? String(offer.cost) : '-';
+    button.appendChild(cost);
+
+    bindActivatable(button, () => {
+        if (!affordable) {
+            return;
+        }
+        // Both re-asked at the click: the screen may have sat open while either changed.
+        const live = nearestIdleMerchant(targetCity);
+        const fresh = improveOfferFor(route.leaderId);
+        if (!live || !fresh?.canStart) {
+            return;
+        }
+        if (proposeTradeRelations(route.leaderId, fresh)) {
+            log(`proposed Improve Trade Relations with ${leaderName(route.leaderId)}`);
+            announceTradeCapacityChange();
+        }
+        /*
+         * ⚠️ `mayMove: false`, and this is the whole difference between this button and the
+         * plain one. The treaty above is queued, not done - for a moment yet the engine still
+         * reports the old trade capacity and refuses the route. A spare merchant has movement
+         * in hand, so it would read that refusal as distance and walk off towards the other
+         * empire, for a journey the treaty it is waiting on was about to make pointless. It
+         * stays where it is; the order is retried when the turn begins.
+         */
+        if (orderMerchantTo(live, targetCity, { mayMove: false })) {
+            log(`a spare merchant will open the route to ${Locale.compose(targetCity.name ?? '')} once the limit rises`);
+        }
+        forgetMerchantOffers();
+        renderImproveStack(stack, route, targetCity);
+    });
+
+    const mount = makeElement('div', `${SEND_WIDE_CLASS}-mount`);
+    appendWithFramedTooltip(mount, button, {
+        scope,
+        title: 'LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE',
+        text: Locale.compose(
+            'LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP',
+            leaderName(route.leaderId) || Locale.compose(targetCity.name ?? ''),
+            offer?.cost ?? 0,
+            Locale.compose(targetCity.name ?? ''),
+        ),
+    });
+    return mount;
+}
+
+/**
+ * The price button, with the plus beside it when a spare merchant exists.
+ *
+ * ⚠️ Returns the price button UNWRAPPED when there is nothing spare, so a card that cannot
+ * offer this keeps exactly the markup it had before the feature existed.
+ */
+function priceRow(priceMount, targetCity, heading, scope) {
+    // One errand per settlement: a card already waiting on a merchant is not asking for another.
+    const spare = heading > 0 ? null : nearestIdleMerchant(targetCity);
+    if (!spare) {
+        return priceMount;
+    }
+    const row = makeElement('div', PRICE_ROW_CLASS);
+    row.appendChild(priceMount);
+    row.appendChild(buildSendSpareButton(targetCity, spare, scope));
+    return row;
+}
+
+function buildLocateButton(unit, targetCity, scope) {
+    return makeIconButton({
+        icon: LOCATE_ICON,
+        title: 'LOC_NAJANE_COMMERCE_SHOW_MERCHANT',
+        text: Locale.compose('LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP'),
+        scope,
+        className: LOCATE_CLASS,
+        onActivate: () => {
+            closeCommerceScreen();
+            focusUnitOnMap(unit);
+        },
+    });
 }
 
 /**
@@ -930,7 +1260,10 @@ function renderAvailableStack(stack, route, targetCity) {
     const scope = scopeForStack(stack);
     disposeFramedTooltips(scope);
     clearChildren(stack);
-    stack.appendChild(buildBuyButton(stack, route, targetCity, site, heading.length, scope));
+    stack.appendChild(priceRow(
+        buildBuyButton(stack, route, targetCity, site, heading.length, scope),
+        targetCity, heading.length, scope,
+    ));
     /*
      * The slot under the price holds whichever of the two applies, and never both: a warning
      * is only raised when no merchant of ours is walking to this settlement, which is exactly
@@ -938,7 +1271,7 @@ function renderAvailableStack(stack, route, targetCity) {
      */
     const warning = capacityWarning(route, targetCity);
     if (heading.length > 0) {
-        stack.appendChild(buildLocateButton(heading[0], targetCity, scope));
+        stack.appendChild(errandRow(heading[0], targetCity, scope));
     } else if (warning) {
         stack.appendChild(buildWarnButton(warning, scope));
     }
@@ -962,8 +1295,19 @@ function renderImproveStack(stack, route, targetCity) {
     disposeFramedTooltips(scope);
     clearChildren(stack);
     stack.appendChild(buildImproveButton(stack, route, targetCity, site, offer, heading.length, scope));
+    /*
+     * ⚠️ Its OWN ROW under the price, not beside it like the plus on an available card. This
+     * one carries the Influence price as well, and the title row it would share is already
+     * carrying a route name that truncates - see the note on the wide send button's style.
+     *
+     * Offered on the same terms as the bare plus: only with a spare merchant to send, and not
+     * on a card already waiting for one.
+     */
+    if (heading.length === 0 && offer && nearestIdleMerchant(targetCity)) {
+        stack.appendChild(buildSendSpareImproveButton(stack, route, targetCity, offer, scope));
+    }
     if (heading.length > 0) {
-        stack.appendChild(buildLocateButton(heading[0], targetCity, scope));
+        stack.appendChild(errandRow(heading[0], targetCity, scope));
     }
     stack.dataset.najaneGeneration = String(generation);
 }
@@ -1042,6 +1386,21 @@ export function decorateBuyMerchant(card, route, unavailableGroup = null) {
     }
 
     const stack = makeElement('div', STACK_CLASS);
+    /*
+     * ⚠️ THE CARD BENEATH MUST NOT SEE THESE PRESSES, and stopping the DOM click is not enough.
+     *
+     * The title row this stack hangs in is the card's own `Activatable`, and an Activatable
+     * fires from the engine's `engine-input` action rather than from a DOM click (see
+     * 03-platform-notes.md). `bindActivatable` stops click, mousedown and mouseup - none of
+     * which is the one that matters - so every press on every button here ALSO ran the card's
+     * own handler, `model.clickCityName`, which flies the camera to the settlement the route
+     * points at. On the cancel button that was unmistakable: the merchant was called off and
+     * the screen jumped to the city it had been walking to.
+     *
+     * One listener on the stack covers every button in it, now and later. Same line, same
+     * reason, as the one on the settlement card's controls in settlement-controls.js.
+     */
+    stack.addEventListener('engine-input', (event) => event.stopPropagation());
     render(stack, route, targetCity);
     stack.dataset.najaneMode = mode;
     keepLast(head, stack);

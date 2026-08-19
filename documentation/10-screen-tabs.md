@@ -10,6 +10,7 @@ The tabs this mod replaces, adds or decorates. The interaction layer is in
 | `empire-tab.js` | 747 | the rebuilt Empire tab |
 | `trade-routes.js` | 747 | the Trade Routes tab, decorated from the outside |
 | `trade-summary.js` | 182 | the routes-running line above the tabs |
+| `icon-button.js` | 95 | the shared icon-only button: one fixed height, one fixed icon box |
 | `dock-resource-button.js` | 212 | the HUD dock's Resource Allocation button: colour and pulse |
 | `treasure-tab.js` | 212 | the Treasure tab, wrapped, filtered, and its two controls |
 
