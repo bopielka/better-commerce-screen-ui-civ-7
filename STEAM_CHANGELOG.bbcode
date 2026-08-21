@@ -62,5 +62,16 @@ Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the sourc
 [*][b]Fixed:[/b] several cases where the end-turn prompt nagged about Resources that had nowhere to go.
 [/list]
 
-[hr][/hr]
-There was no changelog before 1.3.
+[h2]1.2[/h2]
+[list]
+[*][b]The "Resource Assignments Available" prompt no longer takes over the turn button[/b] when every settlement is full and nothing new can go anywhere. It returns as soon as something can actually be placed.
+[*][b]Empire resources:[/b] the combat column sizes itself to its widest card instead of always taking a third of the screen, cards are centred, and the figures line up in columns.
+[*][b]Factory resources:[/b] cards centred to match, four to a row instead of three, and the origin tooltip totals each leader's copies beside their name.
+[*][b]Fixed:[/b] automatic assignment could miss a resource and wait until the next turn — the event announcing a finished improvement fires before the resource is in your hands, so a single look found nothing. It now looks again over the next few seconds, and a pass that placed nothing no longer counts the arrival as handled.
+[/list]
+
+[h2]1.1[/h2]
+[list]
+[*][b]The remaining languages[/b] (machine-translated).
+[*][b]Fixed:[/b] minor bugs.
+[/list]

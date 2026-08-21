@@ -2,9 +2,6 @@
 
 Notable changes to **Better Commerce Screen UI**. Newest first.
 
-⚠️ **There was no changelog before 1.3.** Earlier releases are not recorded here, and nothing
-below should be read as the mod's full history — it is the history from 1.3 onwards.
-
 ## 1.8
 
 ### Added
@@ -634,3 +631,39 @@ a button on one card is not a reason to take the screen away.
   resources for you; with the setting off, the prompt is telling you something you still need to
   act on.
 - Unassign All is now covered by the same "one run at a time" guard as the other two buttons.
+
+## 1.2
+
+### Added
+
+- **The "Resource Assignments Available" prompt no longer takes over the turn button when every
+  settlement is full and nothing new can go anywhere.** You can still open the screen and
+  rearrange what is already assigned — it just rarely gains you anything, and the prompt was
+  standing between you and the next turn every turn regardless. It returns as soon as something
+  can actually be placed.
+
+### Changed
+
+- **Empire resources:** the combat column sizes itself to its widest card instead of always
+  taking a third of the screen, every card is centred, and the figures are laid out in columns
+  so every "+" sits under the one above it.
+- **Factory resources:** cards centred to match, four to a row instead of three, and the origin
+  tooltip totals each leader's copies beside their name.
+
+### Fixed
+
+- **Automatic assignment could miss a resource and then wait until the next turn.** The event
+  announcing a finished improvement fires *before* the resource is in your hands, so a single
+  look found nothing. It now looks again over the next few seconds.
+- **A pass that placed nothing no longer counts the arrival as handled**, so one badly timed
+  event cannot cost you the feature until your next acquisition.
+
+## 1.1
+
+### Added
+
+- **The remaining languages** (machine-translated).
+
+### Fixed
+
+- Minor bugs.
