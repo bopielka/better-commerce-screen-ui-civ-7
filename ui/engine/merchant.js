@@ -55,16 +55,41 @@ function merchantTypeNames() {
     return merchantTypes;
 }
 
+/**
+ * `MakeTradeRoute`, remembered per unit type.
+ *
+ * ⚠️ `GameInfo.Units.lookup` is a DATABASE call, and this is asked once per unit every time
+ * the merchant list is read - which, before the event filtering in engine/events.js, was
+ * several times a second for the whole of everybody else's turn. The answer is a column in a
+ * static table and cannot change while the game is running, so it is asked once per type.
+ *
+ * ⚠️ Keyed on `unit.type` exactly as it arrives, and answered THROUGH `lookup`, not by
+ * pre-building a set of hashes. The hash is what the engine hands over today; keying on it
+ * through the same call that always resolved it means a patch that changes the shape breaks
+ * nothing here.
+ */
+const makesTradeRouteByType = new Map();
+
+function typeMakesTradeRoute(type) {
+    const cached = makesTradeRouteByType.get(type);
+    if (cached !== undefined) {
+        return cached;
+    }
+    let answer = false;
+    try {
+        answer = GameInfo.Units.lookup(type)?.MakeTradeRoute === true;
+    } catch (error) {
+        answer = false;
+    }
+    makesTradeRouteByType.set(type, answer);
+    return answer;
+}
+
 export function isMerchant(unit) {
     if (!unit || unit.owner !== GameContext.localPlayerID) {
         return false;
     }
-    try {
-        const definition = GameInfo.Units.lookup(unit.type);
-        return definition?.MakeTradeRoute === true;
-    } catch (error) {
-        return false;
-    }
+    return typeMakesTradeRoute(unit.type);
 }
 
 /**

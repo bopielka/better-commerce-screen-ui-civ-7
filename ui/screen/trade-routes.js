@@ -49,10 +49,13 @@ import {
     startSortTabs,
 } from './trade-sort-tabs.js';
 import { CLASS as SUMMARY_CLASS, STYLE as SUMMARY_STYLE, hideTradeSummary, showTradeSummary } from './trade-summary.js';
+import { onEngineEvent, stopEngineEvents } from '../engine/events.js';
+import { watchCommerceScreen } from './screen-observer.js';
+import { gameIcon } from './icons.js';
+import { TRADE_CARD_SELECTOR as CARD_SELECTOR, TRADE_HEAD_CLASS as HEAD_CLASS } from './screen-parts.js';
 import { appendAll, bindActivatable, ensureStyle, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
-const CARD_SELECTOR = '.trade-route-card';
 /** The row the cards wrap within; the tab measures it to decide their width. */
 const CARD_ROW_SELECTOR = '.trade-route-cards-row';
 /** The card title. The row holding it is its parent - see trade-route-card.js, _tmpl$. */
@@ -65,8 +68,13 @@ const LEADER_CORNER_SELECTOR = '.absolute.top-1.right-1';
 const RELATIONSHIP_TOOLTIP_SELECTOR = '[data-name="Relationship-Tooltip"]';
 
 const CLASS = 'najane-trade-destination';
-/** Our mark on the card's title row, applied from JS - see decorate. */
-const HEAD_CLASS = 'najane-trade-head';
+
+/*
+ * The mark on the card's title row - HEAD_CLASS, imported above - lives in screen-parts.js:
+ * `decorate` applies it here and trade-buy-merchant.js hangs its button stack in that row,
+ * and this module imports that one, so the constant cannot travel the other way.
+ */
+
 /** Our mark on the game's own route-name element. */
 const NAME_CLASS = 'najane-trade-name';
 const MAX_REMEASURE_ATTEMPTS = 40;
@@ -337,7 +345,7 @@ ${CARD_SELECTOR}.${HIDDEN_CARD_CLASS} { display: none !important; }
 `;
 
 let styleElement = null;
-let observer = null;
+let unwatch = null;
 let routesByCityName = null;
 
 /** Leaders we could sign a route with right now; filled by the same pass as the map. */
@@ -492,13 +500,7 @@ function refreshSummary() {
     summaryShown = true;
 }
 
-function domainIcon(isLand) {
-    try {
-        return UI.getIcon(isLand ? 'TRADE_ROUTE_LAND' : 'TRADE_ROUTE_SEA');
-    } catch (error) {
-        return null;
-    }
-}
+const domainIcon = (isLand) => gameIcon(isLand ? 'TRADE_ROUTE_LAND' : 'TRADE_ROUTE_SEA');
 
 function decorate(card) {
     const title = card.querySelector(TITLE_SELECTOR);
@@ -1077,7 +1079,7 @@ ${SORT_STYLE}`);
     // Which tab is in force outlives one visit to the tab; what it needs handing over is how
     // to read a card and how to redraw once the player picks a different one.
     startSortTabs({ onChange: scheduleDecorate });
-    if (observer) {
+    if (unwatch) {
         return;
     }
     // Cards are Solid's and are rebuilt whenever the tab's data changes, so this stays
@@ -1088,8 +1090,13 @@ ${SORT_STYLE}`);
     // The title row cannot be measured until the cards have been laid out; ask for a pass
     // on the next frame rather than waiting for something to disturb the DOM.
     scheduleRemeasure();
-    observer = new MutationObserver(scheduleDecorate);
-    observer.observe(document.body, { childList: true, subtree: true });
+    /*
+     * ⚠️ `decorateAll` directly, not `scheduleDecorate`. The shared watcher already runs its
+     * subscribers from a `requestAnimationFrame` - which is the whole reason the crash
+     * described above cannot happen - so going through this module's own frame as well would
+     * only add a second frame of delay to every redraw.
+     */
+    unwatch = watchCommerceScreen(decorateAll);
     /*
      * ⚠️ The buttons cannot wait for a DOM mutation for this one. A merchant lost at sea
      * changes what a card should say and disturbs nothing on screen, so the observer never
@@ -1152,6 +1159,7 @@ let awaitingCore = false;
 
 function onCapacityChanged() {
     awaitingCore = true;
+    watchForCorePlayback();
     onRoutesChanged();
 }
 
@@ -1160,12 +1168,13 @@ function onCorePlaybackComplete() {
         return;
     }
     awaitingCore = false;
+    stopWatchingForCorePlayback();
     onRoutesChanged();
 }
 
 export function stopTradeRoutes() {
-    observer?.disconnect();
-    observer = null;
+    unwatch?.();
+    unwatch = null;
     if (decorateFrame !== null) {
         cancelAnimationFrame(decorateFrame);
         decorateFrame = null;
@@ -1257,18 +1266,36 @@ function listenForRouteChanges() {
             warn(`could not listen for ${name}: ${error}`);
         }
     }
-    /*
-     * ⚠️ Not in ROUTE_EVENTS, because it does not mean "something about the routes changed" -
-     * it means "the game core has finished playing back what it was given", which fires
-     * constantly and about everything. It is listened for only to close the window described
-     * on `onCapacityChanged`, and the flag there is what keeps it from costing anything the
-     * rest of the time.
-     */
-    try {
-        engine.on('GameCoreEventPlaybackComplete', onCorePlaybackComplete);
-    } catch (error) {
-        warn(`could not listen for GameCoreEventPlaybackComplete: ${error}`);
+}
+
+/**
+ * ⚠️ Subscribed only while something is actually waiting for it, and taken off again the
+ * moment that ends.
+ *
+ * `GameCoreEventPlaybackComplete` does not mean "something about the routes changed" - it
+ * means "the game core has finished playing back what it was given", which fires constantly
+ * and about everything. It was subscribed once and left, with a flag inside the handler to
+ * make it cheap; cheap is not free when the callback runs several times a second for the
+ * whole game, and these listeners outlive the screen (see `listenForRouteChanges`). The
+ * window it exists for is the few hundred milliseconds after this mod's own button raises a
+ * trade limit - see `onCapacityChanged` - so it is opened then and closed on the first event.
+ */
+let corePlaybackSubscription = null;
+
+function watchForCorePlayback() {
+    if (corePlaybackSubscription) {
+        return;
     }
+    corePlaybackSubscription = onEngineEvent('GameCoreEventPlaybackComplete', onCorePlaybackComplete);
+}
+
+function stopWatchingForCorePlayback() {
+    if (!corePlaybackSubscription) {
+        return;
+    }
+    const handles = [corePlaybackSubscription];
+    corePlaybackSubscription = null;
+    stopEngineEvents(handles);
 }
 
 function TradeRouteCardWithDestination(props) {

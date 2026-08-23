@@ -3,6 +3,18 @@
 Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the source repository.
 
 [hr][/hr]
+[h2]1.9[/h2]
+[list]
+[*][b]Nothing on screen changes — this release is about what the mod costs the game.[/b] Every feature behaves exactly as it did in 1.8.
+[*][b]The mod no longer listens to other empires' turns.[/b] Unit movement, resource assignment and building events are raised by the engine for every player in the game, not for you — thousands of them per AI turn in a late game — and this mod woke up on all of them. Every subscription is now filtered by whose event it is before any work starts.
+[*][b]Automatic assignment installs nothing while it is switched off[/b], and off is the default. It used to subscribe to a dozen engine events and sweep every fifteen seconds whatever the setting said.
+[*][b]Merchant orders and Treasure Convoys stop scanning your whole army.[/b] A pass now runs only when something is actually under an order, and convoy events check the one unit they name.
+[*][b]Four observers watching the entire HUD became one watching the Commerce screen[/b], running once per frame instead of once per DOM change anywhere in the game.
+[*][b]The HUD's Resource Allocation button no longer recomputes on other empires' assignments[/b] — that check is the most expensive thing this mod does.
+[*][b]Fixed: leaks that grew for as long as the session did.[/b] The GDP readout, the settlement cards and the tab strip each left listeners or observers behind on every visit to the Commerce screen.
+[*][b]Fixed: automatic assignment could not resume after being blocked.[/b] A trigger arriving while the Commerce screen was open was meant to be held and retried; it was being lost instead.
+[/list]
+
 [h2]1.8[/h2]
 [list]
 [*][b]Send a spare Merchant[/b] — a plus beside the price on a route card, shown only while you actually have a Merchant with nothing to do (one left over from an earlier Age, say). Sends that one instead of buying another; the plus disappears everywhere the moment it is spoken for.
@@ -51,27 +63,4 @@ Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the sourc
 [*][b]Filter tabs above each trade route section[/b] — show only routes carrying a given yield, richest first.
 [*][b]The "unavailable trade routes" section opens by default[/b], split into "one trade slot away" and "out of range".
 [*][b]Fixed:[/b] Hardwood's card showed raw markup; the "no Trade Route slot" tooltip named the wrong fix.
-[/list]
-
-[h2]1.3[/h2]
-[list]
-[*][b]"Imports first"[/b] and [b]"Prioritise Happiness"[/b] switches, a [b]running GDP total[/b] toward the Economic Victory, and an option to build a Culture Settlement automatically.
-[*][b]Every tooltip this mod adds is drawn in the game's framed style[/b], including the Empire and Factory tabs.
-[*][b]"Balanced" now means Production in a City and Food in a Town[/b], and a Resource is no longer called "specially suited" to a settlement that only gets its weaker half.
-[*][b]Automatic assignment runs the same code the buttons run[/b], and no longer loses a trigger that arrives at a bad moment.
-[*][b]Fixed:[/b] several cases where the end-turn prompt nagged about Resources that had nowhere to go.
-[/list]
-
-[h2]1.2[/h2]
-[list]
-[*][b]The "Resource Assignments Available" prompt no longer takes over the turn button[/b] when every settlement is full and nothing new can go anywhere. It returns as soon as something can actually be placed.
-[*][b]Empire resources:[/b] the combat column sizes itself to its widest card instead of always taking a third of the screen, cards are centred, and the figures line up in columns.
-[*][b]Factory resources:[/b] cards centred to match, four to a row instead of three, and the origin tooltip totals each leader's copies beside their name.
-[*][b]Fixed:[/b] automatic assignment could miss a resource and wait until the next turn — the event announcing a finished improvement fires before the resource is in your hands, so a single look found nothing. It now looks again over the next few seconds, and a pass that placed nothing no longer counts the arrival as handled.
-[/list]
-
-[h2]1.1[/h2]
-[list]
-[*][b]The remaining languages[/b] (machine-translated).
-[*][b]Fixed:[/b] minor bugs.
 [/list]

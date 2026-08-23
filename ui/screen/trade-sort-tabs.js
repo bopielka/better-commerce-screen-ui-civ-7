@@ -43,6 +43,7 @@ import { grantsBonusSlots } from '../engine/resource-slots.js';
 import { resourceClassOf, resourceYieldTypes } from '../planner/facts.js';
 import { PRIORITY_OPTIONS } from '../planner/priorities.js';
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
+import { iconBackground, resourceIcon, yieldIcon } from './icons.js';
 import { appendAll, bindActivatable, makeElement } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
 
@@ -204,7 +205,7 @@ function tabs() {
     const yieldTab = (yieldType) => ({
         key: yieldType,
         title: GameInfo.Yields.lookup(yieldType)?.Name ?? yieldType,
-        icon: () => UI.getIcon(yieldType, 'YIELD'),
+        icon: () => yieldIcon(yieldType),
         tooltip: () => Locale.compose(
             'LOC_NAJANE_COMMERCE_SORT_YIELD',
             Locale.compose(GameInfo.Yields.lookup(yieldType)?.Name ?? yieldType),
@@ -240,7 +241,7 @@ function tabs() {
         list.push({
             key: 'slots',
             title: slots.Name,
-            icon: () => UI.getIcon(slots.ResourceType, 'RESOURCE'),
+            icon: () => resourceIcon(slots.ResourceType),
             tooltip: () => Locale.compose(
                 'LOC_NAJANE_COMMERCE_SORT_RESOURCE',
                 Locale.compose(slots.Name),
@@ -440,7 +441,7 @@ function renderIcon(host, tab) {
             continue;
         }
         const mini = makeElement('div', `${SORT_CLASS}__mini`);
-        mini.style.backgroundImage = `url(${UI.getIcon(option.type, 'YIELD')})`;
+        mini.style.backgroundImage = iconBackground(option.type, 'YIELD');
         cluster.appendChild(mini);
     }
     host.appendChild(cluster);

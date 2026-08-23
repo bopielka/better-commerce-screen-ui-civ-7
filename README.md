@@ -409,14 +409,21 @@ better-commerce-screen-ui.modinfo   mod manifest - actions, scopes, file list
 ui/                                 JavaScript loaded by the game's UI
   better-commerce-screen-ui.js        entry point - the only file the .modinfo lists
   support/                          no knowledge of the game or of this mod
-    diagnostics.js                    logging switch (ON right now)
+    diagnostics.js                    logging switch (off, which is how it ships)
     dom.js                            injected elements: make, click, style
+    build-stamp.js                    written by the deploy script; not in git
   engine/                           talking to the game; no DOM, no model
+    events.js                         EVERY engine.on, and the "is this about me?" filter
+    stored-setting.js                 EVERY remembered setting: read, write, announce
     operations.js                     EVERY ASSIGN_RESOURCE request lives here
     unassign.js                       releasing, and who has to leave with what
+    resource-locks.js                 resources pinned in place, and the option behind them
     resource-slots.js                 BonusResourceSlots (camels)
     merchant.js                       buying a merchant, walking it, signing the route
     merchant-orders.js                the standing order a bought merchant carries
+    treasure-convoys.js               sends loaded Treasure Convoys home and unloads them
+    treasure-return-setting.js        the switch that turns that off
+    diplomacy.js                      proposing "Improve Trade Relations"
     wait.js                           waiting for a queued operation to land
     age.js                            which age this is, worked out once
     shift.js                          is Shift held?
@@ -440,6 +447,9 @@ ui/                                 JavaScript loaded by the game's UI
     factory-effects.js                what a factory resource is worth where it sits
     auto-assign.js                    decides WHEN to run with the screen closed
   screen/                           the DOM this mod puts on the Commerce screen
+    screen-observer.js                ONE MutationObserver for the screen, one pass a frame
+    screen-parts.js                   the selectors more than one module needs
+    icons.js                          UI.getIcon without a try/catch in every caller
     resources-tab.js                  the component wrapper; right-click unassign
     factory-tab.js                    the screen itself, plus the Modern-age Factory tab
     empire-tab.js                     the rebuilt Empire Resources tab
@@ -461,17 +471,23 @@ ui/                                 JavaScript loaded by the game's UI
     hover-highlight.js                Shift + hover preview
     bulk-assign.js                    Shift-assign, by wrapping slotSelectedResource
     shift-click.js                    left-clicking at all while Shift is held
+    resource-locks-ui.js              the padlock on a slotted resource
+    switch-control.js                 the shared on/off switch
+    icon-button.js                    the shared icon-only button
+    close-screen.js                   closing the screen, by the name the game knows it under
+    dock-resource-button.js           the HUD dock button: coloured, and pulsing when it matters
   options/najane-commerce-options.js  mod options (Options -> Mods)
-    support/                          dom helpers and diagnostics
 text/<locale>/                      every on-screen string (12 languages)
-deploy.sh / deploy-on-mac.sh        copies a build into the game's mod folder
+deploy.sh                           copies a build into the game's mod folder
+deploy-on-mac.sh                    a two-line shim that runs deploy.sh
 ```
 
 ### Which way dependencies point
 
 `support` <- `engine` <- `model` <- `planner` <- `screen`, and never back up. A module
-may import from its own folder or from one to its left. `options/` imports nothing of
-ours at all.
+may import from its own folder or from one to its left. `options/` sits outside the
+chain: it may import a settings module and nothing else, and it also loads in the main
+menu, where there is no game to ask.
 
 This is worth keeping: it is what lets the automatic path run with the screen shut. When
 the planner imported the "factories first" checkbox to ask whether the setting was on,

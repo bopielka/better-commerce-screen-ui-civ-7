@@ -22,6 +22,8 @@
  * cannot move. The one-shot build below is the whole of it.
  */
 import { createComponent, onCleanup, onMount } from '/core/vendor/solid-js/dist/solid.js';
+import { hideTabSummary, showTabSummary } from './screen-parts.js';
+import { resourceClassBackground, yieldIcon } from './icons.js';
 import { template } from '/core/vendor/solid-js/web/dist/web.js';
 import { CommerceScreenBaseTabContent } from '/base-standard/ui-next/screens/commerce/commerce-screen-base-tab-content.js';
 import { useCommerceScreenContext } from '/base-standard/ui-next/screens/commerce/commerce-screen-model.js';
@@ -48,7 +50,6 @@ const STYLE_ID = 'najane-empire-tab-style';
 
 /** The summary line, which lives in the screen's tab row rather than in this tab. */
 const SUMMARY_CLASS = 'najane-empire-summary';
-const TAB_LIST_SELECTOR = '[data-name="TabList"]';
 
 /** The combat font icon the game itself uses in narrative rewards. */
 const COMBAT_ICON = 'blp:fi_nar_rew_combat_64';
@@ -358,27 +359,13 @@ ${TOOLTIP_TEXT_SELECTOR} { white-space: pre-wrap; }
  * from distant lands.
  */
 function classBadge(resource) {
-    try {
-        const classType = GameInfo.Resources.lookup(resource.type)?.ResourceClassType;
-        const blp = classType && UI.getIconBLP(classType);
-        if (!blp) {
-            return null;
-        }
-        const badge = makeElement('div', `${CLASS}-card__badge`);
-        badge.style.backgroundImage = `url(blp:${blp})`;
-        return badge;
-    } catch (error) {
-        warn(`could not read the class of ${resource?.type}: ${error}`);
+    const background = resourceClassBackground(resource?.type);
+    if (!background) {
         return null;
     }
-}
-
-function yieldIcon(yieldType) {
-    try {
-        return UI.getIcon(yieldType, 'YIELD');
-    } catch (error) {
-        return null;
-    }
+    const badge = makeElement('div', `${CLASS}-card__badge`);
+    badge.style.backgroundImage = background;
+    return badge;
 }
 
 /**
@@ -745,16 +732,11 @@ function buildSummary(byYield) {
  * visit. Removed again on cleanup - see the container below.
  */
 function showSummary(byYield) {
-    const row = document.querySelector(TAB_LIST_SELECTOR)?.parentElement;
-    if (!row) {
-        return;
-    }
-    hideSummary();
-    row.appendChild(buildSummary(byYield));
+    showTabSummary(SUMMARY_CLASS, () => buildSummary(byYield));
 }
 
 export function hideSummary() {
-    document.querySelectorAll(`.${SUMMARY_CLASS}`).forEach((bar) => bar.remove());
+    hideTabSummary(SUMMARY_CLASS);
 }
 
 function render(host, model) {

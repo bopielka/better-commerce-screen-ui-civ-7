@@ -18,6 +18,7 @@
 import { ConstructibleHasTagType } from '/base-standard/ui/utilities/utilities-tags.js';
 
 import { isFactoryAge } from '../engine/age.js';
+import { heldResourceType, resourceTypeFromHash } from '../engine/resource-types.js';
 import { isAssignableToSettlement } from '../planner/facts.js';
 
 import { warn } from '../support/diagnostics.js';
@@ -61,7 +62,7 @@ function yieldTypesFor(resourceType) {
 function resourceTypeOf(resourceValue) {
     try {
         const instance = Game.Resources.getResourceOnPlot(resourceValue);
-        return GameInfo.Resources.lookup(instance.resource)?.ResourceType ?? null;
+        return resourceTypeFromHash(instance.resource);
     } catch (error) {
         return null;
     }
@@ -105,13 +106,44 @@ function cityYieldTotals(city) {
  */
 const buildingsByCity = new Map();
 
+/**
+ * Settlement names, which cost a `Locale.compose` each and are read for DIAGNOSTICS ONLY.
+ *
+ * ⚠️ Composed once per settlement per run instead of once per settlement per PLACEMENT. The
+ * planner reads `settlementName` in exactly four places and every one of them is behind
+ * `DIAGNOSTICS` - the log line naming the tier that won a resource, the "nothing fits"
+ * explanation, and the happiness report. A full empire rebuild composed several hundred
+ * strings for a log that ships switched off.
+ *
+ * Cleared with the buildings, because both describe a board that a new run has to re-read.
+ */
+const nameByCity = new Map();
+
+function settlementNameOf(city) {
+    const key = String(city.id.id);
+    const cached = nameByCity.get(key);
+    if (cached !== undefined) {
+        return cached;
+    }
+    let name = '';
+    try {
+        name = Locale.compose(city.name);
+    } catch (error) {
+        name = '';
+    }
+    nameByCity.set(key, name);
+    return name;
+}
+
 /** @param cityID the settlement to re-read next time, or nothing to re-read them all. */
 export function forgetSettlementBuildings(cityID = null) {
     if (!cityID) {
         buildingsByCity.clear();
+        nameByCity.clear();
         return;
     }
     buildingsByCity.delete(String(cityID.id));
+    nameByCity.delete(String(cityID.id));
 }
 
 /**
@@ -192,7 +224,7 @@ export function buildSettlements() {
             cityID: city.id,
             isDistantLands: city.isDistantLands,
             settlementNameData: {
-                settlementName: Locale.compose(city.name),
+                settlementName: settlementNameOf(city),
                 isTown: city.isTown,
                 warehouseCount: buildings.warehouseCount,
                 hasRail: buildings.hasRail,
@@ -200,7 +232,7 @@ export function buildSettlements() {
             factoryResourceData: { hasFactory: buildings.hasFactory },
             yieldTotals: cityYieldTotals(city),
             slottedResources: assigned.map((resource) => {
-                const type = GameInfo.Resources.lookup(resource.uniqueResource.resource)?.ResourceType ?? null;
+                const type = heldResourceType(resource);
                 return {
                     resourceValue: resource.value,
                     resourceType: type,
@@ -252,8 +284,7 @@ export function buildAvailableResources(settlements) {
         if (assigned.has(value)) {
             continue;
         }
-        const type =
-            GameInfo.Resources.lookup(resource.uniqueResource?.resource)?.ResourceType ?? resourceTypeOf(value);
+        const type = heldResourceType(resource) ?? resourceTypeOf(value);
         const entry = {
             resourceValue: value,
             resourceType: type,

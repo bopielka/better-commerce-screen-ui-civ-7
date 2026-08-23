@@ -9,6 +9,7 @@
  * `mr-6`, so sizing the outer element alone changes nothing on screen.
  */
 import { createComponent, onCleanup, onMount } from '/core/vendor/solid-js/dist/solid.js';
+import { commerceTabRow } from './screen-parts.js';
 import { L10n } from '/core/ui-next/components/l10n.js';
 import { TreasureResourceContainer } from '/base-standard/ui-next/screens/commerce/commerce-screen-treasure-tab.js';
 
@@ -23,7 +24,6 @@ import { ensureStyle, makeElement } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
 
 /** The tab strip; its parent is the positioned row this tab hangs its "?" in. */
-const TAB_LIST_SELECTOR = '[data-name="TabList"]';
 
 const STYLE_ID = 'najane-treasure-tab-style';
 
@@ -104,7 +104,7 @@ ${SWITCH_STYLE}
  * belongs to the screen and survives a tab being left and re-entered.
  */
 function showTabControls() {
-    const row = document.querySelector(TAB_LIST_SELECTOR)?.parentElement;
+    const row = commerceTabRow();
     if (!row || row.querySelector(`.${LEFT_ROW_CLASS}`)) {
         return;
     }

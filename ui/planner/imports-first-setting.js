@@ -17,53 +17,29 @@
  * reason given at the top of factory-first-setting.js: the planner must be able to ask this
  * question with the Commerce screen closed, without importing a widget to do it.
  */
-import { log, warn } from '../support/diagnostics.js';
+import { storedSwitch } from '../engine/stored-setting.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
 
-/**
- * Three states, not two, matching factory-first-setting.js.
- *
- * The default here is OFF, so "never touched" and "switched off" happen to mean the same
- * thing and the offset is not strictly needed - but storing 0 for "off" is exactly the
- * shape that broke when factories-first later defaulted to on, and the cost of writing it
- * safely now is one constant.
- */
-const OPTION = `${MOD_ID}.importsFirstChoice`;
-const STORED_OFF = 1;
-const STORED_ON = 2;
-
 export const ImportsFirstChangedEventName = 'najane-commerce-imports-first-changed';
 
-let enabled = null;
-
-function restore() {
-    try {
-        const stored = Number(UI.getOption('user', 'Mod', OPTION));
-        if (stored === STORED_OFF || stored === STORED_ON) {
-            return stored === STORED_ON;
-        }
-    } catch (error) {
-        warn(`could not read the imports-first switch: ${error}`);
-    }
-    return false;
-}
+/*
+ * ⚠️ Stored through the three-state channel even though the default is OFF, so "never
+ * touched" and "switched off" happen to mean the same thing here and the offset is not
+ * strictly needed. Storing 0 for "off" is exactly the shape that broke when factories-first
+ * later defaulted to on, and the cost of writing it safely now is nothing.
+ */
+const setting = storedSwitch({
+    option: `${MOD_ID}.importsFirstChoice`,
+    defaultValue: false,
+    label: 'imports first',
+    changedEventName: ImportsFirstChangedEventName,
+});
 
 export function isImportsFirstEnabled() {
-    if (enabled === null) {
-        enabled = restore();
-    }
-    return enabled;
+    return setting.isOn();
 }
 
 export function setImportsFirstEnabled(value) {
-    enabled = !!value;
-    try {
-        UI.setOption('user', 'Mod', OPTION, enabled ? STORED_ON : STORED_OFF);
-        Configuration.getUser().saveCheckpoint();
-    } catch (error) {
-        warn(`could not save the imports-first switch: ${error}`);
-    }
-    window.dispatchEvent(new CustomEvent(ImportsFirstChangedEventName));
-    log(`imports first: ${enabled ? 'on' : 'off'}`);
+    setting.set(value);
 }

@@ -19,6 +19,8 @@ import { quickAssignSettlement } from '../planner/run.js';
 import { unassignSettlement } from '../engine/unassign.js';
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
 import { appendAll, bindActivatable, clearChildren, ensureStyle, makeElement } from '../support/dom.js';
+import { watchCommerceScreen } from './screen-observer.js';
+import { iconBackground } from './icons.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const CONTROL_CLASS = 'najane-priority-control';
@@ -307,15 +309,17 @@ const STYLE = `
 }
 `;
 
-let observer = null;
+let unwatch = null;
 let styleElement = null;
+/** Kept so the listener can be taken off again; see the note in startSettlementControls. */
+let onDocumentClick = null;
 
 /** Balanced has no single icon, so it is drawn as a cluster of all the yield icons. */
 function renderPriorityIcon(host, yieldType) {
     clearChildren(host);
     if (yieldType) {
         const icon = makeElement('div', `${CONTROL_CLASS}__yield-icon`);
-        icon.style.backgroundImage = `url(${UI.getIcon(yieldType, 'YIELD')})`;
+        icon.style.backgroundImage = iconBackground(yieldType, 'YIELD');
         host.appendChild(icon);
         return;
     }
@@ -325,7 +329,7 @@ function renderPriorityIcon(host, yieldType) {
             continue;
         }
         const mini = makeElement('div', `${CONTROL_CLASS}__mini`);
-        mini.style.backgroundImage = `url(${UI.getIcon(option.type, 'YIELD')})`;
+        mini.style.backgroundImage = iconBackground(option.type, 'YIELD');
         cluster.appendChild(mini);
     }
     host.appendChild(cluster);
@@ -454,7 +458,7 @@ function createControl(settlement) {
         'data-tooltip-anchor': 'left',
     });
     const quickIcon = makeElement('div', `${CONTROL_CLASS}__quick-icon`);
-    quickIcon.style.backgroundImage = `url(${UI.getIcon('RADIAL_RESOURCES') ?? 'blp:resource_slot_select'})`;
+    quickIcon.style.backgroundImage = iconBackground('RADIAL_RESOURCES') || 'url(blp:resource_slot_select)';
     quick.appendChild(quickIcon);
     bindActivatable(quick, () => {
         closeMenus();
@@ -592,12 +596,18 @@ function injectControlsOnce() {
 }
 
 export function startSettlementControls() {
-    if (observer) {
+    if (unwatch) {
         return;
     }
     styleElement = ensureStyle(STYLE_ID, STYLE);
 
-    document.addEventListener('click', () => closeMenus());
+    /*
+     * ⚠️ Kept in a variable and removed in `stopSettlementControls`. An inline arrow could
+     * not be, so every visit to the Resources tab left another one behind and the whole pile
+     * ran on every click anywhere in the game for the rest of the session.
+     */
+    onDocumentClick = () => closeMenus();
+    document.addEventListener('click', onDocumentClick);
 
     const run = () => {
         try {
@@ -607,14 +617,17 @@ export function startSettlementControls() {
         }
     };
     run();
-    // childList only, so re-adding our own elements' classes cannot retrigger this.
-    observer = new MutationObserver(run);
-    observer.observe(document.body, { childList: true, subtree: true });
+    // One observer for the whole screen, batched to a frame; see screen-observer.js.
+    unwatch = watchCommerceScreen(run);
 }
 
 export function stopSettlementControls() {
-    observer?.disconnect();
-    observer = null;
+    unwatch?.();
+    unwatch = null;
+    if (onDocumentClick) {
+        document.removeEventListener('click', onDocumentClick);
+        onDocumentClick = null;
+    }
     document.querySelectorAll(`.${CONTROL_CLASS}`).forEach((control) => control.remove());
     document.querySelectorAll(`.${FACTORY_BUTTON_CLASS}-mount`).forEach((mount) => mount.remove());
     /*

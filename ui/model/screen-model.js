@@ -72,8 +72,23 @@ function hitTestElements(x, y) {
 
 let currentModel = null;
 
+/**
+ * Settlement names, composed once per visit to the screen.
+ *
+ * ⚠️ `settlementCards` is the busiest function in this file - two features call it on every
+ * pass over the screen's DOM - and it was composing every settlement's name each time, only
+ * to match it against a `data-name` attribute. `Locale.compose` is a call into the game for a
+ * string that does not change while a screen is open.
+ *
+ * Cleared when the model does, so the cache cannot outlive one visit. A settlement renamed or
+ * captured between opening the Commerce screen and closing it is not a case worth carrying
+ * invalidation for; opening the screen again is already how everything else here refreshes.
+ */
+const nameByCity = new Map();
+
 export function setCommerceModel(model) {
     currentModel = model;
+    nameByCity.clear();
 }
 
 export function clearCommerceModel(model) {
@@ -81,7 +96,20 @@ export function clearCommerceModel(model) {
     // cleanup runs, and clearing unconditionally would blank the new model.
     if (currentModel === model) {
         currentModel = null;
+        nameByCity.clear();
     }
+}
+
+function settlementName(cityID) {
+    const key = `${cityID?.owner}:${cityID?.id}`;
+    const cached = nameByCity.get(key);
+    if (cached !== undefined) {
+        return cached;
+    }
+    const city = Cities.get(cityID);
+    const name = city ? Locale.compose(city.name) : null;
+    nameByCity.set(key, name);
+    return name;
 }
 
 export function getCommerceModel() {
@@ -245,9 +273,9 @@ export function settlementCards() {
     const byName = new Map();
     for (const section of settlementSections(model)) {
         for (const settlement of section.cityResources ?? []) {
-            const city = Cities.get(settlement.cityID);
-            if (city) {
-                byName.set(Locale.compose(city.name), settlement);
+            const name = settlementName(settlement.cityID);
+            if (name !== null) {
+                byName.set(name, settlement);
             }
         }
     }

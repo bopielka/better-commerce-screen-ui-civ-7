@@ -42,6 +42,7 @@ import {
     signRoute,
     unitKey,
 } from './merchant.js';
+import { onEngineEvent, onLocalPlayerEvent } from './events.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
@@ -61,7 +62,16 @@ const ATTEMPTS_PER_TURN = 3;
 /** Long enough for a queued request to have landed, short enough to feel immediate. */
 const PROCESS_DELAY_MS = 160;
 
-/** These only ever ask "can the route be signed now?" - see `processOrders`. */
+/**
+ * These only ever ask "can the route be signed now?" - see `processOrders`.
+ *
+ * ⚠️ EVERY ONE OF THEM IS RAISED FOR EVERY PLAYER IN THE GAME. `UnitMoved` fires once per
+ * tile per unit, so a late-game AI turn raises thousands of them, and each used to wake a
+ * pass that walked the player's entire unit list to conclude that none of it was about a
+ * merchant of ours. They are subscribed through `onLocalPlayerEvent`, which drops everybody
+ * else's before this module is reached - the same check `panel-action.ts` opens its own
+ * `onUnitMoved` with. See engine/events.js.
+ */
 const SIGN_EVENTS = [
     'UnitMoved',
     'UnitMoveComplete',
@@ -90,7 +100,21 @@ const SIGN_EVENTS = [
  * has one - so a merchant walking normally, which fires this event on every tile it spends,
  * cannot re-order itself around in circles.
  */
-const MOVE_EVENTS = ['LocalPlayerTurnBegin', 'UnitMovementPointsChanged'];
+const MOVE_EVENTS = ['UnitMovementPointsChanged'];
+
+/**
+ * The pass that runs whatever the store thinks it knows.
+ *
+ * ⚠️ THE SAFETY NET FOR THE SHORTCUT BELOW. Every other pass is skipped outright when no
+ * merchant is under an order, and "no merchant is under an order" is answered from a set
+ * seeded out of the `localStorage` mirror - which `knownOrderedKeys` itself documents as
+ * possibly unreadable. If it ever is, that shortcut would silently strand every merchant for
+ * the rest of the session. This pass ignores the shortcut, so the worst case is an order that
+ * resumes at the start of the next turn instead of instantly.
+ *
+ * It is also the pass that may move, for the reason recorded on `MOVE_EVENTS` above.
+ */
+const FULL_PASS_EVENTS = ['LocalPlayerTurnBegin'];
 
 let gameKey = null;
 
@@ -498,6 +522,16 @@ function processOrders(mayMove) {
             if (plotIndex < 0) {
                 continue;
             }
+            /*
+             * ⚠️ Repairs the set from the store that actually holds the orders.
+             *
+             * `knownOrderedKeys` is seeded from the `localStorage` mirror, which may be
+             * unreadable - and since 1.9 an empty set means "skip every pass". Without this,
+             * a session that started with an unreadable mirror would fall back to one pass a
+             * turn for good, even though `readOrder` can plainly see the order. Now the first
+             * full pass finds it and every later event acts on it at once.
+             */
+            knownOrderedKeys().add(key);
             const city = cityAtPlot(plotIndex);
             if (!city) {
                 // The settlement is gone - razed, or never found again. The merchant is left
@@ -523,7 +557,16 @@ function processOrders(mayMove) {
  * times for one move, and each pass talks to the engine about every merchant. Two passes that
  * fall in the same window merge, and the one that may move wins.
  */
-function scheduleProcess(mayMove = false) {
+function scheduleProcess(mayMove = false, { force = false } = {}) {
+    /*
+     * ⚠️ Nothing is under an order, so there is nothing for a pass to do - and this is the
+     * single cheapest place to say so. Below this line a pass reads every unit the player
+     * owns and asks the engine about each one; above it, the answer costs a set's size.
+     * `FULL_PASS_EVENTS` is the safety net for the case where the set is wrong.
+     */
+    if (!force && knownOrderedKeys().size === 0) {
+        return;
+    }
     scheduledMayMove = scheduledMayMove || mayMove;
     if (scheduled) {
         return;
@@ -738,19 +781,16 @@ export function startMerchantOrders() {
         return;
     }
     listening = true;
-    const listen = (name, mayMove) => {
-        try {
-            // ⚠️ An arrow of our own, not `scheduleProcess` itself: the engine hands the
-            // listener its event payload, and the first argument here decides whether the
-            // pass may move a merchant. Passing the function straight in made every event a
-            // moving one, because a payload object is truthy.
-            engine.on(name, () => scheduleProcess(mayMove));
-        } catch (error) {
-            warn(`could not listen for ${name}: ${error}`);
-        }
-    };
-    SIGN_EVENTS.forEach((name) => listen(name, false));
-    MOVE_EVENTS.forEach((name) => listen(name, true));
+    // ⚠️ An arrow of our own, not `scheduleProcess` itself: the engine hands the listener its
+    // event payload, and the first argument here decides whether the pass may move a
+    // merchant. Passing the function straight in made every event a moving one, because a
+    // payload object is truthy.
+    SIGN_EVENTS.forEach((name) => onLocalPlayerEvent(name, () => scheduleProcess(false)));
+    MOVE_EVENTS.forEach((name) => onLocalPlayerEvent(name, () => scheduleProcess(true)));
+    // Carries no unit and belongs to nobody, so it is subscribed unfiltered.
+    FULL_PASS_EVENTS.forEach((name) =>
+        onEngineEvent(name, () => scheduleProcess(true, { force: true })),
+    );
 
     /*
      * ⚠️ Per unit, unlike everything above. These two are the ONLY events that carry which
@@ -760,28 +800,21 @@ export function startMerchantOrders() {
      * this is a second listener with a different job, not a replacement.
      */
     for (const name of ['UnitOperationsCleared', 'UnitOperationDeactivated']) {
-        try {
-            engine.on(name, (data) => {
-                const unitID = data?.unit;
-                if (unitID) {
-                    forgetOrderIfAbandoned(unitID);
-                }
-            });
-        } catch (error) {
-            warn(`could not listen for ${name}: ${error}`);
-        }
+        onLocalPlayerEvent(name, (data) => {
+            const unitID = data?.unit;
+            if (unitID) {
+                forgetOrderIfAbandoned(unitID);
+            }
+        });
     }
     // A game loaded mid-session brings its own seed, and with it its own orders.
-    try {
-        engine.on('GameStarted', () => {
-            gameKey = null;
-            orderedKeys = null;
-            attempts.clear();
-        });
-    } catch (error) {
-        warn(`could not listen for GameStarted: ${error}`);
-    }
+    onEngineEvent('GameStarted', () => {
+        gameKey = null;
+        orderedKeys = null;
+        attempts.clear();
+    });
     // A load lands mid-journey as often as not: try to sign straight away, and let the first
     // turn beginning be the one that sets anyone still short of the target walking again.
-    scheduleProcess(false);
+    // Forced, because this is also where the orders of a loaded game are first read.
+    scheduleProcess(false, { force: true });
 }

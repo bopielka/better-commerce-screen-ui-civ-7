@@ -2,6 +2,123 @@
 
 Notable changes to **Better Commerce Screen UI**. Newest first.
 
+## 1.9
+
+Nothing on screen changes in this release. Every feature behaves exactly as it did in 1.8;
+what changed is what the mod costs the game while you are playing it.
+
+### Performance
+
+- **The mod no longer listens to other empires' turns.** This is the whole story of the
+  release, and everything below is a variation on it. `UnitMoved`, `UnitMovementPointsChanged`,
+  `ResourceAssigned`, `ConstructibleChanged` and a dozen more are raised by the engine for
+  **every player in the game**, not for you. In a late game an AI turn raises thousands of
+  them, and this mod woke up on all of them — walking your unit list, your settlements and
+  your resource pool to conclude, almost every time, that somebody else's scout had moved.
+  Every one of those subscriptions is now filtered by whose event it is before any work
+  starts, which is the same check the game's own `panel-action` opens `onUnitMoved` with.
+  - New `ui/engine/events.js` holds that check once. An event whose payload names **no**
+    owner is deliberately *not* filtered: dropping a trigger because we could not name its
+    owner would trade a performance problem for the kind of silent-gap bug this mod's history
+    is full of.
+- **Automatic assignment installs nothing while it is switched off — and off is the default.**
+  It used to subscribe to twelve engine events and start a fifteen-second sweep at load,
+  whatever the setting said, and answer "switched off" only *after* each of those had woken a
+  debounce. A player who never turned the feature on was paying for all of it. The watcher is
+  now attached and detached on the option itself.
+- **A Merchant's standing order costs nothing when there are no standing orders.** Every unit
+  event used to start a pass that read every unit you own and asked the engine about each one.
+  The pass is now skipped outright unless something is actually under an order, with the start
+  of your turn as the unfiltered safety net behind that shortcut.
+- **Treasure Convoys are looked after per convoy, not per unit list.** The unit events that
+  drive it now check the one unit they name — whose it is, and whether it is a loaded convoy —
+  instead of scanning everything you own. With the switch off, nothing is scheduled at all.
+- **Four `MutationObserver`s watching the whole HUD became one watching the Commerce screen.**
+  They were attached to `document.body` with `subtree: true`, so every tooltip, unit flag,
+  notification and yield banner the game repainted woke four separate callbacks that then
+  searched the Commerce screen for something to fix. The new shared watcher is scoped to the
+  screen's own element, so mutations elsewhere are never delivered, and it runs its
+  subscribers **once per frame** rather than once per mutation.
+  - It also discards the mutations its own pass produces. Each of the old observers ran twice
+    for every real change and only settled because each feature was careful to write nothing
+    on the second pass.
+  - Every subscriber now gets the `requestAnimationFrame` guarantee that only the Trade Routes
+    tab used to have — the one that keeps this mod's DOM work out of the middle of a Solid
+    render. See the note on `scheduleDecorate` in `ui/screen/trade-routes.js`.
+- **The HUD's Resource Allocation button no longer recomputes on other empires' assignments.**
+  Working out whether anything in your pool would go anywhere is the single most expensive
+  call in this mod, and an AI tidying its empire used to trigger it once per resource for the
+  whole of its turn. It is now filtered by player and coalesced to one pass per frame.
+- **`GameCoreEventPlaybackComplete` is only subscribed while something is waiting for it.**
+  It fires constantly and about everything; it exists here to close a window of a few hundred
+  milliseconds after this mod's own button raises a trade limit. It is now opened then and
+  closed on the first event, instead of being left attached for the session.
+- **The end-turn prompt filter does its diagnostic bookkeeping only when diagnostics are on.**
+  Three engine calls were being made on every refresh of the action panel to build a log line
+  that the shipped build never prints.
+- **`MakeTradeRoute` is read once per unit type instead of once per unit per pass.** It is a
+  column in a static table; it cannot change while the game is running.
+- **Settlement names are composed once per assignment run instead of once per placement.**
+  They are read for diagnostics only, and a full empire rebuild was composing several hundred
+  localised strings for a log that ships switched off.
+
+### Internal — sharing what had been copied
+
+Nothing here changes behaviour. Each item replaced between three and six near-identical
+private copies, and in every case the copies had **already drifted** — which is the argument,
+not the tidiness.
+
+- **`ui/engine/stored-setting.js`** — one implementation of "read an option, write it,
+  checkpoint it, announce the change". Five modules had their own: factories-first,
+  imports-first, the two gathering switches, the happiness dropdown and treasure auto-return.
+  Every option key and every stored encoding is unchanged, so no setting is lost.
+- **`ui/engine/resource-types.js`** — `GameInfo.Resources.lookup(…)?.ResourceType` was written
+  out in six places, three of them walking the same list one after another. It is a database
+  call for a column in a static table, and the placement loop makes it thousands of times per
+  run. Now asked once per resource, and the end-turn prompt's placeability test resolves each
+  type once instead of three times.
+- **`ui/screen/screen-parts.js`** — the selectors more than one module needs.
+  `[data-name="TabList"]` had five copies and `screen-resource-allocation` had five; they are
+  the game's DOM, not ours, so "check whether this still matches after a patch" used to mean
+  finding all of them first. Also holds the tab-row summary the three rebuilt tabs share.
+- **`ui/screen/icons.js`** — `UI.getIcon` and `UI.getIconBLP` throw on a name the atlas does
+  not carry, so every caller had grown the same `try`/`catch`; two of them were byte-identical.
+- **One deploy script.** There were two, differing only in the default install path, each
+  carrying a comment telling the reader to keep them in sync. They were not in sync: the
+  Windows copy never received the `STEAM_CHANGELOG.bbcode` size check, so the one platform the
+  mod is published from was the one that could not warn about a change note Steam would
+  silently truncate. `deploy.sh` now picks the path from `uname`; `deploy-on-mac.sh` is a
+  two-line shim, so either command still works.
+- **The modifier index is used everywhere it should have been.** `facts.js` was still joining
+  `GameInfo.Modifiers` to `GameInfo.DynamicModifiers` by scanning both tables, once per
+  modifier, while `effects.js` next door had built that join once for everybody.
+- **Documentation caught up with the code**: the support layer's "`DIAGNOSTICS = true` —
+  currently ON" (it ships off), a reference to a `screen/factory-first.js` that no longer
+  exists, "Resource+'s per-resource locks are not ported" (they are — the padlocks), two
+  missing options, per-file line counts that were wrong in every table, and a dependency rule
+  that the code has one documented exception to.
+
+### Fixed
+
+- **Leaks that grew for as long as the session did.** Each one was invisible in a short test
+  and compounded with every visit to the Commerce screen:
+  - The GDP readout subscribed to four engine events every time the Resources tab opened and
+    unsubscribed from none, so the pile kept firing long after the screen was closed.
+  - The settlement cards added a `click` listener to the whole document on every visit and
+    removed none.
+  - Closing the Commerce screen before its content had finished rendering left a
+    whole-document observer behind permanently, because the only way out of it was finding the
+    tab strip.
+- **Automatic assignment could not resume after being blocked.** A trigger that arrived while
+  the Commerce screen was open, or while another pass was running, was meant to be held and
+  retried a moment later — the mechanism the module documents at length. It threw a
+  `ReferenceError` instead, from inside a timer, so the trigger was simply lost. This is the
+  exact failure the retry was written to prevent: the ordinary workflow, where the resource
+  lands while you are still looking at the screen.
+- **The fifteen-second sweep no longer arms three follow-up checks every time it finds
+  nothing.** Those exist to cover the gap between an improvement finishing and the resource
+  reaching your hands. A clock ticking is not an arrival.
+
 ## 1.8
 
 ### Added

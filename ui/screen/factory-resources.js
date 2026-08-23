@@ -21,6 +21,8 @@
  * multiply by the number of settlements.
  */
 import { createComponent, onCleanup, onMount } from '/core/vendor/solid-js/dist/solid.js';
+import { hideTabSummary, showTabSummary } from './screen-parts.js';
+import { iconBackground, resourceClassBackground, yieldIcon } from './icons.js';
 import { template } from '/core/vendor/solid-js/web/dist/web.js';
 import { CommerceScreenBaseTabContent } from '/base-standard/ui-next/screens/commerce/commerce-screen-base-tab-content.js';
 
@@ -36,7 +38,6 @@ const STYLE_ID = 'najane-factory-tab-style';
 
 /** The GDP line, which lives in the screen's tab row rather than in this tab. */
 const SUMMARY_CLASS = 'najane-factory-summary';
-const TAB_LIST_SELECTOR = '[data-name="TabList"]';
 /** The game's own font icon for GDP - the one its texts write as [icon:ECONOMIC_VP]. */
 const GDP_ICON = 'blp:fi_victorypoint_economic_64';
 const TOOLTIP_TEXT_SELECTOR = '#tooltip-root-content > div';
@@ -320,24 +321,11 @@ function buildSummary(slotted) {
  * a tab can be left and re-entered, and the row would otherwise collect one per visit.
  */
 function showSummary(slotted) {
-    const row = document.querySelector(TAB_LIST_SELECTOR)?.parentElement;
-    if (!row) {
-        return;
-    }
-    hideSummary();
-    row.appendChild(buildSummary(slotted));
+    showTabSummary(SUMMARY_CLASS, () => buildSummary(slotted));
 }
 
 function hideSummary() {
-    document.querySelectorAll(`.${SUMMARY_CLASS}`).forEach((bar) => bar.remove());
-}
-
-function yieldIcon(yieldType) {
-    try {
-        return UI.getIcon(yieldType, 'YIELD');
-    } catch (error) {
-        return null;
-    }
+    hideTabSummary(SUMMARY_CLASS);
 }
 
 /**
@@ -345,19 +333,13 @@ function yieldIcon(yieldType) {
  * puts on its slots, built the way the game builds it from the resource's class.
  */
 function classBadge(resourceType) {
-    try {
-        const classType = GameInfo.Resources.lookup(resourceType)?.ResourceClassType;
-        const blp = classType && UI.getIconBLP(classType);
-        if (!blp) {
-            return null;
-        }
-        const badge = makeElement('div', `${CLASS}-card__badge`);
-        badge.style.backgroundImage = `url(blp:${blp})`;
-        return badge;
-    } catch (error) {
-        warn(`could not read the class of ${resourceType}: ${error}`);
+    const background = resourceClassBackground(resourceType);
+    if (!background) {
         return null;
     }
+    const badge = makeElement('div', `${CLASS}-card__badge`);
+    badge.style.backgroundImage = background;
+    return badge;
 }
 
 /**
@@ -594,11 +576,7 @@ function cardFor(holding, isIdle, applied) {
 
     const head = makeElement('div', `${CLASS}-card__head`);
     const icon = makeElement('div', `${CLASS}-card__icon`);
-    try {
-        icon.style.backgroundImage = `url(${UI.getIcon(holding.type, 'RESOURCE')})`;
-    } catch (error) {
-        warn(`no icon for ${holding.type}: ${error}`);
-    }
+    icon.style.backgroundImage = iconBackground(holding.type, 'RESOURCE');
     const badge = classBadge(holding.type);
     if (badge) {
         icon.appendChild(badge);

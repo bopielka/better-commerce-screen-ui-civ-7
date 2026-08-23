@@ -39,6 +39,8 @@ import { EmpireResourcesContainer } from './empire-tab.js';
 import { FactoryResourcesContainer } from './factory-resources.js';
 import { prepareTradeTabData } from './trade-routes.js';
 import { TreasureConvoysContainer, withoutHomelandIdlers } from './treasure-tab.js';
+import { COMMERCE_PANEL_CONTEXT } from './close-screen.js';
+import { COMMERCE_SCREEN_SELECTOR } from './screen-parts.js';
 import { isFactoryAge } from '../engine/age.js';
 
 const CommerceScreenWithFactoryTab = (_props) => {
@@ -62,7 +64,7 @@ const CommerceScreenWithFactoryTab = (_props) => {
     function onContextChanged(activatedElement, _deactivatedElement) {
         // Unexpected popups can leave the input context pointing elsewhere and never put
         // it back; this is the game's own guard, kept as it was.
-        if (activatedElement.nodeName.toLocaleLowerCase() === 'screen-resource-allocation') {
+        if (activatedElement.nodeName.toLocaleLowerCase() === COMMERCE_SCREEN_SELECTOR) {
             Input.setActiveContext(InputContext.Shell);
         }
     }
@@ -72,7 +74,7 @@ const CommerceScreenWithFactoryTab = (_props) => {
         get children() {
             return createComponent(ScreenFrame, {
                 name: 'Commerce-Screen',
-                panelContext: 'screen-resource-allocation',
+                panelContext: COMMERCE_PANEL_CONTEXT,
                 audioContext: 'CommerceScreen',
                 get ornatePanelData() {
                     return model.data.ornatePanelData;

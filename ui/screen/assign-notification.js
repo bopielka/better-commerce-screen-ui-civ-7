@@ -63,7 +63,9 @@ import CommerceOptions, {
     AutoAssignMode,
     CommerceOptionsChangedEventName,
 } from '../options/najane-commerce-options.js';
-import { log, warn } from '../support/diagnostics.js';
+import { onLocalPlayerEvent } from '../engine/events.js';
+import { heldResourceType } from '../engine/resource-types.js';
+import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
 
 const NOTIFICATION_TYPE = 'NOTIFICATION_ASSIGN_NEW_RESOURCES';
 const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
@@ -98,6 +100,13 @@ const ACTION_PANEL = 'panel-action';
  * ⚠️ `panel-action` does NOT listen for these - its own refresh is driven by notification
  * and unit events - so without this the icon would keep whatever it decided last, which
  * after an automatic pass is always "show", since that is what we answer mid-pass.
+ */
+/*
+ * ⚠️ Raised for EVERY player. `ResourceAssigned` in particular fires once per resource per
+ * assignment anywhere in the game - place.js says so in as many words, which is why its own
+ * confirmation loop refuses to wait on it - so an AI tidying its empire used to schedule a
+ * full `refreshActionButton` on the player's action panel, animations and all, every 400ms.
+ * Subscribed through `onLocalPlayerEvent`; see engine/events.js.
  */
 const RECHECK_EVENTS = [
     'ResourceAssigned',
@@ -193,16 +202,24 @@ function computeAnythingCanBePlaced() {
          * the most expensive call in this mod, for pairs the engine was always going to
          * refuse. It could not change the answer, only how long it took to reach it.
          */
+        // ⚠️ The type is resolved ONCE here and carried, not looked up again by each of the
+        // two loops below. All three used to run the same lookup over the same list.
         const unassigned = [];
         for (const resource of player?.Resources?.getResources() ?? []) {
             if (assigned.has(resource.value)) {
                 continue;
             }
-            const resourceType = GameInfo.Resources.lookup(resource.uniqueResource?.resource)?.ResourceType ?? null;
+            const resourceType = heldResourceType(resource);
             if (!isAssignableToSettlement({ resourceType, resourceValue: resource.value })) {
                 continue;
             }
-            unassigned.push(resource);
+            /*
+             * ⚠️ Shaped so the planner's own `resourceClassOf` can read it: it looks for
+             * `resourceType` first and falls back to `resourceValue`. The old code passed it
+             * `{ resourceType: type }` with no value at all, so a resource whose type could
+             * not be resolved had no second chance.
+             */
+            unassigned.push({ value: resource.value, resourceValue: resource.value, resourceType });
         }
 
         /*
@@ -216,9 +233,8 @@ function computeAnythingCanBePlaced() {
          * Asked of the data rather than of a resource name: `BonusResourceSlots` is a
          * schema column, so anything a patch or another mod gives the property is covered.
          */
-        for (const resource of unassigned) {
-            const type = GameInfo.Resources.lookup(resource.uniqueResource?.resource)?.ResourceType;
-            if (type && grantsBonusSlots(type)) {
+        for (const { resourceType } of unassigned) {
+            if (resourceType && grantsBonusSlots(resourceType)) {
                 return true;
             }
         }
@@ -238,8 +254,8 @@ function computeAnythingCanBePlaced() {
              * definitions of "has a factory" is how the screen and the engine come to
              * disagree.
              */
-            const type = GameInfo.Resources.lookup(resource.uniqueResource?.resource)?.ResourceType;
-            const needsFactory = type && resourceClassOf({ resourceType: type }) === FACTORY_CLASS;
+            const needsFactory =
+                resource.resourceType && resourceClassOf(resource) === FACTORY_CLASS;
 
             for (const settlement of withRoom) {
                 if (needsFactory && !settlement.hasFactory) {
@@ -266,7 +282,22 @@ function computeAnythingCanBePlaced() {
  * in `anythingCanBePlaced` is that a mid-pass board is not worth reading, so a refresh
  * taken then would only bake in the same non-answer.
  */
-function scheduleRecheck() {
+function scheduleRecheck({ force = false } = {}) {
+    /*
+     * ⚠️ Nothing is being hidden, so there is nothing to put back. With suppression off - and
+     * it is off by default, because it needs automatic assignment to be on - the filter
+     * returns the game's own answer untouched, and refreshing the panel to hear that answer
+     * again is a repaint bought for nothing.
+     *
+     * ⚠️ `force` is for the options change, and only for it. SWITCHING SUPPRESSION OFF is
+     * exactly the moment an icon this mod is currently hiding has to come back, and it is
+     * also the one moment when the test above has just turned false - so without the
+     * exception the icon would stay hidden until the next resource event happened to refresh
+     * the panel.
+     */
+    if (!force && !suppressionEnabled()) {
+        return;
+    }
     // ⚠️ Not while a refresh is running. The refresh calls the filter, and anything the
     // filter asks for here would schedule the next refresh - a loop that repaints the
     // panel's icons on a timer and shows up as flicker.
@@ -279,7 +310,9 @@ function scheduleRecheck() {
         // the filter hide EARLY would make this wait for it to expire every time, adding a
         // second of delay to an icon that should already be back.
         if (isAutoAssignRunning() || isAssignmentInProgress()) {
-            scheduleRecheck();
+            // Carries `force` with it, or a refresh asked for by the options change could
+            // still be dropped by the test above on the way round again.
+            scheduleRecheck({ force });
             return;
         }
         refreshing = true;
@@ -455,36 +488,37 @@ export function startAssignNotification() {
              * looking at is the difference between hiding a nag and hiding the reason the
              * turn will not end.
              */
-            let blocking = 'unknown';
-            try {
-                const playerID = GameContext.localPlayerID;
-                const type = Game.Notifications.getEndTurnBlockingType(playerID);
-                const blockerId = Game.Notifications.findEndTurnBlocking(playerID, type);
-                blocking = `endTurnBlockingType=${type} blockerIsThisOne=${
-                    blockerId ? Game.Notifications.getType(blockerId) === hiddenType : false
-                }`;
-            } catch (error) {
-                blocking = `could not read: ${error}`;
+            // ⚠️ Gated here rather than inside `log`, because the three engine calls are the
+            // expensive part and the printing is the free one. This runs from the action
+            // panel's own refresh, which is one of the busiest things on screen.
+            if (DIAGNOSTICS) {
+                let blocking = 'unknown';
+                try {
+                    const playerID = GameContext.localPlayerID;
+                    const type = Game.Notifications.getEndTurnBlockingType(playerID);
+                    const blockerId = Game.Notifications.findEndTurnBlocking(playerID, type);
+                    blocking = `endTurnBlockingType=${type} blockerIsThisOne=${
+                        blockerId ? Game.Notifications.getType(blockerId) === hiddenType : false
+                    }`;
+                } catch (error) {
+                    blocking = `could not read: ${error}`;
+                }
+                log(`assign icon offered: anything placeable = ${placeable}; ${blocking}`);
             }
-            log(`assign icon offered: anything placeable = ${placeable}; ${blocking}`);
             return placeable ? info : null;
         };
         for (const name of RECHECK_EVENTS) {
-            try {
-                engine.on(name, () => {
-                    forgetPlaceability();
-                    scheduleRecheck();
-                });
-            } catch (error) {
-                warn(`could not listen for ${name}: ${error}`);
-            }
+            onLocalPlayerEvent(name, () => {
+                forgetPlaceability();
+                scheduleRecheck();
+            });
         }
         // Switching automatic assignment on or off changes whether the icon may be hidden
         // at all, and no engine event follows an options change - so without this the
         // player would not see the difference until something else happened to refresh it.
         window.addEventListener(CommerceOptionsChangedEventName, () => {
             forgetPlaceability();
-            scheduleRecheck();
+            scheduleRecheck({ force: true });
         });
         wrapActionButton();
         attached = true;

@@ -2,9 +2,13 @@
 #
 # Deploys "Better Commerce Screen UI by Najane" into Civilization VII's mod folder.
 #
-# This is the Windows (Git Bash) script; deploy-on-mac.sh is its macOS counterpart
-# and differs only in the default install path. The two are otherwise identical -
-# keep them in sync if the deploy/check logic changes.
+# One script for both platforms. There used to be two - this one and a Windows
+# (Git Bash) one - differing only in the default install path, with a comment on
+# each telling the next person to keep them in sync. They were not: the Windows
+# copy never got the STEAM_CHANGELOG size check, so the one platform the mod is
+# actually published from was the one that could not warn about a change note
+# Steam would silently truncate. `deploy-on-mac.sh` is now a two-line shim that
+# runs this, so muscle memory on either side still works.
 #
 # This repository is the source of truth; the game folder is treated as build
 # output and rebuilt from scratch on every run, so files deleted here also
@@ -29,8 +33,17 @@ MOD_ID="better-commerce-screen-ui"
 # Directories copied into the game, relative to this script.
 CONTENT_DIRS=(ui text config)
 
-# Default install path. Windows (Git Bash) uses %LOCALAPPDATA%.
-DEFAULT_MODS_DIR="${LOCALAPPDATA:-$HOME/AppData/Local}/Firaxis Games/Sid Meier's Civilization VII/Mods"
+# Default install path, per platform. Windows (Git Bash) puts the Mods folder
+# under %LOCALAPPDATA%; macOS puts it under ~/Library/Application Support.
+# Override with CIV7_MODS_DIR rather than editing this.
+case "$(uname -s)" in
+    Darwin)
+        DEFAULT_MODS_DIR="$HOME/Library/Application Support/Civilization VII/Mods"
+        ;;
+    *)
+        DEFAULT_MODS_DIR="${LOCALAPPDATA:-$HOME/AppData/Local}/Firaxis Games/Sid Meier's Civilization VII/Mods"
+        ;;
+esac
 # -----------------------------------------------------------------------------
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -46,7 +59,7 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 # Double-clicked in Explorer, this runs in a git-bash.exe window that closes the instant
 # the script ends - so a `die` on line 90 looked exactly like "nothing happened". Hold the
 # window open in that case only: git-bash.exe starts an interactive shell ($- contains i),
-# while `./deploy.sh` from a terminal or from another script does not.
+# while `./deploy-on-mac.sh` from a terminal or from another script does not.
 if [[ $- == *i* ]]; then
     trap 'printf "\nPress Enter to close... "; read -r' EXIT
 fi
@@ -152,6 +165,18 @@ if [[ -f "$DESCRIPTION" ]]; then
         die "steam-description.bbcode is $size characters; Steam allows $DESCRIPTION_LIMIT. Trim it."
     fi
     say "steam description: $size/$DESCRIPTION_LIMIT characters"
+fi
+
+# The Workshop's change-note field is a separate, larger box. Same failure mode though: it
+# truncates silently, and this file grows by a section every release rather than a line.
+CHANGES="$SRC_DIR/STEAM_CHANGELOG.bbcode"
+CHANGES_LIMIT=8000
+if [[ -f "$CHANGES" ]]; then
+    size=$(wc -c < "$CHANGES" | tr -d '[:space:]')
+    if [[ "$size" -gt "$CHANGES_LIMIT" ]]; then
+        die "STEAM_CHANGELOG.bbcode is $size characters; Steam allows $CHANGES_LIMIT. Drop the oldest section."
+    fi
+    say "steam changelog: $size/$CHANGES_LIMIT characters"
 fi
 
 # --- deploy ------------------------------------------------------------------

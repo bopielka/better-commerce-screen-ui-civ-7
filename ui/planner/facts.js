@@ -9,8 +9,7 @@
  * Answers are cached by type, and by age where the age can change them - the tables are
  * iterated rather than queried, so an uncached read is a full scan of GameInfo.
  */
-import { modifierApplies, modifierIsConditional, resourceModifiers } from './effects.js';
-import { warn } from '../support/diagnostics.js';
+import { effectTypeOf, modifierApplies, modifierIsConditional, resourceModifiers } from './effects.js';
 
 export const HAPPINESS_YIELD = 'YIELD_HAPPINESS';
 export const PRODUCTION_YIELD = 'YIELD_PRODUCTION';
@@ -106,10 +105,6 @@ export function resourceYieldEffects(resource) {
         if (!yieldType || !Number.isFinite(amount)) {
             return;
         }
-        const modifier = GameInfo.Modifiers?.find((entry) => entry.ModifierId === modifierId);
-        const dynamicModifier = GameInfo.DynamicModifiers?.find(
-            (entry) => entry.ModifierType === modifier?.ModifierType,
-        );
         const percentValue = String(argumentsMap.get('PercentMultiplier')).toLowerCase();
         effects.push({
             // Carried so the settlement can be asked whether this one applies to it.
@@ -117,7 +112,11 @@ export function resourceYieldEffects(resource) {
             yieldType,
             amount,
             percent: percentValue === 'true' || percentValue === '1',
-            effectType: dynamicModifier?.EffectType ?? modifierId,
+            // ⚠️ Through the index in effects.js, not by scanning the tables. Both
+            // `GameInfo.Modifiers` and `GameInfo.DynamicModifiers` are thousands of rows and
+            // this used to walk BOTH of them, once per modifier, to join them on
+            // `ModifierType` - the join `indexModifiers` already builds once for everybody.
+            effectType: effectTypeOf(modifierId) || modifierId,
         });
     });
 
@@ -172,11 +171,8 @@ export function givesUnitProductionBonus(resource) {
         if (feedsUnits) {
             return;
         }
-        const modifier = GameInfo.Modifiers?.find((entry) => entry.ModifierId === modifierId);
-        const dynamicModifier = GameInfo.DynamicModifiers?.find(
-            (entry) => entry.ModifierType === modifier?.ModifierType,
-        );
-        if (String(dynamicModifier?.EffectType ?? '').includes('ADJUST_UNIT_PRODUCTION')) {
+        // Same index as above, and the same reason: two full table scans per modifier.
+        if (effectTypeOf(modifierId).includes('ADJUST_UNIT_PRODUCTION')) {
             feedsUnits = true;
         }
     });

@@ -3,16 +3,20 @@
 The tabs this mod replaces, adds or decorates. The interaction layer is in
 [screen: interaction](09-screen-interaction.md).
 
-| File | Lines | Tab |
-|---|---|---|
-| `factory-tab.js` | 173 | **replaces `CommerceScreen`** — the only way to add a fifth tab |
-| `factory-resources.js` | 722 | the Factory tab's body (Modern age) |
-| `empire-tab.js` | 747 | the rebuilt Empire tab |
-| `trade-routes.js` | 747 | the Trade Routes tab, decorated from the outside |
-| `trade-summary.js` | 182 | the routes-running line above the tabs |
-| `icon-button.js` | 95 | the shared icon-only button: one fixed height, one fixed icon box |
-| `dock-resource-button.js` | 212 | the HUD dock's Resource Allocation button: colour and pulse |
-| `treasure-tab.js` | 212 | the Treasure tab, wrapped, filtered, and its two controls |
+| File | Tab |
+|---|---|
+| `factory-tab.js` | **replaces `CommerceScreen`** — the only way to add a fifth tab |
+| `factory-resources.js` | the Factory tab's body (Modern age) |
+| `empire-tab.js` | the rebuilt Empire tab |
+| `trade-routes.js` | the Trade Routes tab, decorated from the outside |
+| `trade-summary.js` | the routes-running line above the tabs |
+| `trade-buy-merchant.js` | the button stack on a route card: buy, send, locate, call back |
+| `trade-sort-tabs.js` | the sort strip above the route cards |
+| `icon-button.js` | the shared icon-only button: one fixed height, one fixed icon box |
+| `dock-resource-button.js` | the HUD dock's Resource Allocation button: colour and pulse |
+| `treasure-tab.js` | the Treasure tab, wrapped, filtered, and its two controls |
+| `screen-parts.js` | the selectors more than one module needs, and the shared tab-row summary |
+| `icons.js` | `UI.getIcon` / `UI.getIconBLP` without the try/catch in every caller |
 
 ---
 

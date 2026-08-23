@@ -14,10 +14,13 @@
 import { assignAll, isAssignmentInProgress, reassignAll, unassignAll } from '../planner/run.js';
 import { gdpPerTurn } from '../planner/gdp.js';
 import { isFactoryAge } from '../engine/age.js';
+import { onEngineEvents, stopEngineEvents } from '../engine/events.js';
 import { getCommerceModel } from '../model/screen-model.js';
 import { createAssignSwitches } from './assign-switches.js';
 import { HELP_CLASS, HELP_STYLE, makeHelpMark } from './help-mark.js';
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
+import { watchCommerceScreen } from './screen-observer.js';
+import { commerceTabRow } from './screen-parts.js';
 import { appendAll, bindActivatable, ensureStyle, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -156,7 +159,17 @@ ${HELP_STYLE}
 
 let bar = null;
 let styleElement = null;
-let observer = null;
+let unwatch = null;
+/**
+ * The engine subscriptions, kept so they can be taken off again.
+ *
+ * ⚠️ THEY USED NOT TO BE, and that is a leak that grew for the whole session: `startX` ran on
+ * every visit to the Resources tab and added four more listeners, `stopX` removed none, and
+ * the pile kept firing on every resource ANY player assigned long after the screen had been
+ * closed. `engine.off` needs the same function reference that was registered, which is what
+ * these handles carry - see engine/events.js.
+ */
+let gdpSubscriptions = [];
 /** The GDP readout, kept so it can be rebuilt when the board changes. */
 let gdpMount = null;
 let gdpTimer = null;
@@ -169,6 +182,11 @@ let gdpTimer = null;
  * readout would be rebuilt fifty times in four seconds. The tooltip carries the same
  * numbers broken down by source, so editing only the total would leave it disagreeing with
  * itself the moment it was opened.
+ */
+/*
+ * ⚠️ Every one of these is raised for EVERY player, not for you. An AI assigning a resource
+ * on the far side of the map cannot change your empire's GDP, so those are dropped before
+ * the handler is reached - see `onEngineEvents` in engine/events.js.
  */
 const GDP_EVENTS = ['ResourceAssigned', 'ResourceUnassigned', 'ResourceCapChanged', 'ConstructibleBuildCompleted'];
 const GDP_REFRESH_MS = 400;
@@ -270,16 +288,12 @@ function makeGdpTotal() {
     return mount;
 }
 
-/**
- * The tab row is `relative`, so absolute placement inside it stays put without any
- * measuring. The tab strip itself is centred in that row, which leaves the left end free.
- */
-function tabRow() {
-    return document.querySelector('[data-name="TabList"]')?.parentElement ?? null;
-}
-
 function injectBar() {
-    const row = tabRow();
+    /*
+     * The tab row is `relative`, so absolute placement inside it stays put without any
+     * measuring. The tab strip itself is centred in that row, which leaves the left end free.
+     */
+    const row = commerceTabRow();
     if (!row) {
         return false;
     }
@@ -335,13 +349,8 @@ function inject() {
 
 export function startAssignAllButtons() {
     styleElement = ensureStyle(STYLE_ID, STYLE);
-    for (const name of GDP_EVENTS) {
-        try {
-            engine.on(name, refreshGdpSoon);
-        } catch (error) {
-            warn(`could not listen for ${name}: ${error}`);
-        }
-    }
+    stopEngineEvents(gdpSubscriptions);
+    gdpSubscriptions = onEngineEvents(GDP_EVENTS, refreshGdpSoon);
 
     if (inject()) {
         return;
@@ -354,18 +363,18 @@ export function startAssignAllButtons() {
      * missing, and the observer is disconnected in the same breath. Anything that DOES
      * mutate on every pass needs one - see the freeze described in trade-routes.js.
      */
-    observer = new MutationObserver(() => {
+    unwatch = watchCommerceScreen(() => {
         if (inject()) {
-            observer?.disconnect();
-            observer = null;
+            unwatch?.();
+            unwatch = null;
         }
     });
-    observer.observe(document.body, { childList: true, subtree: true });
 }
 
 export function stopAssignAllButtons() {
-    observer?.disconnect();
-    observer = null;
+    unwatch?.();
+    unwatch = null;
+    stopEngineEvents(gdpSubscriptions);
     if (gdpTimer !== null) {
         clearTimeout(gdpTimer);
         gdpTimer = null;

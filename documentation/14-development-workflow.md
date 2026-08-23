@@ -5,10 +5,15 @@
 **The game never reads from here.** A deploy script copies a build into Civ VII's mod folder.
 **Run it after every change.**
 
-| Platform | Script | Default target |
-|---|---|---|
-| Windows (Git Bash) | `./deploy.sh` | `%LOCALAPPDATA%\Firaxis Games\Sid Meier's Civilization VII\Mods\` |
-| macOS | `./deploy-on-mac.sh` | `~/Library/Application Support/Civilization VII/Mods/` |
+**`deploy.sh` is the script**, on both platforms. It picks the default target from `uname`:
+
+| Platform | Default target |
+|---|---|
+| Windows (Git Bash) | `%LOCALAPPDATA%\Firaxis Games\Sid Meier's Civilization VII\Mods\` |
+| macOS | `~/Library/Application Support/Civilization VII/Mods/` |
+
+`deploy-on-mac.sh` still exists and still works — it is a two-line shim that `exec`s
+`deploy.sh`, kept because it is what gets typed.
 
 ```bash
 ./deploy-on-mac.sh
@@ -26,8 +31,11 @@ CIV7_MODS_DIR="/path/to/Mods" ./deploy-on-mac.sh
 
 ⚠️ **Not `Documents\My Games\…`** — that is the Civ VI convention and Civ VII never scans it.
 
-The two scripts are otherwise **identical**; keep them in sync if the deploy or check logic
-changes. `deploy.sh` fails on macOS only because its default path is `%LOCALAPPDATA%`.
+⚠️ **There used to be two full scripts** with a comment on each saying "keep them in sync if
+the deploy or check logic changes". They were not kept in sync: the Windows copy never
+received the `STEAM_CHANGELOG.bbcode` size check, so the one platform the mod is actually
+published from was the one that could not warn about a change note Steam would silently
+truncate. Do not reintroduce a second copy; add a `case "$(uname -s)"` branch instead.
 
 After deploying, **return to the main menu (or restart)** to reload the mod.
 
@@ -135,7 +143,7 @@ predict. Say what was tried, what happened, and what the evidence was.
 
 ## Before you commit
 
-1. `./deploy-on-mac.sh` — parses, checks, deploys, verifies.
+1. `./deploy.sh` — parses, checks, deploys, verifies.
 2. Load the game, return to the main menu, open the Commerce screen.
 3. Check `UI.log` for `[better-commerce]` warnings.
 4. If you touched the planner, watch the timing lines: a pass that suddenly costs 30 s means
@@ -183,7 +191,7 @@ knows which is right.
 | Fixes | one entry per fix, explained | folded into a single "Fixed:" bullet per version |
 | Format | Markdown, newest first | BBCode, `[h2]` per version, house style from `steam-description.bbcode` |
 
-`deploy-on-mac.sh` prints both character counts and refuses to deploy over either limit. When
+`deploy.sh` prints both character counts and refuses to deploy over either limit. When
 the Steam file approaches 8000, **drop the oldest version section** rather than trimming the
 recent ones — old releases are what nobody reads, and the full history is in the Markdown file
 either way.

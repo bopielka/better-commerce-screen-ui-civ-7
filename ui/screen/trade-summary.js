@@ -22,9 +22,9 @@
  */
 import { makeElement } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
+import { hideTabSummary, showTabSummary } from './screen-parts.js';
 
 export const CLASS = 'najane-trade-summary';
-const TAB_LIST_SELECTOR = '[data-name="TabList"]';
 /** Plain-text tooltips render into a bare div, which collapses newlines like any HTML. */
 const TOOLTIP_TEXT_SELECTOR = '#tooltip-root-content > div';
 
@@ -163,20 +163,15 @@ function build(list, startable) {
  *                  here so this module never runs that projection a second time.
  */
 export function showTradeSummary(startable = new Set()) {
-    const row = document.querySelector(TAB_LIST_SELECTOR)?.parentElement;
-    if (!row) {
-        return;
-    }
-    // The row belongs to the screen, not to this tab, so a tab left and re-entered would
-    // otherwise collect one summary per visit.
-    hideTradeSummary();
     try {
-        row.appendChild(build(partners(), startable));
+        // Replaces rather than adds: the row belongs to the screen, not to this tab, so a
+        // tab left and re-entered would otherwise collect one summary per visit.
+        showTabSummary(CLASS, () => build(partners(), startable));
     } catch (error) {
         warn(`could not total the trade routes: ${error}`);
     }
 }
 
 export function hideTradeSummary() {
-    document.querySelectorAll(`.${CLASS}`).forEach((bar) => bar.remove());
+    hideTabSummary(CLASS);
 }

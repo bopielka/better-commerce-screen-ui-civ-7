@@ -18,16 +18,16 @@
  * almost every game the row is empty, so the styling had nothing to apply to and the
  * feature was invisible - it was not broken, there was simply nothing there.
  */
+import { COMMERCE_SCREEN_SELECTOR, TAB_LIST_SELECTOR } from './screen-parts.js';
 import { log, warn } from '../support/diagnostics.js';
 import { ensureStyle } from '../support/dom.js';
 
-const SCREEN = 'screen-resource-allocation';
 const SCREEN_STYLE_ID = 'najane-commerce-screen-style';
 const TAB_STYLE_ID = 'najane-commerce-tab-style';
 const FILTER_SLOT_SELECTOR = '[data-name="filter-and-sort"]';
 
 /** The tab's instruction line. Utility classes, so verified at runtime - see checkDescription. */
-const DESCRIPTION_SELECTOR = `${SCREEN} .text-base.w-full.text-center.my-4`;
+const DESCRIPTION_SELECTOR = `${COMMERCE_SCREEN_SELECTOR} .text-base.w-full.text-center.my-4`;
 
 
 /**
@@ -50,7 +50,7 @@ const DESCRIPTION_SELECTOR = `${SCREEN} .text-base.w-full.text-center.my-4`;
  * this again if they ever go back to text.
  */
 const TAB_STYLE = `
-${SCREEN} [data-name="TabList"] {
+${COMMERCE_SCREEN_SELECTOR} ${TAB_LIST_SELECTOR} {
     width: 30rem;
     min-height: 2.6666666667rem;
     align-self: flex-end;
@@ -151,7 +151,7 @@ export function startLayout() {
         return;
     }
 
-    const screen = document.querySelector(SCREEN) ?? document.body;
+    const screen = document.querySelector(COMMERCE_SCREEN_SELECTOR) ?? document.body;
     observer = new MutationObserver(() => tryAttachToHeaderBar());
     observer.observe(screen, { childList: true, subtree: true });
 }

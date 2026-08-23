@@ -72,6 +72,8 @@ import {
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
 import { ICON_BUTTON_STYLE, makeIconButton } from './icon-button.js';
 import { closeCommerceScreen } from './close-screen.js';
+import { yieldIcon } from './icons.js';
+import { TRADE_HEAD_CLASS } from './screen-parts.js';
 import { bindActivatable, clearChildren, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -153,12 +155,12 @@ const LEADER_CORNER_SELECTOR = '.absolute.top-1.right-1';
 /**
  * The card's title row, which trade-routes.js marks. The buttons hang on the END of it.
  *
- * ⚠️ Named here rather than imported, because trade-routes.js imports THIS module - taking
- * the constant the other way round would close the cycle. One string in two places is the
- * cheaper of the two problems, and the row is marked one line above the call that lands here.
+ * ⚠️ The class itself lives in screen-parts.js rather than in either of the two modules that
+ * need it: trade-routes.js applies it and this module reads it, and trade-routes imports THIS
+ * module, so passing the constant the other way round would close the cycle. It used to be
+ * written out twice, with a comment on each copy apologising for the other.
  */
-const HEAD_SELECTOR = '.najane-trade-head';
-const CARD_SELECTOR = '.trade-route-card';
+const HEAD_SELECTOR = `.${TRADE_HEAD_CLASS}`;
 
 /** The game's own map pin, the one the culture victory tab drops on the map. */
 const LOCATE_ICON = 'blp:culture_pin_major';
@@ -576,21 +578,8 @@ function improveOfferFor(leaderId) {
     return tradeRelationsCache.get(leaderId);
 }
 
-function goldIcon() {
-    try {
-        return UI.getIcon('YIELD_GOLD', 'YIELD');
-    } catch (error) {
-        return null;
-    }
-}
-
-function influenceIcon() {
-    try {
-        return UI.getIcon('YIELD_DIPLOMACY', 'YIELD');
-    } catch (error) {
-        return null;
-    }
-}
+const goldIcon = () => yieldIcon('YIELD_GOLD');
+const influenceIcon = () => yieldIcon('YIELD_DIPLOMACY');
 
 /**
  * Whether a merchant bought now would find a trade slot when it arrives.

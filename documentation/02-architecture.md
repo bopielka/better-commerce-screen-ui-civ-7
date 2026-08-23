@@ -7,7 +7,13 @@ support  ←  engine  ←  model  ←  planner  ←  screen
 ```
 
 A module may import from **its own folder or from one to its left**, never to its right.
-`ui/options/` imports nothing of the mod's at all.
+
+`ui/options/` sits outside the chain. It may import a **settings module** and nothing else -
+the value holders under `ui/planner/` and `ui/engine/`, which reach no further than
+`engine/stored-setting.js` and `support/diagnostics.js` behind them. The direction is one-way:
+the options screen writes to a setting, a setting never reads the options screen. ⚠️ This file
+also loads in **shell** scope, where there is no game, so nothing it pulls in may touch the
+game at import time.
 
 | Layer | Folder | Knows about | Must not know about |
 |---|---|---|---|
@@ -32,6 +38,33 @@ and the whole UI came with it. The split is now:
 
 The same reasoning put `ui/engine/age.js` in `engine/` rather than beside the Factory tab
 that first needed it.
+
+### The one exception, and why it is tolerated
+
+`ui/model/headless-model.js` imports `isAssignableToSettlement` from `ui/planner/facts.js`,
+which is a step to the **right**. It is recorded here rather than quietly left, because the
+next person to notice it should not "fix" it by writing a second copy of that function - two
+definitions of "can this resource go in a settlement at all" is exactly the class of bug the
+headless model exists to prevent.
+
+It is tolerated because the harm the rule prevents is specifically **`planner` reaching into
+`screen`**: that is what would drag the whole button bar into the automatic path. `facts.js`
+reaches no further than `effects.js` and `support/`, so nothing comes with it. The real repair
+is to move the resource-class facts down into `engine/`, beside `resource-types.js`; it has not
+been done because it touches the planner's hottest code for no behavioural gain.
+
+### Which way `options/` points
+
+`ui/options/` is outside the chain in both directions, so neither arrow above describes it:
+
+- it **imports** settings modules (`planner/happiness-setting.js`, `planner/hoard-setting.js`,
+  `engine/resource-locks.js`) in order to write to them;
+- `planner/` and `screen/` **import it back**, to read `CommerceOptions`.
+
+That is a cycle on paper and not one in practice: what the options screen writes to is a value
+holder that reaches no further than `engine/stored-setting.js`, and what reads `CommerceOptions`
+only ever reads. ⚠️ The rule that actually matters here is the shell one - this file loads in the
+main menu, where there is no game, so nothing it pulls in may touch the game at import time.
 
 ## The entry point and load order
 
@@ -100,7 +133,41 @@ the framework details.
 | `TradeRouteCard` | `ComponentRegistry.register`, wraps for its mount/unmount signal only | `ui/screen/trade-routes.js` |
 | `PanelAction` (old framework) | prototype patching — `Controls.define` classes *are* exported | `ui/screen/assign-notification.js` |
 | `model.slotSelectedResource` | property reassignment on a `createMutable` store | `ui/screen/bulk-assign.js` |
-| Everything else on screen | injected DOM + `MutationObserver` | `ui/screen/*.js` |
+| Everything else on screen | injected DOM + the shared observer | `ui/screen/*.js` |
+
+### The shared doors
+
+These modules exist so that a pattern is written once rather than per feature. Every one of
+them replaced between three and six near-identical private copies, and in each case the copies
+had **already drifted** — which is the argument for them, not the tidiness.
+
+| Door | Module | Rule |
+|---|---|---|
+| every `engine.on` | `ui/engine/events.js` | filter by whose event it is; keep the handle so it can come off again |
+| every remembered setting | `ui/engine/stored-setting.js` | never store a raw value — 0 means "never touched" |
+| every DOM watch on this screen | `ui/screen/screen-observer.js` | one observer, scoped to `screen-resource-allocation`, one pass per frame |
+| every selector more than one module needs | `ui/screen/screen-parts.js` | plus the tab-row summary the three rebuilt tabs share |
+| every `UI.getIcon` / `UI.getIconBLP` | `ui/screen/icons.js` | a missing icon is a gap on a card, never a thrown tab |
+
+A selector or a constant used by **one** module stays in that module. These are the ones more
+than one needs.
+
+⚠️ **Nothing in `ui/screen/` should construct its own `MutationObserver` on `document.body`.**
+Four of them did. `document.body` with `subtree: true` is the whole HUD — unit flags, the
+notification train, every tooltip that opens — so each callback woke on changes that had
+nothing to do with the Commerce screen, and then searched the screen for something to fix.
+`watchCommerceScreen(callback)` is the replacement; it hands back an unsubscribe, tears the
+observer down when the last subscriber leaves, and discards the mutations a pass produces
+itself so a pass cannot retrigger itself.
+
+⚠️ **Its subscribers run from `requestAnimationFrame`, and that is load-bearing.** A
+`MutationObserver` callback is a microtask and so is Solid's effect queue; touching the DOM
+from inside the callback lands in the middle of a render Solid has begun and not finished. See
+the note on `scheduleDecorate` in `ui/screen/trade-routes.js` for the crash that produced.
+
+⚠️ **`ui/planner/auto-assign.js` attaches nothing while the setting is Off**, and Off is the
+default. A feature that is switched off must cost nothing at all — answering "switched off"
+inside the handler is not the same thing, because the handler has already been reached.
 
 ⚠️ `ui/screen/factory-tab.js` is **the one place that will break on a game patch touching the
 Commerce screen's layout.** Everything else wraps or decorates; that one replaces. It is

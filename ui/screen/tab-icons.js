@@ -17,6 +17,8 @@
  * and covers a label that reappears before the observer gets to it.
  */
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
+import { watchCommerceScreen } from './screen-observer.js';
+import { COMMERCE_SCREEN_SELECTOR, TAB_LIST_SELECTOR } from './screen-parts.js';
 import { ensureStyle, makeElement } from '../support/dom.js';
 import { isFactoryAge, isExplorationAge } from '../engine/age.js';
 import { log, warn } from '../support/diagnostics.js';
@@ -25,7 +27,6 @@ const ICON_CLASS = 'najane-tab-icon';
 const ICONIFIED_CLASS = 'najane-tab-iconified';
 const STYLE_ID = 'najane-tab-icons-style';
 
-const TAB_LIST_SELECTOR = '[data-name="TabList"]';
 const TAB_ITEM_SELECTOR = '[data-name="TabListItem"]';
 
 /**
@@ -145,6 +146,8 @@ const STYLE = `
 `;
 
 let observer = null;
+/** Live only while waiting for the tab strip to be rendered; see startTabIcons. */
+let unwatchBootstrap = null;
 let observedList = null;
 let styleElement = null;
 let applying = false;
@@ -285,19 +288,36 @@ export function startTabIcons() {
 
     const list = document.querySelector(TAB_LIST_SELECTOR);
     if (!list) {
-        // The screen's content is behind a Suspense boundary and may not be built yet.
-        // Watch broadly, just long enough to catch the strip appearing.
-        if (!observer) {
-            observer = new MutationObserver(() => {
+        /*
+         * The screen's content is behind a Suspense boundary and may not be built yet, so
+         * wait for the strip to appear.
+         *
+         * ⚠️ On the SHARED screen watcher, and it gives up when the screen goes away. This
+         * used to be its own `MutationObserver` on `document.body` with only one way out -
+         * finding the strip - so closing the Commerce screen before its content had finished
+         * rendering left a subtree observer on the whole HUD, running a `querySelector` on
+         * every DOM change anywhere in the game, for the rest of the session. There is no
+         * `stopTabIcons` to have taken it down; see the note below for why.
+         */
+        if (!unwatchBootstrap) {
+            unwatchBootstrap = watchCommerceScreen(() => {
+                if (!document.querySelector(COMMERCE_SCREEN_SELECTOR)) {
+                    unwatchBootstrap?.();
+                    unwatchBootstrap = null;
+                    return;
+                }
                 if (document.querySelector(TAB_LIST_SELECTOR)) {
-                    observer?.disconnect();
-                    observer = null;
+                    unwatchBootstrap?.();
+                    unwatchBootstrap = null;
                     startTabIcons();
                 }
             });
-            observer.observe(document.body, { childList: true, subtree: true });
         }
         return;
+    }
+    if (unwatchBootstrap) {
+        unwatchBootstrap();
+        unwatchBootstrap = null;
     }
 
     if (observedList === list) {

@@ -21,6 +21,7 @@ import {
     toggleResourceLock,
 } from '../engine/resource-locks.js';
 import { bindActivatable, ensureStyle, makeElement } from '../support/dom.js';
+import { watchCommerceScreen } from './screen-observer.js';
 import { warn } from '../support/diagnostics.js';
 
 const LOCK_CLASS = 'najane-resource-lock';
@@ -74,7 +75,7 @@ const STYLE = `
 }
 `;
 
-let observer = null;
+let unwatch = null;
 let injecting = false;
 let styleElement = null;
 
@@ -178,7 +179,7 @@ function inject() {
 }
 
 export function startResourceLocks() {
-    if (observer) {
+    if (unwatch) {
         return;
     }
     styleElement = ensureStyle(STYLE_ID, STYLE);
@@ -189,9 +190,8 @@ export function startResourceLocks() {
      */
     window.addEventListener(ResourceLocksChangedEventName, inject);
     inject();
-    // childList only, so re-adding our own elements' classes cannot retrigger this.
-    observer = new MutationObserver(inject);
-    observer.observe(document.body, { childList: true, subtree: true });
+    // One observer for the whole screen, batched to a frame; see screen-observer.js.
+    unwatch = watchCommerceScreen(inject);
 }
 
 /**
@@ -199,8 +199,8 @@ export function startResourceLocks() {
  * screen being open - leaving the tab and coming back must not quietly unpin everything.
  */
 export function stopResourceLocks() {
-    observer?.disconnect();
-    observer = null;
+    unwatch?.();
+    unwatch = null;
     window.removeEventListener(ResourceLocksChangedEventName, inject);
     removeAllLocks();
     styleElement?.remove();

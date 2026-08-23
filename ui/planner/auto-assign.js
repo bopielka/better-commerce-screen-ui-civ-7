@@ -63,8 +63,13 @@ import { assignAll, isAssignmentInProgress, reassignAll } from './run.js';
 import { isAssignableToSettlement } from './facts.js';
 import { forgetPriorityMemory } from './priorities.js';
 import { getCommerceModel } from '../model/screen-model.js';
+import { onEngineEvent, onLocalPlayerEvent, stopEngineEvents } from '../engine/events.js';
+import { heldResourceType } from '../engine/resource-types.js';
 
-import CommerceOptions, { AutoAssignMode } from '../options/najane-commerce-options.js';
+import CommerceOptions, {
+    AutoAssignMode,
+    CommerceOptionsChangedEventName,
+} from '../options/najane-commerce-options.js';
 import { log, warn } from '../support/diagnostics.js';
 
 /**
@@ -78,7 +83,22 @@ import { log, warn } from '../support/diagnostics.js';
  *
  * `LocalPlayerTurnBegin` remains the catch-all behind all of it.
  */
-const TRIGGER_EVENTS = [
+/**
+ * The three that are raised for EVERY player in the game, several times a turn each.
+ *
+ * ⚠️ Split out so they can be filtered by whose they are. A building going up in an AI city
+ * cannot give you a resource or somewhere to put one, and there are hundreds of them in a
+ * late game - each one used to arm a debounce, three late-arrival timers behind it, and a
+ * walk over your resources and your settlements. They carry a `location`, so the plot is
+ * asked who owns it: the same check `panel-production-chooser.ts` makes on
+ * `ConstructibleAddedToMap`. See engine/events.js.
+ *
+ * ⚠️ The rest of the list is deliberately NOT filtered. `CityTransfered` is the case that
+ * settles it: a settlement changing hands is exactly when the owner on the payload is the
+ * one thing about it that is ambiguous, and dropping that trigger would cost the feature the
+ * resources that came with the city. They are rare enough that leaving them alone is free.
+ */
+const PER_PLAYER_TRIGGER_EVENTS = [
     'ConstructibleBuildCompleted', // a tile improved onto a resource - or a building with slots
     /*
      * ⚠️ `ConstructibleBuildCompleted` is not enough on its own: it announces something the
@@ -89,6 +109,9 @@ const TRIGGER_EVENTS = [
      */
     'ConstructibleAddedToMap',
     'ConstructibleChanged',
+];
+
+const TRIGGER_EVENTS = [
     'TradeRouteAddedToMap', // a new route brings its payload
     'TradeRouteChanged',
     'ResourceCapChanged',
@@ -205,7 +228,7 @@ function currentResourceValues() {
     const player = Players.get(GameContext.localPlayerID);
     const values = new Set();
     for (const resource of player?.Resources?.getResources() ?? []) {
-        const resourceType = GameInfo.Resources.lookup(resource.uniqueResource?.resource)?.ResourceType ?? null;
+        const resourceType = heldResourceType(resource);
         if (!isAssignableToSettlement({ resourceType, resourceValue: resource.value })) {
             continue;
         }
@@ -234,7 +257,17 @@ function readBoardCounts() {
     return { capacity, assigned };
 }
 
-async function check(trigger, { isRetry = false, quiet = false } = {}) {
+/**
+ * @param options carried whole so a blocked trigger can be retried exactly as it arrived.
+ *
+ * ⚠️ Whole, not destructured into three names. `retryWhenUnblocked` hands these straight back
+ * to `check`, and it was being passed a bare `options` that this function never declared - a
+ * `ReferenceError` thrown from a timer, before the try block, every time a trigger arrived
+ * while the Commerce screen was open or a pass was already running. Which is to say: exactly
+ * the case the whole BLOCKED_RETRY_MS mechanism exists to handle never ran at all.
+ */
+async function check(trigger, options = {}) {
+    const { isRetry = false, quiet = false, isSweep = false } = options;
     if (running) {
         // Our own pass is in flight. Whatever raised this may be news it has not seen, so
         // ask again once it is done rather than dropping it.
@@ -324,7 +357,10 @@ async function check(trigger, { isRetry = false, quiet = false } = {}) {
             // baseline.
             // ⚠️ Only a real trigger arms these. A retry that armed more retries would
             // never stop - three become nine become twenty-seven, all turn long.
-            if (!isRetry) {
+            // ⚠️ And not for the sweep either. The sweep exists to catch what the events
+            // missed; nothing "arrived late" relative to a clock, so three more timers every
+            // fifteen seconds, all game, bought nothing.
+            if (!isRetry && !isSweep) {
                 scheduleLateArrivalChecks(trigger, quiet);
             }
             return;
@@ -372,6 +408,7 @@ async function check(trigger, { isRetry = false, quiet = false } = {}) {
 
 let pendingTrigger = '';
 let pendingQuiet = false;
+let pendingSweep = false;
 let lateArrivalTimers = [];
 let blockedTimer = null;
 let blockedLogged = false;
@@ -427,7 +464,15 @@ function clearLateArrivalChecks() {
     lateArrivalTimers = [];
 }
 
-function scheduleCheck(trigger, quiet = false) {
+function scheduleCheck(trigger, quiet = false, isSweep = false) {
+    /*
+     * ⚠️ The watchers are detached while the setting is Off, so in the ordinary case nothing
+     * reaches this at all. What still can is the sweep's own timer, in the window between the
+     * player switching it off and `detachWatchers` running.
+     */
+    if (CommerceOptions.autoAssignMode === AutoAssignMode.Off) {
+        return;
+    }
     clearLateArrivalChecks();
     // A real trigger supersedes whatever we were waiting to retry.
     clearBlockedRetry();
@@ -435,14 +480,17 @@ function scheduleCheck(trigger, quiet = false) {
     pendingTrigger = trigger;
     if (scheduled !== null) {
         // ⚠️ Merging into a window that is already open, so a LOUD trigger wins: a sweep
-        // landing on top of a real event must not silence that event's report.
+        // landing on top of a real event must not silence that event's report - and a real
+        // event landing on top of a sweep keeps its late-arrival retries.
         pendingQuiet = pendingQuiet && quiet;
+        pendingSweep = pendingSweep && isSweep;
         return;
     }
     pendingQuiet = quiet;
+    pendingSweep = isSweep;
     scheduled = setTimeout(() => {
         scheduled = null;
-        check(pendingTrigger, { quiet: pendingQuiet });
+        check(pendingTrigger, { quiet: pendingQuiet, isSweep: pendingSweep });
     }, DEBOUNCE_MS);
 }
 
@@ -463,6 +511,16 @@ function trySeed() {
 
 function seedWithRetries(attemptsLeft) {
     if (trySeed() || attemptsLeft <= 0) {
+        /*
+         * ⚠️ THE MODE IS READ HERE, NOT AT LOAD, and that is the point of putting it here.
+         *
+         * `CommerceOptions.autoAssignMode` goes through `UI.getOption` and MEMOISES what it
+         * gets, so reading it before the game can answer would cache a wrong value - Off -
+         * for the rest of the session, and since 1.9 that decides whether the watcher is
+         * installed at all. This retry loop already exists to wait for the game to be
+         * readable; by the time it succeeds, so are the options.
+         */
+        applyAutoAssignMode();
         if (known === null) {
             warn('gave up waiting for the resource list; the first event will seed instead');
             return;
@@ -480,6 +538,73 @@ function seedWithRetries(attemptsLeft) {
     setTimeout(() => seedWithRetries(attemptsLeft - 1), SEED_RETRY_MS);
 }
 
+let subscriptions = [];
+let sweepTimer = null;
+
+/**
+ * ⚠️ NOTHING IS LISTENED FOR WHILE THE SETTING IS OFF, AND OFF IS THE DEFAULT.
+ *
+ * This used to attach unconditionally and answer "switched off" inside `check`, which sounds
+ * harmless and is not: the answer came AFTER a dozen engine subscriptions had each woken a
+ * debounce, and after the sweep had fired every fifteen seconds for the whole game. A player
+ * who never turns automatic assignment on was paying for all of it - the largest single cost
+ * this mod had, for a feature they had not asked for.
+ *
+ * Attaching and detaching on the option instead is exact rather than merely cheaper: with the
+ * mode Off the watcher is not installed at all, so there is no path from an engine event into
+ * this module.
+ */
+function attachWatchers() {
+    if (subscriptions.length > 0 || sweepTimer !== null) {
+        return;
+    }
+    subscriptions = [];
+    for (const name of PER_PLAYER_TRIGGER_EVENTS) {
+        const handle = onLocalPlayerEvent(name, () => scheduleCheck(name));
+        if (handle) {
+            subscriptions.push(handle);
+        }
+    }
+    for (const name of TRIGGER_EVENTS) {
+        const handle = onEngineEvent(name, () => scheduleCheck(name));
+        if (handle) {
+            subscriptions.push(handle);
+        }
+    }
+    // The safety net behind all of them; see SWEEP_MS.
+    sweepTimer = setInterval(() => scheduleCheck('periodic check', true, true), SWEEP_MS);
+    log(
+        `auto-assign watcher attached (${TRIGGER_EVENTS.length + PER_PLAYER_TRIGGER_EVENTS.length} events, ` +
+            `sweeping every ${SWEEP_MS / 1000}s)`,
+    );
+}
+
+function detachWatchers() {
+    if (subscriptions.length === 0 && sweepTimer === null) {
+        return;
+    }
+    stopEngineEvents(subscriptions);
+    if (sweepTimer !== null) {
+        clearInterval(sweepTimer);
+        sweepTimer = null;
+    }
+    clearLateArrivalChecks();
+    clearBlockedRetry();
+    if (scheduled !== null) {
+        clearTimeout(scheduled);
+        scheduled = null;
+    }
+    log('auto-assign watcher detached: automatic assignment is switched off');
+}
+
+function applyAutoAssignMode() {
+    if (CommerceOptions.autoAssignMode === AutoAssignMode.Off) {
+        detachWatchers();
+        return;
+    }
+    attachWatchers();
+}
+
 export function startAutoAssign() {
     if (attached) {
         return;
@@ -490,17 +615,26 @@ export function startAutoAssign() {
     // about the previous one's settlements does not apply to this one.
     forgetPriorityMemory();
 
-    // The mod's scripts load before the game is necessarily ready to answer, so this
-    // keeps asking rather than waiting for something to happen.
+    /*
+     * ⚠️ The only thing installed unconditionally. Turning the setting on has to start the
+     * watcher there and then - no engine event follows an options change - and turning it off
+     * has to stop it, or "off" would only mean "still listening, still sweeping, and
+     * declining to act".
+     */
+    window.addEventListener(CommerceOptionsChangedEventName, applyAutoAssignMode);
+
+    /*
+     * ⚠️ Seeded whatever the mode is, and that is on purpose rather than an oversight.
+     *
+     * `known` is what tells a resource that ARRIVED from one the player deliberately left in
+     * the pool, and it has to describe the board as it was when the game was loaded - not as
+     * it is at the moment the player happens to switch the option on. Seeding from
+     * `attachWatchers` instead would mean everything acquired while the setting was Off was
+     * silently reclassified as "always been there", and turning the option on would then do
+     * nothing until the NEXT acquisition.
+     *
+     * The cost is one walk over the player's resources, once, and it is why this is the only
+     * work this module does with the feature switched off.
+     */
     seedWithRetries(SEED_ATTEMPTS);
-    for (const name of TRIGGER_EVENTS) {
-        try {
-            engine.on(name, () => scheduleCheck(name));
-        } catch (error) {
-            warn(`could not listen for ${name}: ${error}`);
-        }
-    }
-    // The safety net behind all of them; see SWEEP_MS.
-    setInterval(() => scheduleCheck('periodic check', true), SWEEP_MS);
-    log(`auto-assign watcher attached (${TRIGGER_EVENTS.length} events, sweeping every ${SWEEP_MS / 1000}s)`);
 }

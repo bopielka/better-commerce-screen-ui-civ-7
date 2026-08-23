@@ -13,72 +13,43 @@
  *
  * Here rather than in ui/options/ for the reason given at the top of happiness-setting.js.
  */
-import { log, warn } from '../support/diagnostics.js';
+import { storedSwitch } from '../engine/stored-setting.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
 
-/**
- * ⚠️ Three states each, not two: 0 means "never touched" and both default to ON, so
- * "untouched" and "switched off" have to be distinguishable. Same trap as
- * factory-first-setting.js.
- */
-const STORED_OFF = 1;
-const STORED_ON = 2;
-
-const CULTURE_OPTION = `${MOD_ID}.gatherCulture`;
-const GOLD_OPTION = `${MOD_ID}.gatherGold`;
-
+/** One event for both: anything drawing them draws them together. */
 export const HoardSettingChangedEventName = 'najane-commerce-hoard-changed';
 
-let culture = null;
-let gold = null;
+/*
+ * Never touched: on, both of them. Concentrating these yields is worth more than spreading
+ * them, and the switches are there to decline that, not to opt into it.
+ */
+const cultureSetting = storedSwitch({
+    option: `${MOD_ID}.gatherCulture`,
+    defaultValue: true,
+    label: 'gather culture into one settlement',
+    changedEventName: HoardSettingChangedEventName,
+});
 
-function restore(option) {
-    try {
-        const stored = Number(UI.getOption('user', 'Mod', option));
-        if (stored === STORED_OFF || stored === STORED_ON) {
-            return stored === STORED_ON;
-        }
-    } catch (error) {
-        warn(`could not read ${option}: ${error}`);
-    }
-    // Never touched: on. Concentrating these yields is worth more than spreading them, and
-    // the switch is there to decline that, not to opt into it.
-    return true;
-}
-
-function persist(option, value) {
-    try {
-        UI.setOption('user', 'Mod', option, value ? STORED_ON : STORED_OFF);
-        Configuration.getUser().saveCheckpoint();
-    } catch (error) {
-        warn(`could not save ${option}: ${error}`);
-    }
-    window.dispatchEvent(new CustomEvent(HoardSettingChangedEventName));
-}
+const goldSetting = storedSwitch({
+    option: `${MOD_ID}.gatherGold`,
+    defaultValue: true,
+    label: 'gather gold into one settlement',
+    changedEventName: HoardSettingChangedEventName,
+});
 
 export function isCultureGatheringEnabled() {
-    if (culture === null) {
-        culture = restore(CULTURE_OPTION);
-    }
-    return culture;
+    return cultureSetting.isOn();
 }
 
 export function isGoldGatheringEnabled() {
-    if (gold === null) {
-        gold = restore(GOLD_OPTION);
-    }
-    return gold;
+    return goldSetting.isOn();
 }
 
 export function setCultureGatheringEnabled(value) {
-    culture = !!value;
-    persist(CULTURE_OPTION, culture);
-    log(`gather culture into one settlement: ${culture ? 'on' : 'off'}`);
+    cultureSetting.set(value);
 }
 
 export function setGoldGatheringEnabled(value) {
-    gold = !!value;
-    persist(GOLD_OPTION, gold);
-    log(`gather gold into one settlement: ${gold ? 'on' : 'off'}`);
+    goldSetting.set(value);
 }

@@ -3,20 +3,22 @@
  *
  * The rescue tier sits above every other consideration in scoring.js - above factories,
  * above camels, above a settlement's own priority - so it is the single largest thing this
- * mod does to a layout, and until now the player had no say in it. Some players want an
- * unhappy town left alone; some do not want the rule at all.
+ * mod does to a layout, and until it was made a setting the player had no say in it. Some
+ * players want an unhappy town left alone; some do not want the rule at all.
  *
  * The value lives here rather than in ui/options/ for the same reason factory-first's does:
  * the assignment engine has to be able to ask the question with the Commerce screen closed
  * and without importing anything that pulls in the options screen. The dropdown in
  * ui/options/najane-commerce-options.js writes to this module.
  */
-import { log, warn } from '../support/diagnostics.js';
+import { storedChoice } from '../engine/stored-setting.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
 
 /**
- * ⚠️ Append only, and note that these are NOT what gets stored - see below.
+ * ⚠️ Append only, and note that these are NOT what gets stored - see engine/stored-setting.js
+ * for why a choice is stored one higher than its value. "Never" is 0, which is exactly the
+ * number `UI.getOption` answers for an option nobody has ever set.
  *
  *   Never            the rescue tier does not run at all; happiness is just another yield
  *   CitiesOnly       cities are rescued, towns are left where they fall
@@ -28,41 +30,27 @@ export const HappinessPriorityMode = {
     AllSettlements: 2,
 };
 
-/**
- * ⚠️ Stored offset by one, because an option that was never set reads back as 0 - exactly
- * like an option deliberately set to 0, which here would be "Never". The default is
- * AllSettlements, so the two have to be told apart. Same trap, same fix, as
- * factory-first-setting.js and priority-store.js.
- */
-const OPTION = `${MOD_ID}.happinessPriorityMode`;
-const STORED_OFFSET = 1;
-
 export const HappinessPriorityChangedEventName = 'najane-commerce-happiness-priority-changed';
 
 const MODES = [HappinessPriorityMode.Never, HappinessPriorityMode.CitiesOnly, HappinessPriorityMode.AllSettlements];
+const MODE_NAMES = ['never', 'cities only', 'all settlements'];
 
-let mode = null;
-
-function restore() {
-    try {
-        const stored = Number(UI.getOption('user', 'Mod', OPTION)) - STORED_OFFSET;
-        if (MODES.includes(stored)) {
-            return stored;
-        }
-    } catch (error) {
-        warn(`could not read the happiness-priority setting: ${error}`);
-    }
-    // Never touched: rescue everything. An empire in revolt is the one situation where
-    // overriding what the player asked each settlement for is worth it, so that stays the
-    // default; the setting is there to opt out of it.
-    return HappinessPriorityMode.AllSettlements;
-}
+/*
+ * Never touched: rescue everything. An empire in revolt is the one situation where overriding
+ * what the player asked each settlement for is worth it, so that stays the default; the
+ * setting is there to opt out of it.
+ */
+const setting = storedChoice({
+    option: `${MOD_ID}.happinessPriorityMode`,
+    values: MODES,
+    defaultValue: HappinessPriorityMode.AllSettlements,
+    label: 'happiness priority',
+    changedEventName: HappinessPriorityChangedEventName,
+    describe: (mode) => MODE_NAMES[mode] ?? String(mode),
+});
 
 export function happinessPriorityMode() {
-    if (mode === null) {
-        mode = restore();
-    }
-    return mode;
+    return setting.get();
 }
 
 /** Whether the rescue tier runs at all. */
@@ -76,14 +64,5 @@ export function townsMayBeRescued() {
 }
 
 export function setHappinessPriorityMode(value) {
-    const next = Number(value);
-    mode = MODES.includes(next) ? next : HappinessPriorityMode.AllSettlements;
-    try {
-        UI.setOption('user', 'Mod', OPTION, mode + STORED_OFFSET);
-        Configuration.getUser().saveCheckpoint();
-    } catch (error) {
-        warn(`could not save the happiness-priority setting: ${error}`);
-    }
-    window.dispatchEvent(new CustomEvent(HappinessPriorityChangedEventName));
-    log(`happiness priority: ${['never', 'cities only', 'all settlements'][mode]}`);
+    setting.set(value);
 }

@@ -14,10 +14,17 @@
  */
 import ContextManager from '/core/ui/context-manager/context-manager.js';
 
+import { COMMERCE_SCREEN_SELECTOR } from './screen-parts.js';
 import { warn } from '../support/diagnostics.js';
 
-/** The screen this sits on, by the name its frame is registered under. See ScreenFrame. */
-export const COMMERCE_PANEL_CONTEXT = 'screen-resource-allocation';
+/**
+ * The screen this sits on, by the name its frame is registered under. See ScreenFrame.
+ *
+ * ⚠️ The same string as the element's tag, and not a coincidence: `factory-tab.js` passes it
+ * to `ScreenFrame` as `panelContext`, which is what registers it under that name. One
+ * definition, in screen-parts.js, so a rename cannot move one of the two and leave the other.
+ */
+export const COMMERCE_PANEL_CONTEXT = COMMERCE_SCREEN_SELECTOR;
 
 /**
  * ⚠️ `ContextManager.pop` with the frame's own panel context - the same call the screen's own

@@ -65,7 +65,7 @@ Three buttons above the tabs, plus three controls on every settlement card.
 | Per-settlement quick assign | same → `ui/planner/run.js` `quickAssignSettlement` |
 | Per-settlement unassign | same → `model.clearAllResources(cityID)` |
 | The game's own buried "unassign all" being hidden | `ui/screen/assign-all-buttons.js` |
-| The "factories first" checkbox (Modern only) | `ui/screen/factory-first.js` + `ui/planner/factory-first-setting.js` |
+| The "factories first" checkbox (Modern only) | `ui/screen/assign-switches.js` + `ui/planner/factory-first-setting.js` |
 
 Every one of these — and the automatic path below — goes through `ui/planner/run.js`, which holds
 the single "only one at a time" guard. The ordering they obey is in `ui/planner/scoring.js`; the
@@ -81,6 +81,8 @@ a town — not "whatever the settlement has least of".
 |---|---|---|
 | Prioritise Happiness | All settlements | how far the rescue tier goes: never / cities only / all |
 | Assign Resources automatically | Never | see the table below |
+| Skip the assignment prompt | on | hides the end-turn nag while nothing you hold can be placed — and only while automatic assignment is doing something. See [notifications](13-notifications.md) |
+| Allow Resource locks | on | the padlock on a slotted resource. Off removes the padlocks rather than leaving them inert |
 | Build a Culture Settlement automatically | on | gathers everything paying culture into one city |
 | Build a Gold Settlement automatically | on | the same for gold, deliberately in a different city |
 
@@ -136,7 +138,9 @@ no Ukrainian locale). See [localisation](12-localisation.md).
 - No game rules, values or balance are changed; `AffectsSavedGames = 0`.
 - Nothing is written into the save file. Priorities go through `UI.setOption`, keyed by
   `gameSeed`. See [options](11-options-and-persistence.md).
-- Resource+'s per-resource **locks** are not ported — there is no lock UI here, so the lock
-  set is always empty and "reassign" clears everything.
+- **Nothing is locked by default.** Resource+'s per-resource locks *are* here — the padlock on
+  a slotted resource, `ui/screen/resource-locks-ui.js` over `ui/engine/resource-locks.js` — but
+  the lock set starts empty and the feature can be switched off entirely under
+  **Options → Mods**, in which case the padlocks are removed rather than left inert.
 - No notification is dismissed, cancelled or acknowledged. `ui/screen/assign-notification.js`
   only declines to *draw* one. See [notifications](13-notifications.md).

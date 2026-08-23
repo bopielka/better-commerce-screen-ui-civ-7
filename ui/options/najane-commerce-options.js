@@ -3,15 +3,17 @@ import { CategoryType, Options, OptionType } from '/core/ui/options/model-option
 import { CategoryData } from '/core/ui/options/options-helpers.js';
 
 /*
- * ⚠️ The only imports of this mod's own code here, and they are all leaves: a settings
- * module under ui/planner/ or ui/engine/ holds each value and imports nothing but
- * diagnostics. The dependency runs one way - options write to the setting, the setting never
- * reads the options screen - which is what lets the assignment engine answer these questions
- * with the Commerce screen closed. See the note at the top of factory-first-setting.js.
+ * ⚠️ The only imports of this mod's own code here, and they are all near-leaves: a settings
+ * module under ui/planner/ or ui/engine/ holds each value, and reaches no further than
+ * engine/stored-setting.js and support/diagnostics.js behind it. The dependency runs one way
+ * - options write to the setting, the setting never reads the options screen - which is what
+ * lets the assignment engine answer these questions with the Commerce screen closed. See the
+ * note at the top of factory-first-setting.js.
  *
- * ⚠️ This file also loads in SHELL scope, before any game exists, so a settings module must
- * do nothing at import time beyond declaring itself - resource-locks.js reads its option
- * lazily, on the first question, for exactly that reason.
+ * ⚠️ This file also loads in SHELL scope, before any game exists, so nothing it pulls in may
+ * touch the game at import time. `storedSwitch` and `storedChoice` build a closure and stop;
+ * the option behind it is read lazily, on the first question asked. resource-locks.js follows
+ * the same rule for the same reason.
  */
 import {
     happinessPriorityMode,

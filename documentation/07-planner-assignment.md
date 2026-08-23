@@ -3,18 +3,18 @@
 Deciding what goes where, and doing it. Ten of the fourteen files in `ui/planner/`; the other
 four are covered in [planner: valuation](08-planner-valuation.md).
 
-| File | Lines | Purpose |
-|---|---|---|
-| `effects.js` | 259 | reading the modifier tables |
-| `facts.js` | 395 | what a resource **is** and **does** |
-| `scoring.js` | 964 | the tiers and `bestAssignment` |
-| `place.js` | 283 | the placement loop, shared by both paths |
-| `run.js` | 129 | every entry point — one guard around `place.js` |
-| `auto-assign.js` | 344 | deciding **when** to run with the screen closed |
-| `priorities.js` | 112 | per-settlement priority, in memory |
-| `happiness-setting.js` | 89 | how far the rescue tier goes |
-| `hoard-setting.js` | 84 | whether the culture and gold piles are built |
-| `imports-first-setting.js` | 69 | whether trade-route resources jump the queue |
+| File | Purpose |
+|---|---|
+| `effects.js` | reading the modifier tables |
+| `facts.js` | what a resource **is** and **does** |
+| `scoring.js` | the tiers and `bestAssignment` |
+| `place.js` | the placement loop, shared by both paths |
+| `run.js` | every entry point — one guard around `place.js` |
+| `auto-assign.js` | deciding **when** to run with the screen closed |
+| `priorities.js` | per-settlement priority, in memory |
+| `happiness-setting.js` | how far the rescue tier goes |
+| `hoard-setting.js` | whether the culture and gold piles are built |
+| `imports-first-setting.js` | whether trade-route resources jump the queue |
 
 ## ⚠️ Attribution
 

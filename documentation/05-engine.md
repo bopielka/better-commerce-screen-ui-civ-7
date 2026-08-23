@@ -1,10 +1,12 @@
 # 05 — `ui/engine/` — talking to the game
 
-Nine files. No DOM, no knowledge of the screen's model. Everything that reaches the game's
-C++ side goes through here.
+No DOM, no knowledge of the screen's model. Everything that reaches the game's C++ side goes
+through here — and everything the game raises comes back through here too.
 
 | File | Purpose |
 |---|---|
+| `events.js` | **every** `engine.on` this mod makes, and the "is this even about me?" filter |
+| `stored-setting.js` | **every** setting the player changes and the mod remembers |
 | `operations.js` | **every** `ASSIGN_RESOURCE` request |
 | `unassign.js` | releasing, and who has to leave with what |
 | `resource-slots.js` | `BonusResourceSlots` (camels) |
@@ -17,6 +19,81 @@ C++ side goes through here.
 | `wait.js` | waiting for a queued operation to land |
 | `age.js` | which age this is, worked out once |
 | `shift.js` | is Shift held? |
+
+---
+
+## `events.js` — the single door to `engine.on`
+
+⚠️ **The engine's events are not about you.** `UnitMoved`, `UnitMoveComplete`,
+`UnitMovementPointsChanged`, `ResourceAssigned`, `ConstructibleChanged` and the rest are
+raised for **every player in the game**. A late-game AI turn raises thousands of them, and
+until 1.9 this mod woke on all of them — typically to walk the local player's whole unit list
+and conclude that somebody else's scout had moved. It was the largest thing this mod ever
+cost a frame.
+
+The game's own components do not work that way. `panel-action.ts` opens `onUnitMoved` with
+
+```js
+if (data.unit.owner !== GameContext.localPlayerID) { return; }
+```
+
+and `panel-production-chooser.ts` asks the plot who owns it for `ConstructibleAddedToMap`.
+This module is that check, written once.
+
+```js
+onEngineEvent(name, handler)              // → a handle, or null
+onLocalPlayerEvent(name, handler)         // the same, everybody else's dropped first
+onEngineEvents(names, handler, { localPlayerOnly = true })
+stopEngineEvents(handles)                 // engine.off for a whole list
+isSomeoneElses(data)                      // for the one place that has to ask directly
+```
+
+⚠️ **An unknown owner is never filtered out.** Not every payload carries one, and dropping an
+event because we could not name its owner would trade a performance problem for a correctness
+one — the failure mode this mod's history is full of, where a missing trigger looks exactly
+like a feature that does nothing. `CityTransfered` is the case that settles it: a settlement
+changing hands is precisely when the owner on the payload is the ambiguous part.
+
+⚠️ **`engine.off` needs the same function reference that was registered.** That is what the
+handles carry, and it is why nothing should pass an inline arrow to `engine.on` and forget it.
+Three separate leaks in 1.8 were exactly that mistake; see the changelog for 1.9.
+
+Where the payload names an owner, by observation of the game's own sources:
+
+| Field | Events |
+|---|---|
+| `unit` | every `Unit*` event |
+| `constructible` | `ConstructibleBuildCompleted` |
+| `cityID` / `city` | the city events |
+| `player` | `ResourceAssigned`, `ResourceUnassigned` |
+| `location` only | `ConstructibleAddedToMap` — the plot is asked instead |
+
+---
+
+## `stored-setting.js` — the single door to a remembered setting
+
+Five modules had their own copy of "read an option, write an option, checkpoint it, raise a
+change event": factories-first, imports-first, the two gathering switches, the happiness
+dropdown and treasure auto-return. What each of them keeps is the part that is theirs — the
+option name, the default, and what the value means. The plumbing is here.
+
+```js
+storedSwitch({ option, defaultValue, label, changedEventName })   // → { isOn(), set(value) }
+storedChoice({ option, values, defaultValue, label, changedEventName, describe })  // → { get(), set(value) }
+```
+
+⚠️ **`UI.getOption` answers 0 for an option nobody has ever set**, which is indistinguishable
+from an option deliberately set to 0. So nothing is stored raw: a switch stores 1 for off and
+2 for on, and a choice stores its index plus one. 0 always and only means "never touched".
+This has bitten the mod twice — once when factories-first changed its default from off to on,
+and once for the happiness dropdown, whose first value ("Never") **is** 0.
+
+⚠️ **`Configuration.getUser().saveCheckpoint()` is what makes it survive the game closing.**
+Without it the option lasts the session, which reads to a player as a switch that does not
+stick.
+
+⚠️ **The option NAMES are the compatibility surface.** They are written out in full in each
+caller, not derived, so grepping for one finds it. Changing one loses the player's setting.
 
 ---
 

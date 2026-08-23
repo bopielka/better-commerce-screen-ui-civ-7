@@ -1,12 +1,18 @@
 # 04 — `ui/support/` — no knowledge of the game or of this mod
 
-The leftmost layer. Two files, both pure utility. Anything here must be usable without the
+The leftmost layer. Three files, all pure utility. Anything here must be usable without the
 game running and without knowing what the mod is for.
 
-## `diagnostics.js` (22 lines)
+| File | Purpose |
+|---|---|
+| `diagnostics.js` | `log` / `warn`, and the switch between them |
+| `dom.js` | the DOM helpers this renderer's gaps make necessary |
+| `build-stamp.js` | written by the deploy script, never by hand — see [workflow](14-development-workflow.md) |
+
+## `diagnostics.js`
 
 ```js
-export const DIAGNOSTICS = true;   // ⚠️ currently ON
+export const DIAGNOSTICS = false;  // ⚠️ off, which is how the mod ships
 export function log(...args)       // only when DIAGNOSTICS
 export function warn(...args)      // always
 ```

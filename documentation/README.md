@@ -47,7 +47,7 @@ and an optional automatic assignment that runs with the screen closed.
 1. **The dependency direction.** `support` ← `engine` ← `model` ← `planner` ← `screen`.
    Never import upwards. See [Architecture](02-architecture.md) for why this is load-bearing
    and not merely tidy.
-2. **`deploy.sh` after every change** (`deploy-on-mac.sh` on macOS). The game never reads
+2. **`deploy.sh` after every change** (`deploy-on-mac.sh` is a shim for it). The game never reads
    this repository. See [workflow](14-development-workflow.md).
 3. **`console.log` never reaches the game's log.** Use the helpers in
    `ui/support/diagnostics.js`, which go through `console.error`.

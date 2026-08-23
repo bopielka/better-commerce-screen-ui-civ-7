@@ -54,6 +54,7 @@ import { PlotCoord } from '/core/ui/utilities/utilities-plotcoord.js';
 
 import { isTreasureAutoReturnEnabled } from './treasure-return-setting.js';
 import { unitKey } from './merchant.js';
+import { onEngineEvent, onLocalPlayerEvent } from './events.js';
 import { log, warn } from '../support/diagnostics.js';
 
 /** See the ⚠️ at the top of the file. This number is the difference between a working
@@ -84,6 +85,9 @@ const UNLOAD_EVENTS = ['UnitMoved', 'UnitMoveComplete'];
  * see whether it can unload where it now stands.
  */
 const SAIL_EVENTS = ['LocalPlayerTurnBegin', 'UnitAddedToMap'];
+
+/** The one entry above that names no unit, and is therefore subscribed unfiltered. */
+const TURN_BEGIN_EVENT = 'LocalPlayerTurnBegin';
 
 /**
  * The game's own "Unload Cargo" command - `unit-commands.xml`, icon `action_unloadcargo.png`.
@@ -393,6 +397,15 @@ function processConvoys(maySail) {
  * same fix: one raw timer per engine event was itself enough to grow into a freeze.
  */
 function scheduleProcess(maySail = false) {
+    /*
+     * ⚠️ Asked here as well as in `processConvoys`, and it is not a duplicate. Switched off,
+     * the pass does nothing - but the timer is still armed and the merged flags still
+     * bookkept, on every movement of every convoy, all game. This is the version of the
+     * question that costs nothing.
+     */
+    if (!isTreasureAutoReturnEnabled()) {
+        return;
+    }
     scheduledMaySail = scheduledMaySail || maySail;
     if (scheduled) {
         return;
@@ -421,16 +434,50 @@ export function startTreasureConvoys() {
     }
     started = true;
 
+    /*
+     * ⚠️ THESE EVENTS ARE NOT ABOUT YOUR CONVOYS, AND MOSTLY NOT ABOUT YOU. `UnitMoved` is
+     * raised once per tile per unit for every player in the game; a late-game AI turn raises
+     * thousands, and each one used to wake a pass that walked the player's whole unit list
+     * asking the engine twice about every unit in it - to conclude, almost always, that
+     * nothing had moved except somebody else's scout.
+     *
+     * Two filters, both before any of that: whose unit it is, and whether it is a convoy at
+     * all. The second costs one `Units.get` and the two calls `cargoAmount` makes about that
+     * ONE unit, against the whole list. `LocalPlayerTurnBegin` keeps the unfiltered pass, so
+     * a convoy nothing has been raised about is still looked after once a turn.
+     */
+    const listenPerUnit = (name, maySail) =>
+        onLocalPlayerEvent(name, (data) => {
+            if (!isTreasureAutoReturnEnabled() || !data?.unit) {
+                return;
+            }
+            let unit = null;
+            try {
+                unit = Units.get(data.unit);
+            } catch (error) {
+                return;
+            }
+            if (!isTreasureConvoy(unit)) {
+                return;
+            }
+            scheduleProcess(maySail);
+        });
+
     for (const name of UNLOAD_EVENTS) {
-        engine.on(name, () => scheduleProcess(false));
+        listenPerUnit(name, false);
     }
     for (const name of SAIL_EVENTS) {
-        engine.on(name, () => scheduleProcess(true));
+        if (name === TURN_BEGIN_EVENT) {
+            // Belongs to nobody and names no unit; it is the safety net behind the filters.
+            onEngineEvent(name, () => scheduleProcess(true));
+            continue;
+        }
+        listenPerUnit(name, true);
     }
     // Refused or cleared orders: worth a look, never worth re-issuing movement for. See the
     // note on SAIL_EVENTS.
-    engine.on('UnitOperationsCleared', () => scheduleProcess(false));
-    engine.on('UnitOperationDeactivated', () => scheduleProcess(false));
+    listenPerUnit('UnitOperationsCleared', false);
+    listenPerUnit('UnitOperationDeactivated', false);
 
     // A convoy already at sea when the game is loaded gets its first pass now.
     scheduleProcess(true);

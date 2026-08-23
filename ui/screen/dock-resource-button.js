@@ -32,6 +32,7 @@
  * same fact is what lets `assign-notification.js` patch `PanelAction`.
  */
 import { anythingCanBePlaced } from './assign-notification.js';
+import { isSomeoneElses } from '../engine/events.js';
 import { ensureStyle } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -178,6 +179,18 @@ class DockResourceButton {
         this.component = component;
         this.Root = component.Root;
         this.refresh = this.refresh.bind(this);
+        this.refreshSoon = this.refreshSoon.bind(this);
+        this.refreshFrame = null;
+        /*
+         * ⚠️ Kept, because `listenForEngineEvent` remembers the function it was given and the
+         * filter has to be that function - see `afterAttach`.
+         */
+        this.onLocalPlayerEvent = (data) => {
+            if (isSomeoneElses(data)) {
+                return;
+            }
+            this.refreshSoon();
+        };
     }
 
     /** The dock's own button, or whatever is on screen if it has not published it yet. */
@@ -185,6 +198,24 @@ class DockResourceButton {
         return this.component.resourcesButton
             ?? this.Root?.querySelector(RESOURCES_BUTTON_SELECTOR)
             ?? null;
+    }
+
+    /**
+     * Coalesces a burst into one refresh, on the next frame.
+     *
+     * ⚠️ `anythingCanBePlaced` is the most expensive call in this mod, and the events below
+     * arrive in clumps - a turn boundary raises several at once, and an assignment pass raises
+     * one per resource. The 250ms answer cache covers a clump that lands together; this covers
+     * the rest, and costs one frame on a button nothing is waiting for.
+     */
+    refreshSoon() {
+        if (this.refreshFrame !== null) {
+            return;
+        }
+        this.refreshFrame = requestAnimationFrame(() => {
+            this.refreshFrame = null;
+            this.refresh();
+        });
     }
 
     refresh() {
@@ -219,9 +250,16 @@ class DockResourceButton {
 
     afterAttach() {
         ensureStyle(STYLE_ID, STYLE);
+        /*
+         * ⚠️ Filtered by whose event it is. `ResourceAssigned` and friends are raised for EVERY
+         * player - place.js says so where it refuses to wait on one - so an AI rearranging its
+         * empire used to run this mod's single most expensive call, once per resource, all the
+         * way through everybody else's turn, to decide whether YOUR button should pulse.
+         * Payloads that name nobody are let through; see engine/events.js.
+         */
         for (const name of REFRESH_EVENTS) {
             try {
-                this.Root.listenForEngineEvent(name, this.refresh);
+                this.Root.listenForEngineEvent(name, this.onLocalPlayerEvent);
             } catch (error) {
                 // An event this build does not raise is not worth a warning; the rest still
                 // fire, and the button is refreshed on activation and turn begin regardless.
@@ -240,6 +278,10 @@ class DockResourceButton {
 
     afterDetach() {
         this.button()?.removeEventListener('action-activate', this.refresh);
+        if (this.refreshFrame !== null) {
+            cancelAnimationFrame(this.refreshFrame);
+            this.refreshFrame = null;
+        }
     }
 
     onAttributeChanged(_name, _prev, _next) { }

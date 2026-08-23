@@ -7,19 +7,25 @@ The mouse handling, the injected controls and the layout tweaks. The tabs themse
 Read [Platform notes](03-platform-notes.md) first — every file here depends on the input and
 DOM facts recorded there.
 
-| File | Lines | Purpose |
-|---|---|---|
-| `resources-tab.js` | 226 | the component wrapper; right-click unassign; **the hub** |
-| `settlement-controls.js` | 453 | per-card priority picker, quick assign, unassign |
-| `assign-all-buttons.js` | 241 | Assign All / Reassign All / Unassign All / "?" |
-| `tab-icons.js` | 244 | icons instead of words on the tab strip |
-| `hover-highlight.js` | 167 | Shift + hover preview |
-| `bulk-assign.js` | 170 | Shift-assign, by wrapping `slotSelectedResource` |
-| `layout.js` | 164 | tab strip, description line, dropdown height |
-| `shift-click.js` | 120 | left-clicking at all while Shift is held |
-| `assign-switches.js` | 140 | the "imports first" and "factories first" checkboxes |
-| `resource-tooltip.js` | 89 | the game's own framed resource tooltip, for imperative cards |
-| `help-mark.js` | 50 | the shared round "?" |
+| File | Purpose |
+|---|---|
+| `resources-tab.js` | the component wrapper; right-click unassign; **the hub** |
+| `settlement-controls.js` | per-card priority picker, quick assign, unassign |
+| `assign-all-buttons.js` | Assign All / Reassign All / Unassign All / "?" |
+| `tab-icons.js` | icons instead of words on the tab strip |
+| `hover-highlight.js` | Shift + hover preview |
+| `bulk-assign.js` | Shift-assign, by wrapping `slotSelectedResource` |
+| `layout.js` | tab strip, description line, dropdown height |
+| `shift-click.js` | left-clicking at all while Shift is held |
+| `assign-switches.js` | the "imports first" and "factories first" checkboxes |
+| `resource-tooltip.js` | the game's own framed resource tooltip, for imperative cards |
+| `resource-locks-ui.js` | the padlock on a slotted resource |
+| `screen-observer.js` | **one** `MutationObserver` for the whole screen, batched to a frame |
+| `framed-tooltip.js` | the game's framed tooltip on an injected element |
+| `switch-control.js` | the shared on/off switch |
+| `icon-button.js` | the shared icon-only button |
+| `close-screen.js` | closing the screen, by the one name the game knows it under |
+| `help-mark.js` | the shared round "?" |
 
 ---
 
