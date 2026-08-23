@@ -1,29 +1,12 @@
 /**
  * Returning assigned resources to the unassigned pool.
  *
- * This mirrors the game's own `unassignResource` in commerce-screen-model.ts exactly:
- * the ASSIGN_RESOURCE player operation with Action = Deactivate. Going through
- * PlayerOperations rather than poking the model means the engine stays the single
- * source of truth and the screen refreshes itself through the ResourceUnassigned
- * event it already listens for.
+ * ⚠️ Removing a slot-granting resource (a camel) SHRINKS the settlement's capacity, so others may
+ * have to leave first or the settlement would end up holding more than it can. Companions are
+ * pulled from a queue one at a time and only for as long as the engine keeps refusing; see
+ * engine/resource-slots.js.
  *
- * The model's own `unslotSelectedResource()` is deliberately not used: it works on
- * whatever is currently selected, so driving it would mean selecting each resource
- * first, and for the bulk case that would push the selection signal through one
- * change per resource.
- *
- * Why this is asynchronous
- * ------------------------
- * `sendRequest` only queues the operation. Asking `canStart` about a second resource in
- * the same tick still sees the old state. A resource that carries slots (a camel) can
- * therefore not be removed in one pass: its companions have to actually land first.
- * The first attempt at this fired everything at once, and the result was exactly that -
- * the companions went, the camel stayed, and the next click charged two more companions
- * for a removal that no longer needed any.
- *
- * So each step waits for the engine to confirm before deciding the next one, and the
- * decision is made by asking `canStart` rather than by arithmetic: companions are pulled
- * one at a time and only until the resource the player actually clicked is accepted.
+ * ⚠️ Locks are obeyed here, which is the whole point of them: this is what the bulk buttons call.
  */
 import {
     canAssign,
@@ -47,10 +30,8 @@ function trySend(resource) {
 }
 
 /**
- * Releases one resource, pulling companions out of `queue` only for as long as the
- * engine keeps refusing it.
- *
- * @returns how many resources were released in total, this one included.
+ * Releases one resource, pulling companions out of `queue` only for as long as the engine keeps
+ * refusing it. @returns how many were released in total, this one included.
  */
 async function releaseOne(resource, queue) {
     if (trySend(resource)) {
@@ -90,15 +71,10 @@ async function release(settlement, doomed) {
 }
 
 /**
- * Frees enough room in the settlement a resource is LEAVING for it to be allowed to go.
- *
- * Moving a camel out shrinks the old settlement's capacity by two, so the engine refuses
- * the move outright unless there is already room to absorb that - which is why dragging a
- * camel out of a full settlement silently did nothing. Same treatment as unassigning one:
- * companions are released from the end of the source's list, one at a time, and only for
- * as long as the engine keeps refusing.
- *
- * @returns true if the move is now allowed.
+ * Frees enough room in the settlement a resource is LEAVING for the move to be allowed.
+ * ⚠️ Moving a camel out shrinks the old settlement by two, so the engine refuses the move outright
+ * unless there is already room to absorb that - which is why dragging a camel out of a full
+ * settlement silently did nothing.
  */
 export async function freeRoomForMove(sourceSettlement, slottedResource, targetCityID) {
     if (canAssign(targetCityID, slottedResource.resourceValue)) {
@@ -128,45 +104,8 @@ export function unassignOne(settlement, slottedResource) {
     return release(settlement, [slottedResource]);
 }
 
-/**
- * Empties every settlement the local player owns.
- *
- * ⚠️ The ONE implementation of this. There were three - the Reassign All button, the
- * automatic rebuild and the Unassign All button - and they had already drifted: one counted
- * resources and one counted settlements, one had a fallback and one did not, and only two
- * of them waited for the engine. Three answers to "did that work?" for one action.
- *
- * The operation is the game's own: `clearAllResources` in commerce-screen-model.ts walks
- * the player's cities and sends ASSIGN_RESOURCE with `Action: Clear` for each, which is
- * exactly what `requestClearSettlement` sends. Two things are added on top, and both are
- * needed here and not there:
- *
- *   - a wait between settlements, because `sendRequest` only QUEUES. The game does not
- *     plan anything afterwards; this mod immediately lays the empire out again, and
- *     planning against a board that has not emptied yet places resources that are about to
- *     be released;
- *   - a per-resource fallback for when the engine refuses the bulk form, so a settlement it
- *     will not clear in one go is still emptied rather than silently skipped.
- *
- * Read straight from the game rather than from the Commerce screen's model, so the same
- * call works with the screen shut.
- *
- * @returns how many resources were released.
- */
-/**
- * Empties ONE settlement, sparing anything the player has locked.
- *
- * ⚠️ This exists because the model's own `clearAllResources` does not know locks exist. The
- * settlement card's return button used to call that directly, so a padlocked resource - safe
- * from "Unassign all", which is the button locks were built for - was swept away by the
- * smaller button one row above it. Two buttons that both say "return everything here" have to
- * mean the same thing by "everything".
- *
- * ⚠️ The bulk clear is used only where nothing is locked, the same rule and the same reason as
- * in `unassignEverySettlement`: it takes a settlement and no list, so it cannot spare anything.
- *
- * @returns how many resources were released.
- */
+/** Empties every settlement the local player owns, sparing anything locked. */
+/** Empties ONE settlement, sparing anything the player has locked. */
 export async function unassignSettlement(cityID) {
     const city = Cities.get(cityID);
     const assigned = city?.Resources?.getAssignedResources() ?? [];
@@ -207,11 +146,9 @@ export async function unassignEverySettlement() {
         }
 
         /*
-         * ⚠️ THE BULK CLEAR IS ONLY SAFE WHERE NOTHING IS LOCKED. `requestClearSettlement`
-         * takes a settlement and no list - it empties the lot and cannot be asked to spare
-         * anything - so a settlement holding a locked resource has to be emptied one at a
-         * time instead, however much slower that is. Resource+ draws the line in the same
-         * place, for the same reason.
+         * ⚠️ THE BULK CLEAR IS ONLY SAFE WHERE NOTHING IS LOCKED. `requestClearSettlement` takes a
+         * settlement and no list - it empties the lot and cannot be asked to spare anything - so a
+         * settlement holding a locked resource is emptied one at a time instead.
          */
         const doomed = assigned.filter((resource) => !isResourceLocked(city.id, resource.value));
 
@@ -238,11 +175,7 @@ export async function unassignEverySettlement() {
     return cleared;
 }
 
-/**
- * Every resource of one kind (RESOURCE_JADE, RESOURCE_CAMELS, ...) assigned to one
- * settlement, plus anything that turns out to have to leave with them. Other
- * settlements keep theirs.
- */
+/** Every resource of one kind in one settlement, plus anything that has to leave with them. */
 export async function unassignAllOfTypeInSettlement(settlement, resourceType) {
     if (!settlement || !resourceType) {
         return 0;

@@ -1,13 +1,9 @@
 /**
- * What a resource IS and what it DOES - read out of the game's data, never assumed.
+ * What a resource IS and what it DOES, read out of the game's data and never assumed. No view on
+ * whether placing it anywhere would be a good idea - that is scoring.js.
  *
- * Everything here answers a question about a resource type alone (or a type in a given
- * settlement), with no notion of whether placing it there would be a good idea; that
- * judgement lives in scoring.js. Split out because the two change for different reasons:
- * these follow the game's data, the scoring follows what the player asked for.
- *
- * Answers are cached by type, and by age where the age can change them - the tables are
- * iterated rather than queried, so an uncached read is a full scan of GameInfo.
+ * ⚠️ Answers are cached by type, and by age where the age can change them: the tables are
+ * ITERATED rather than queried, so an uncached read is a full scan of GameInfo.
  */
 import { effectTypeOf, modifierApplies, modifierIsConditional, resourceModifiers } from './effects.js';
 
@@ -22,12 +18,9 @@ let yieldTypeByIcon = null;
 
 /**
  * Which yield a `yieldIconSrc` belongs to.
- *
- * The model writes `url(${UI.getIcon(type, "YIELD")})`, so the map is built by asking
- * the same function for every yield and indexing the answers. Resource+ pattern-matched
- * the string instead, with /YIELD_[A-Z_]+/ - and that never matches, because the icon
- * for YIELD_HAPPINESS is `blp:Yield_Happiness`, in mixed case. Every yield total read
- * that way came back as 0, which is why the happiness rescue did nothing at all.
+ * ⚠️ Built by asking `UI.getIcon` for every yield and indexing the answers. Resource+ pattern-
+ * matched the string with /YIELD_[A-Z_]+/, which never matches - the icon for YIELD_HAPPINESS is
+ * `blp:Yield_Happiness`, in mixed case - so every yield total it read came back 0.
  */
 export function yieldTypeFromIcon(iconSource) {
     if (!yieldTypeByIcon) {
@@ -61,17 +54,33 @@ export function resourceType(resource) {
     }
 }
 
+/**
+ * ⚠️ Cached by type, because the fast path here is not as fast as it looks.
+ *
+ * The headless model precomputes `yieldTypes` and most callers hit that first line - but a
+ * resource whose list is EMPTY fails the `?.length` test and falls through, so every resource
+ * that pays no yield used to re-scan `GameInfo.Resource_YieldChanges` from the top. That is a
+ * full table scan per resource per settlement per planning pass, for the answer "none",
+ * which is exactly the answer that cannot change.
+ */
+const resourceYieldTypeCache = new Map();
+
 export function resourceYieldTypes(resource) {
     if (resource.yieldTypes?.length) {
         return resource.yieldTypes;
     }
     const type = resourceType(resource);
+    const cached = resourceYieldTypeCache.get(type);
+    if (cached !== undefined) {
+        return cached;
+    }
     const types = [];
     GameInfo.Resource_YieldChanges.forEach((change) => {
         if (change.ResourceType === type) {
             types.push(change.YieldType);
         }
     });
+    resourceYieldTypeCache.set(type, types);
     return types;
 }
 
@@ -83,11 +92,7 @@ export function effectiveResourceYieldTypes(resource, settlement) {
     return resourceYieldTypes(resource);
 }
 
-/**
- * What this resource actually does, read out of the modifier tables rather than assumed:
- * flat amounts and percentages both, keyed by the effect they come from so that two
- * variants of the same effect are not counted twice.
- */
+/** What this resource does: flat amounts and percentages, keyed by the effect they come from. */
 export function resourceYieldEffects(resource) {
     const type = resourceType(resource);
     if (!type) {
@@ -112,10 +117,8 @@ export function resourceYieldEffects(resource) {
             yieldType,
             amount,
             percent: percentValue === 'true' || percentValue === '1',
-            // ⚠️ Through the index in effects.js, not by scanning the tables. Both
-            // `GameInfo.Modifiers` and `GameInfo.DynamicModifiers` are thousands of rows and
-            // this used to walk BOTH of them, once per modifier, to join them on
-            // `ModifierType` - the join `indexModifiers` already builds once for everybody.
+            // ⚠️ Through the index in effects.js: `GameInfo.Modifiers` and `DynamicModifiers` are
+            // thousands of rows each, and this used to walk BOTH per modifier to join them.
             effectType: effectTypeOf(modifierId) || modifierId,
         });
     });
@@ -142,19 +145,8 @@ const unitProductionCache = new Map();
 
 /**
  * Does this resource exist to speed up building units - of any kind?
- *
- * Read out of the modifier tables, not from a list of resource names: any
- * `*_ADJUST_UNIT_PRODUCTION_*` effect attached to the resource counts, whether it is
- * qualified or not. The qualifiers that do appear are only there to narrow which units
- * benefit, and none of them changes the answer:
- *
- *   no qualifier at all                -> every unit          (Truffles, Salt)
- *   Domain = DOMAIN_LAND / DOMAIN_SEA  -> combat units        (Cotton, Hardwood, Citrus)
- *   UnitClass = UNIT_CLASS_NON_COMBAT  -> settlers and such   (Hardwood, modern)
- *   UnitTag  = UNIT_CLASS_RELIGIOUS    -> missionaries        (Incense)
- *
- * The first attempt required a qualifier to be present and missed Truffles and Salt
- * entirely, which is how a truffle kept beating jade to a slot.
+ * ⚠️ Read from the effect rather than from a name list, and it is the whole reason such resources
+ * sort last: production you can only spend on units is not production a settlement can build with.
  */
 export function givesUnitProductionBonus(resource) {
     const type = resourceType(resource);
@@ -197,23 +189,16 @@ export function resourceClassOf(resource) {
 /**
  * Classes that never go into a settlement slot at all.
  *
- * ⚠️ An empire resource pays its bonus for being HELD and a treasure resource turns into
- * treasure fleets; neither is ever assigned anywhere. The game's own Commerce screen drops
- * both before it builds the unassigned pool - `commerce-screen-model.ts`, same two class
- * names, no age logic:
+ * ⚠️ An empire resource pays for being HELD and a treasure resource becomes treasure fleets. The
+ * game's own screen drops both before building the pool (`commerce-screen-model.ts`, same two
+ * class names, no age logic).
  *
- *     if (playerResource.ResourceClassType == "RESOURCECLASS_EMPIRE" ||
- *         playerResource.ResourceClassType == "RESOURCECLASS_TREASURE") return;
+ * ⚠️ A CLASS check and not a list, because which resources those are changes with the age: Gold is
+ * EMPIRE in Antiquity and TREASURE in Exploration, Ivory becomes BONUS, Marble becomes EMPIRE only
+ * in Modern. Each age's resources.xml rewrites the column.
  *
- * ⚠️ Which resources those ARE changes with the age, and that is exactly why this is a class
- * check and not a list. Gold is `EMPIRE` in Antiquity and `TREASURE` in Exploration; Ivory is
- * `EMPIRE` in Antiquity and `BONUS` in Exploration; Marble becomes `EMPIRE` only in Modern.
- * Each age's `resources.xml` rewrites the column with `<Update>` rows, so reading
- * `ResourceClassType` out of the loaded database already gives the answer for the age being
- * played.
- *
- * ⚠️ Written as an exclusion rather than an allow-list, matching the game: a class a patch or
- * a DLC adds is then offered for assignment rather than silently vanishing from the pool.
+ * ⚠️ An exclusion rather than an allow-list, matching the game: a class a patch adds is then
+ * offered for assignment rather than silently vanishing from the pool.
  */
 const UNASSIGNABLE_CLASSES = new Set(['RESOURCECLASS_EMPIRE', 'RESOURCECLASS_TREASURE']);
 
@@ -223,24 +208,16 @@ export function isAssignableToSettlement(resource) {
 }
 
 /**
- * Did this copy arrive over a trade route from another leader?
+ * Did this COPY arrive over a trade route from another leader?
  *
- * ⚠️ The game's own test, copied from `getResourcePropsFromDefinition` in
- * commerce-screen-model.ts - it is what draws the foreign leader's flag on the resource
- * icon:
+ * ⚠️ The game's own test, from `getResourcePropsFromDefinition` - it is what draws the foreign
+ * flag on the icon: `originCity.owner !== GameContext.localPlayerID`. The CURRENT owner, not
+ * `originalOwner`: a city you have since captured stops being an import.
  *
- *     if (originCity.owner !== GameContext.localPlayerID) { ...import flag... }
+ * ⚠️ A property of the COPY, not of the type - your own Silk and a bought Silk are the same type
+ * and a different thing, which is why `groupByResourceType` keys on this too.
  *
- * The CURRENT owner, not `originalOwner`. The model reads `originalOwner` too, but only to
- * pick the colours of the flag; a city you have since captured stops being an import.
- *
- * ⚠️ This is a property of the COPY, not of the resource type - your own Silk and a Silk
- * bought from a neighbour are the same type and a different thing. That is why
- * `groupByResourceType` has to key on this as well; see the note there.
- *
- * Cached for the length of a placement run, keyed by resource value. A city changing hands
- * changes the answer, which cannot happen while resources are being assigned, and the cache
- * is dropped at the start of every run.
+ * Cached for one placement run: a city changing hands cannot happen mid-assignment.
  */
 const importOriginCache = new Map();
 
@@ -267,16 +244,7 @@ export function isImportedResource(resource) {
 
 const warehouseScalingCache = new Map();
 
-/**
- * Does this resource's bonus grow with the number of warehouses in the settlement?
- *
- * Such a resource is worth far more where warehouses are many, so it should be steered
- * there rather than dropped in the first settlement with a free slot.
- *
- * Read from the data: these are `EFFECT_CITY_ADJUST_CONSTRUCTIBLE_YIELD_PER_RESOURCE`
- * modifiers carrying `Tag = WAREHOUSE`. Resource+ named a single resource here - turtles -
- * and so missed Clay (production) and Crabs (food), which scale exactly the same way.
- */
+/** Does this resource's bonus grow with the number of warehouses in the settlement? */
 export function scalesWithWarehouses(resource) {
     const type = resourceType(resource);
     if (!type) {
@@ -296,18 +264,7 @@ export function scalesWithWarehouses(resource) {
     return scales;
 }
 
-/**
- * The largest amount this resource can pay for one yield ANYWHERE, per effect group.
- *
- * Read with no settlement in mind: every variant counts, including the ones gated on a
- * condition this settlement does not meet. It is the yardstick `conditionalBoostStrength`
- * measures a settlement against - "is this the good branch, or the consolation one".
- *
- * Keyed the same way `computeYieldBoosts` groups its effects (`yieldType:effectType`), so
- * the two can be compared entry by entry. Percentages are compared as rates: a 10% and a
- * 15% variant of the same effect differ by the number in the data, which is what the
- * branch is choosing between.
- */
+/** The largest amount this resource can pay for one yield anywhere, per effect group. */
 const bestBoostCache = new Map();
 
 function bestBoostsAnywhere(resource) {
@@ -329,37 +286,24 @@ function bestBoostsAnywhere(resource) {
 }
 
 /**
- * How strongly a resource's *conditional* bonus applies in this settlement.
+ * How strongly a resource's CONDITIONAL bonus applies here. 0 means this is not a place the
+ * resource is especially rewarded; higher is a better fit. Scoring lifts a resource onto its own
+ * tier when this is above zero, so it has to mean "this is the good branch".
  *
- * 0 means this settlement is not a place the resource is especially rewarded in; anything
- * higher means it is, and the bigger the number the better the fit. Scoring lifts a
- * resource onto its own tier when this is above zero, so it has to mean "this is the good
- * branch" and nothing weaker.
+ * ⚠️ Asked of the DATA, not of a table of names. Resource+ used a hand-written per-age table that
+ * disagreed with the game - it returned "conditions met" for gypsum, kaolin and pearls when a
+ * settlement was NOT the capital, the exact opposite of REQUIREMENT_CITY_IS_CAPITAL, and 31
+ * conditional resources were missing from it altogether.
  *
- * Resource+ answered this from a hand-written table of resource names per age, and the
- * table disagreed with the data: it returned "conditions met" for gypsum, kaolin and
- * pearls when a settlement was NOT the capital, while the game gates those bonuses on
- * REQUIREMENT_CITY_IS_CAPITAL - the opposite. The same inversion ran through the
- * distant-lands entries for spices, sugar, tea and cocoa, and 31 conditional resources
- * were missing from the table altogether. So the question is put to the data instead.
+ * ⚠️ But "has a gated bonus this settlement satisfies" is NOT enough, and asking only that sent
+ * Fish to portless towns. The game writes an either/or bonus as TWO gated modifiers, one the
+ * inverse of the other - `MOD_FISH_PORT_FOOD` +8 requires a port, `MOD_FISH_NON_PORT_FOOD` +4
+ * requires none - so a portless settlement satisfies the CONSOLATION branch and was lifted onto
+ * the conditional tier just as a port city is. Same shape for Furs, Pearls, Silk, Tobacco,
+ * Truffles, Tin, Wild Game, Gypsum, Kaolin; see knowledge-base/27-resources.md.
  *
- * ⚠️ But "has a gated bonus this settlement satisfies" is not enough on its own, and
- * asking only that is what sent Fish to portless towns. The game writes an either/or
- * bonus as TWO gated modifiers, one of them the inverse of the other:
- *
- *     MOD_FISH_PORT_FOOD      +8 Food   requires BUILDING_PORT
- *     MOD_FISH_NON_PORT_FOOD  +4 Food   requires NOT BUILDING_PORT
- *
- * A settlement without a port therefore satisfies a gated bonus - the consolation one -
- * and Fish was lifted onto the conditional tier there just as it is in a port city. In a
- * food-hungry town that put Fish at +4 above Sugar at a flat +8, which is the wrong way
- * round by a factor of two. The same shape covers Furs, Pearls, Silk, Tobacco and
- * Truffles in Modern, and Tin, Wild Game, Gypsum and Kaolin earlier on; see
- * knowledge-base/27-resources.md for the full list per age.
- *
- * So the test is: a gated bonus applies here AND what this settlement gets out of it is
- * the best that resource can pay for that yield anywhere. The consolation branch scores
- * on its actual amount like any ordinary resource, which is all it ever deserved.
+ * So the test is: a gated bonus applies here AND this settlement gets the best that resource can
+ * pay for that yield anywhere. The consolation branch scores on its amount like any other.
  */
 export function conditionalBoostStrength(resource, settlement) {
     // Warehouse-scaling resources are worth one multiple of their bonus per warehouse,

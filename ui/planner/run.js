@@ -1,12 +1,8 @@
 /**
- * What the buttons on the screen do: Assign All, Reassign All, Unassign All, and a
- * settlement's own quick assign. The automatic path in auto-assign.js comes through here
- * too, so that everything which rearranges the empire shares one guard and one log.
+ * What the buttons do: Assign All, Reassign All, Unassign All, quick assign - and the automatic
+ * path in auto-assign.js, so everything that rearranges the empire shares one guard and one log.
  *
- * The placing itself is place.js and the emptying is engine/unassign.js - see the note in
- * place.js for why none of this goes through the screen's model. What is left here is the
- * framing: one run at a time, empty before refilling, and a line in the log saying what
- * happened.
+ * Placing is place.js, emptying is engine/unassign.js. What is left here is the framing.
  */
 import { unassignEverySettlement } from '../engine/unassign.js';
 import { buildSettlements } from '../model/headless-model.js';
@@ -42,7 +38,18 @@ async function clearEmpire() {
  * actually been placed, and a run that started and placed nothing would otherwise look like
  * success and swallow the arrival.
  */
-async function runExclusively(model, work) {
+/**
+ * How long a run may take before it is reported even with diagnostics off.
+ *
+ * ⚠️ `warn`, not `log`, and that is the point. A pass that takes half a minute is indis-
+ * tinguishable from the game having hung, and the automatic path runs from
+ * `LocalPlayerTurnBegin` - so what the player sees is "the turn takes a minute to load", with
+ * nothing anywhere saying what did it. Every entry point goes through here, so one line here
+ * covers all four; the breakdown of WHERE the time went is in place.js and needs diagnostics.
+ */
+const SLOW_RUN_MS = 5000;
+
+async function runExclusively(model, work, label = 'assignment') {
     if (assignmentInProgress) {
         return false;
     }
@@ -50,6 +57,7 @@ async function runExclusively(model, work) {
         return false;
     }
     assignmentInProgress = true;
+    const startedAt = Date.now();
     try {
         model?.deselectSelectedResource?.();
         return await work();
@@ -58,6 +66,14 @@ async function runExclusively(model, work) {
         return false;
     } finally {
         assignmentInProgress = false;
+        const took = Date.now() - startedAt;
+        if (took >= SLOW_RUN_MS) {
+            warn(
+                `${label} took ${(took / 1000).toFixed(1)}s` +
+                    (model ? '' : ' with the Commerce screen closed') +
+                    '; turn on diagnostics for the breakdown',
+            );
+        }
     }
 }
 
@@ -104,33 +120,49 @@ function logHappinessState() {
  * @returns how many resources were placed, or false if the run never started.
  */
 export function assignAll(model = null, { scope = null, label = 'assign all' } = {}) {
-    return runExclusively(model, async () => {
-        logHappinessState();
-        const placed = await placeResources({ scope, label });
-        logHappinessState();
-        return placed;
-    });
+    return runExclusively(
+        model,
+        async () => {
+            logHappinessState();
+            const placed = await placeResources({ scope, label });
+            logHappinessState();
+            return placed;
+        },
+        label,
+    );
 }
 
 /** Empties every settlement, then lays the whole empire out again. */
 export function reassignAll(model = null, { label = 'reassign all' } = {}) {
-    return runExclusively(model, async () => {
-        const cleared = await clearEmpire();
-        log(`${label}: ${cleared} unassigned, laying them out again`);
-        logHappinessState();
-        return placeResources({ label });
-    });
+    return runExclusively(
+        model,
+        async () => {
+            const cleared = await clearEmpire();
+            log(`${label}: ${cleared} unassigned, laying them out again`);
+            logHappinessState();
+            return placeResources({ label });
+        },
+        label,
+    );
 }
 
 /** Empties every settlement and leaves it at that. */
 export function unassignAll(model = null) {
-    return runExclusively(model, async () => {
-        const cleared = await clearEmpire();
-        log(`unassign all: ${cleared} released`);
-        return cleared;
-    });
+    return runExclusively(
+        model,
+        async () => {
+            const cleared = await clearEmpire();
+            log(`unassign all: ${cleared} released`);
+            return cleared;
+        },
+        'unassign all',
+    );
 }
 
 export function quickAssignSettlement(model, cityID) {
-    return runExclusively(model, () => placeResources({ targetCityID: cityID, label: 'quick assign' }));
+    return runExclusively(
+        model,
+        () => placeResources({ targetCityID: cityID, label: 'quick assign' }),
+        'quick assign',
+    );
 }

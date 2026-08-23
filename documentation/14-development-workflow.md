@@ -131,15 +131,28 @@ Follow the surrounding code. In short:
 - Prefer `?.` and `??`. Wrap every call into the game in `try` / `catch` and `warn` on failure —
   the engine throws where a browser would return `undefined`.
 
-### The `⚠️` convention
+### The `⚠️` convention, and the comment budget
 
 ⚠️ markers record a bug that shipped, a measurement, or an approach that was tried and failed.
-**They are the most valuable text in the repository.** If you change the code one describes, update
-the marker. Do not delete one because it "reads like a comment about nothing" — that is exactly
-what a successfully prevented bug looks like.
+**The FACT in one is the most valuable text in the repository; the story around it is not.** If you
+change the code one describes, update it. Do not delete one because it "reads like a comment about
+nothing" — that is exactly what a successfully prevented bug looks like.
 
 Write a new one when you discover something the platform does that a reasonable reader would not
-predict. Say what was tried, what happened, and what the evidence was.
+predict. Say the constraint and the evidence in a line or two — not the debugging session.
+
+⚠️ **The comments here are for an agent opening this repository cold, and that is the whole
+budget.** They were once **38% of the codebase**, which is past the point where they help: an agent
+reading in has to get through all of it before touching anything. Say the fact, never restate the
+code, and prefer one ⚠️ line to a ⚠️ paragraph. If it genuinely needs a paragraph it belongs in
+this folder, with the comment pointing at it.
+
+A module header is three to eight lines for an ordinary module. A genuinely complex one —
+`scoring.js`'s tier order, `auto-assign.js`'s trigger rules — may need twenty, but then every line
+carries a distinct fact and none of them is narrative.
+
+⚠️ **A comment inside a template literal is DATA, not a comment.** The CSS lives in template
+literals, so a `/* ... */` in a style constant is part of a string — editing one changes code.
 
 ## Before you commit
 
@@ -150,8 +163,9 @@ predict. Say what was tried, what happened, and what the evidence was.
    something is going through the screen's model again — see
    [planner: assignment](07-planner-assignment.md).
 5. If you touched localisation, confirm no raw `LOC_…` tags appear on screen.
-6. Set `DIAGNOSTICS = false` in `ui/support/diagnostics.js` **before publishing** (it is currently
-   `true`). The author's previous mod shipped 1.0 with logging on.
+6. Set `DIAGNOSTICS = false` in `ui/support/diagnostics.js` **before publishing**. It ships
+   `false`; turn it on while working and off again before you publish. The author's previous mod
+   shipped 1.0 with logging on.
 
 ## Compatibility
 
@@ -168,6 +182,7 @@ mid-game.
 `deploy.sh` copies only the `.modinfo`, `ui/`, `text/` and `config/`. Everything else stays here:
 
 ```
+CLAUDE.md                 what an agent reads first; points at documentation/README.md
 README.md                 the player- and author-facing document
 CHANGELOG.md              the full history, with reasoning
 STEAM_CHANGELOG.bbcode    ⚠️ the SHORT form of it; see below. 8000-character limit

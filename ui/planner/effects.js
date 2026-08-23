@@ -1,21 +1,8 @@
 /**
  * Reading what a resource actually does, from the modifier tables.
  *
- * Two things here that the ported Resource+ code got wrong, both found by auditing every
- * resource in every age against the game's data:
- *
- * 1. **Not every resource modifier is registered in `ModifierMetadatas`.** Resource+
- *    looked there only. Nickel (Modern) and one of Gypsum's (Antiquity) are linked
- *    solely by the modifier's own `ResourceType` argument, so they were invisible -
- *    Nickel scored as a resource that does nothing at all.
- *
- * 2. **Modifiers carry requirements, and most of them mean "cities only".** 29 resource
- *    modifiers are gated on `REQUIREMENT_CITY_HAS_BUILD_QUEUE`, which a town does not
- *    have. Jade's +10 gold, Silk's +10 culture, Lapis Lazuli's +4 production - all of it
- *    was being credited to towns, where none of it happens. Others split by settlement
- *    type outright: Tin gives +2 production in a city and +4 in a town, Wild Game +2 and
- *    +4, and taking the smaller of the two (which is what happens when both look
- *    applicable) understated both.
+ * ⚠️ Indexed ONCE and answered from the index. `GameInfo.Modifiers` and `GameInfo.DynamicModifiers`
+ * are thousands of rows each, and joining them per question is a full scan of both.
  */
 import { warn } from '../support/diagnostics.js';
 
@@ -107,13 +94,7 @@ function indexRequirements() {
     return requirementsByModifier;
 }
 
-/**
- * Can this settlement satisfy one requirement?
- *
- * Anything not understood counts as satisfied. Being too eager costs a slightly wrong
- * score; being too strict would silently drop a resource from consideration entirely,
- * which is much worse and much harder to notice.
- */
+/** Can this settlement satisfy one requirement? */
 function meetsRequirement(entry, settlement, city) {
     const isTown = !!settlement.settlementNameData?.isTown;
     let met;
@@ -167,13 +148,7 @@ export function modifierIsConditional(modifierId) {
     return indexRequirements().has(modifierId);
 }
 
-/**
- * The requirements a modifier is gated on, as data: `{ all, entries: [{ type, inverse, args }] }`.
- *
- * Exposed because a requirement is sometimes the most interesting thing about an effect -
- * "+1 combat strength" says far less than which units it reaches, and that is carried by
- * a REQUIREMENT_UNIT_TAG_MATCHES rather than by any argument of the modifier itself.
- */
+/** The requirements a modifier is gated on: `{ all, entries: [{ type, inverse, args }] }`. */
 export function modifierRequirements(modifierId) {
     return indexRequirements().get(modifierId) ?? null;
 }
@@ -182,7 +157,6 @@ export function modifierRequirements(modifierId) {
 export function resourceModifiers(resourceType) {
     return indexResourceModifiers().get(resourceType) ?? new Map();
 }
-
 
 /*
  * ---------------------------------------------------------------------------------------
@@ -203,13 +177,8 @@ function indexModifiers() {
     effectTypeByModifier = new Map();
     collectionByModifier = new Map();
     try {
-        /*
-         * ⚠️ BOTH the effect and the collection come from DynamicModifiers, keyed by
-         * ModifierType - `Modifiers` rows carry neither. Reading CollectionType off a
-         * Modifiers row returns undefined every time, which is what silently disabled the
-         * capital-only handling: furs give +3 Happiness in the CAPITAL, and the total was
-         * being multiplied by the whole empire.
-         */
+    // ⚠️ BOTH the effect and the collection come from DynamicModifiers, keyed by ModifierType -
+    // the Modifiers row carries the type, not the effect.
         const byModifierType = new Map();
         GameInfo.DynamicModifiers?.forEach((entry) => {
             byModifierType.set(entry.ModifierType, {
@@ -237,15 +206,8 @@ export function effectTypeOf(modifierId) {
 }
 
 /**
- * Who the modifier is applied to - and it is NOT always every settlement.
- *
- * ⚠️ Reading only the requirements is not enough; the collection is a separate thing and
- * it narrows the reach on its own. Furs give +3 Happiness through
- * COLLECTION_ALL_CAPITAL_CITIES - the capital, once - and counting that in every
- * settlement multiplied the figure by the size of the empire.
- *
- * Resource modifiers use four: ALL_CITIES (115), ALL_UNITS (10), ALL_PLAYERS (10),
- * ALL_CAPITAL_CITIES (6).
+ * Who the modifier is applied to - and it is NOT always every settlement. A collection of
+ * "the capital" or "the player" changes what a per-settlement total means.
  */
 export function collectionOf(modifierId) {
     indexModifiers();

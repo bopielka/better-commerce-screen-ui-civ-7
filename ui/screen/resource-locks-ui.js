@@ -1,17 +1,6 @@
 /**
- * The padlock in the corner of a slotted resource.
- *
- * Click it and that resource stays where it is through "Unassign all" and "Reassign all".
- * What the lock means and where it is kept are in engine/resource-locks.js; this module is
- * only the control.
- *
- * ⚠️ The look and the placement are **Resource+**'s (`br4d-resource-lock`), on purpose - the
- * game's own `blp:icon_lock`, small, top-right of the tile, dim until locked. A player who
- * has used that mod should recognise this one without being told, and two mods drawing the
- * same idea two different ways is worse than either.
- *
- * ⚠️ Re-injected from a `MutationObserver` rather than placed once, the same as
- * settlement-controls.js: the cards are Solid's and a redraw takes anything of ours with it.
+ * The padlock in the corner of a slotted resource. The lock itself is engine/resource-locks.js.
+ * ⚠️ Re-injected from the shared screen watcher rather than placed once: the tiles are Solid's.
  */
 import { getCommerceModel, settlementCards } from '../model/screen-model.js';
 import {
@@ -20,7 +9,7 @@ import {
     isResourceLockingAllowed,
     toggleResourceLock,
 } from '../engine/resource-locks.js';
-import { bindActivatable, ensureStyle, makeElement } from '../support/dom.js';
+import { bindActivatable, ensureStyle, makeElement, setTooltip } from '../support/dom.js';
 import { watchCommerceScreen } from './screen-observer.js';
 import { warn } from '../support/diagnostics.js';
 
@@ -82,8 +71,8 @@ let styleElement = null;
 function paint(lock, cityID, resourceValue) {
     const locked = isResourceLocked(cityID, resourceValue);
     lock.classList.toggle(LOCKED_CLASS, locked);
-    lock.setAttribute(
-        'data-tooltip-content',
+    setTooltip(
+        lock,
         Locale.compose(locked
             ? 'LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP'
             : 'LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP'),
@@ -110,11 +99,7 @@ function injectOnce() {
         slots.forEach((slot, index) => {
             const resource = resources[index];
             if (!resource) {
-                /*
-                 * A tile past the end of the model's list is an EMPTY slot. It carries no
-                 * resource to lock, and one left over from a resource that has just been
-                 * removed would otherwise keep a padlock pointing at nothing.
-                 */
+    // A tile past the end of the model's list is an EMPTY slot: nothing to lock.
                 slot.querySelector(`.${LOCK_CLASS}`)?.remove();
                 slot.classList.remove(SLOT_CLASS);
                 return;
@@ -124,9 +109,7 @@ function injectOnce() {
             const key = `${settlement.cityID?.id}:${resource.resourceValue}`;
             const existing = slot.querySelector(`.${LOCK_CLASS}`);
             if (existing) {
-                // ⚠️ Only reused when it still belongs to the same resource. The slots are
-                // positional, so a removal shuffles every resource after it up by one and a
-                // padlock left in place would then be wired to its neighbour's lock.
+        // ⚠️ Only reused when it still belongs to the same resource - the slots are recycled.
                 if (existing.dataset.najaneLockKey === key) {
                     paint(existing, settlement.cityID, resource.resourceValue);
                     return;
@@ -135,13 +118,8 @@ function injectOnce() {
             }
 
             const lock = makeElement('div', LOCK_CLASS);
-            /*
-             * ⚠️ Marks this as OURS for the screen's own hit-testing, and it is not optional.
-             * The padlock overhangs its tile, and the hit-test climbs the DOM - so without
-             * this, a click in the gap beside a resource answered as a click ON that resource
-             * and shift-clicking a card to fill it selected instead of assigning. See
-             * `hitTestElements` in model/screen-model.js.
-             */
+    // ⚠️ Marks this as OURS for the screen's hit-testing, and it is not optional: a hit test that
+    // returned the padlock instead of the resource under it broke Shift-click on locked tiles.
             lock.setAttribute('data-najane-overlay', 'true');
             lock.dataset.najaneLockKey = key;
             paint(lock, settlement.cityID, resource.resourceValue);
@@ -161,11 +139,8 @@ function inject() {
     }
     injecting = true;
     try {
-        /*
-         * ⚠️ Switched off means GONE, not merely inert. The option is offered so a player who
-         * does not want this can have the screen they had before, and a padlock that is still
-         * drawn but does nothing is worse than either state.
-         */
+        // ⚠️ Switched off means GONE, not inert: a padlock still drawn but doing nothing is worse
+        // than either state.
         if (!isResourceLockingAllowed()) {
             removeAllLocks();
             return;
@@ -183,21 +158,16 @@ export function startResourceLocks() {
         return;
     }
     styleElement = ensureStyle(STYLE_ID, STYLE);
-    /*
-     * ⚠️ The option can be changed with this screen open - the options menu opens over it -
-     * and turning it off has to take the padlocks away there and then, which no DOM mutation
-     * of the game's own would otherwise announce.
-     */
+    // ⚠️ The options menu opens OVER this screen, so turning the option off has to take the
+    // padlocks away there and then - no DOM mutation of the game's own would announce it.
     window.addEventListener(ResourceLocksChangedEventName, inject);
     inject();
     // One observer for the whole screen, batched to a frame; see screen-observer.js.
     unwatch = watchCommerceScreen(inject);
 }
 
-/**
- * ⚠️ The padlocks go, the LOCKS STAY. The player's choices belong to the session, not to the
- * screen being open - leaving the tab and coming back must not quietly unpin everything.
- */
+    // ⚠️ The padlocks go, the LOCKS STAY: the player's choices belong to the session, not to the
+    // screen being open.
 export function stopResourceLocks() {
     unwatch?.();
     unwatch = null;

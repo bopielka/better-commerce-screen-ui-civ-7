@@ -1,42 +1,25 @@
 /**
  * A tab strip inside each trade route section: what should be at the front of the list.
  *
- * The cards answer "who would trade with me"; they do not answer "which of these is worth
- * the trade capacity", and that question is always asked in terms of a yield. So each
- * section gets the screen's own tab strip, in miniature, with a yield per tab:
+ * A tab FILTERS and then orders - pick Production and the section shows only routes carrying a
+ * resource that pays Production, most first. Balanced filters nothing and orders by total count.
  *
- *     [balanced] [food] [production] [gold] [science] [culture] [influence] [camels] [empire]
+ * ⚠️ Only tabs there is something to filter by are drawn, built from the routes projected this
+ * turn: a tab that hides every card is worse than no tab.
  *
- * A tab FILTERS and then orders: pick Production and the section shows only the routes that
- * carry at least one Resource paying Production, the one carrying the most at the front.
- * Balanced filters nothing and orders by how many Resources a route carries in total.
+ * ⚠️ NOTHING HERE MOVES A CARD. The cards are Solid's, rendered by a `For` over the model's array;
+ * reordering those nodes by hand makes Solid's record a lie and the next reconcile dies on
+ * `insertBefore ... is not a child of this node`. Ordering sorts THE MODEL'S ARRAY, as the game's
+ * own sort dropdown does; filtering hides the card with a style.
  *
- * ⚠️ Only the tabs there is something to filter by are drawn. The strip is built from the
- * routes actually projected this turn, so an age with no Culture Resources in reach offers no
- * Culture tab - a tab that hides every card is worse than no tab at all.
+ * ⚠️ Each section keeps its OWN choice - the two answer different questions.
  *
- * ⚠️ NOTHING HERE MOVES A CARD. The cards are Solid's, rendered by a `For` over the model's
- * own array, and Solid keeps its own record of which node sits where. Reordering those nodes
- * by hand - or moving one into a container of ours - makes that record a lie, and the next
- * reconcile dies on `insertBefore ... is not a child of this node`, taking the rest of the
- * screen's rendering with it. It happened; see the ⚠️ in trade-routes.js. Ordering is done by
- * sorting THE MODEL'S ARRAY, which is how the game's own sort dropdown does it, and filtering
- * by hiding the card - a style, not a move.
+ * ⚠️ THE STRIP IS A COPY OF THE GAME'S TAB BAR, NOT AN INSTANCE OF IT: the classes are lifted from
+ * `core/ui-next/components/tab.js`, so it is the same object on screen without mounting a Solid
+ * component into a tree this mod does not own.
  *
- * ⚠️ Each section keeps its OWN choice. The two sections answer different questions - "which
- * route do I open next" and "which of these is worth working towards" - and a player sorting
- * the available routes by gold has not thereby said anything about the unreachable ones.
- *
- * ⚠️ THE STRIP IS A COPY OF THE GAME'S TAB BAR, NOT AN INSTANCE OF IT. The classes are the
- * game's own (`img-tab-bar`, `img-tab-end-cap`, `img-tab-selection-indicator` and the text
- * colours), lifted from `core/ui-next/components/tab.js`, so it is the same object on screen
- * without this mod having to mount a Solid component into a tree it does not own.
- *
- * ⚠️ It deliberately does NOT carry `data-name="TabList"` or `data-name="TabListItem"`.
- * Three modules find the screen's real tab strip by exactly those attributes - tab-icons.js
- * iconifies its items, treasure-tab.js and trade-summary.js hang things off its row - and
- * `document.querySelector` takes the FIRST match in the document. A faithful copy carrying
- * the same attributes would quietly become "the tab strip" for all three.
+ * ⚠️ And it deliberately does NOT carry `data-name="TabList"`. Three modules find the screen's
+ * real strip by exactly that attribute, and `querySelector` takes the FIRST match in the document.
  */
 import { isFactoryAge } from '../engine/age.js';
 import { grantsBonusSlots } from '../engine/resource-slots.js';
@@ -56,14 +39,8 @@ const INDICATOR_CLASS = `${SORT_CLASS}__indicator`;
 const ACTIVE_CLASS = `${SORT_CLASS}__item--active`;
 const CARD_CLASS = 'trade-route-card';
 
-/*
- * ⚠️ Both classes, not just EMPIRE. `ui/planner/facts.js` already treats the two as one kind
- * of thing - `UNASSIGNABLE_CLASSES` groups them because both are held rather than slotted -
- * and a resource is TREASURE instead of EMPIRE in some ages purely because a game patch
- * rewrote its `ResourceClassType` (Gold is EMPIRE in Antiquity, TREASURE in Exploration; see
- * the note on `isAssignableToSettlement`). A filter that only matched one class would quietly
- * stop finding the same resource the moment the age changed under it.
- */
+// ⚠️ Both classes, not just EMPIRE: planner/facts.js already treats the two as one kind, and
+// which resources fall in which changes with the age.
 const EMPIRE_CLASS_TYPES = ['RESOURCECLASS_EMPIRE', 'RESOURCECLASS_TREASURE'];
 const FACTORY_CLASS_TYPE = 'RESOURCECLASS_FACTORY';
 
@@ -74,13 +51,7 @@ const FACTORY_ICON = 'blp:restype_factory_v2';
 /** How many frames the selection indicator may wait for a layout before giving up. */
 const MAX_INDICATOR_ATTEMPTS = 20;
 
-/**
- * Whose teardown owns these tooltips - one scope per strip, under the tab's own.
- *
- * ⚠️ Per strip, because a strip is thrown away and rebuilt whenever the tabs on offer change.
- * A framed tooltip left mounted around a discarded element floats off to the top-left corner
- * of the screen; see `disposeFramedTooltips`.
- */
+/** Whose teardown owns these tooltips - one scope per strip, under the tab's own. */
 const TOOLTIP_SCOPE = 'trade-routes';
 
 function tooltipScopeFor(section) {
@@ -167,14 +138,7 @@ export const SORT_STYLE = `
 }
 `;
 
-/**
- * The resource that carries its own slots - camels, in the ages that have them.
- *
- * ⚠️ Found by the COLUMN, never by name. `BonusResourceSlots` is a schema column defaulting
- * to zero, and reading it covers anything a patch or another mod gives the property; see
- * ui/engine/resource-slots.js, which counts them the same way. The tab needs one definition
- * on top of the count, for its icon and its name, and that is what this is for.
- */
+/** The resource that carries its own slots - camels, in the ages that have them. */
 let slotResource;
 
 function slotGrantingResource() {
@@ -195,12 +159,7 @@ function slotGrantingResource() {
     return slotResource;
 }
 
-/**
- * The tabs, in the order they are drawn.
- *
- * `count` is the whole difference between them: given a route's Resources, how many of them
- * does this tab care about? Sorting is then the same operation for every tab.
- */
+/** The tabs, in the order they are drawn. */
 function tabs() {
     const yieldTab = (yieldType) => ({
         key: yieldType,
@@ -231,11 +190,7 @@ function tabs() {
         yieldTab('YIELD_DIPLOMACY'),
     ];
 
-    /*
-     * Camels, and only in an age that has them. There is nothing to sort by in the Modern age
-     * - no resource there grants slots - and a tab that scores every route zero is a tab that
-     * silently falls back to the default order, which reads as the tab being broken.
-     */
+    // Camels, and only in an age that has them.
     const slots = slotGrantingResource();
     if (slots && !isFactoryAge()) {
         list.push({
@@ -272,11 +227,7 @@ function tabs() {
     return list;
 }
 
-/*
- * Both answers are cached per resource TYPE. `resourceYieldTypes` scans
- * GameInfo.Resource_YieldChanges on every call - it is written for the assignment pass, which
- * asks about a handful of resources - and this asks about every resource on every card.
- */
+/* Cached per resource TYPE: this asks about every resource on every card. */
 const yieldCache = new Map();
 const classCache = new Map();
 
@@ -306,11 +257,7 @@ function classOf(resourceTypeName) {
     return classCache.get(resourceTypeName);
 }
 
-/**
- * Every route the tab is drawing this turn, so the strip can leave out what nobody has.
- *
- * Set from trade-routes.js whenever the projection is rebuilt.
- */
+/** Every route the tab is drawing this turn, so the strip can leave out what nobody has. */
 let knownRoutes = [];
 const offeredCache = new Map();
 
@@ -327,15 +274,7 @@ function sectionOfRoute(route) {
     return route?.startable ? 'available' : 'unavailable';
 }
 
-/**
- * The tabs worth drawing in ONE section: balanced, plus the ones a route in that section can
- * satisfy.
- *
- * ⚠️ Per section, not across the tab. Counted over every route at once, the available section
- * offered a Science tab because some unreachable settlement three continents away had a
- * Science resource - and pressing it emptied the section. A filter belongs to the list it
- * filters.
- */
+/** The tabs worth drawing in ONE section: balanced, plus what a route there can be sorted by. */
 function offeredTabs(section) {
     if (offeredCache.has(section)) {
         return offeredCache.get(section);
@@ -347,17 +286,7 @@ function offeredTabs(section) {
     return list;
 }
 
-/**
- * The tab in force, PER SECTION.
- *
- * ⚠️ One state per strip, not one shared between them. The two sections answer different
- * questions - "which route do I open next" and "which of these is worth working towards" - and
- * a player sorting the available routes by gold has not thereby said anything about how they
- * want the unreachable ones ordered.
- *
- * The section is named by what it holds rather than by the element it is drawn in: rows are
- * Solid's and are thrown away on every redraw, so an element would lose the choice with them.
- */
+/** The tab in force, PER SECTION - see the header for why the two do not share one. */
 const DEFAULT_KEY = 'balanced';
 const activeKeyBySection = new Map();
 
@@ -365,11 +294,8 @@ function activeKeyFor(section) {
     return activeKeyBySection.get(section) ?? DEFAULT_KEY;
 }
 
-/**
- * ⚠️ Falls back to Balanced when the chosen tab is no longer on offer. The resources in reach
- * change from turn to turn, and a filter left pointing at a tab that has gone would hide every
- * card in the section with nothing on screen to explain why.
- */
+    // ⚠️ Falls back to Balanced when the chosen tab is no longer on offer: what is in reach
+    // changes between turns, and a tab hiding every card looks like a broken screen.
 function activeTabFor(section) {
     const list = offeredTabs(section);
     return list.find((tab) => tab.key === activeKeyFor(section)) ?? list[0];
@@ -384,12 +310,7 @@ export function startSortTabs(options) {
     onChange = options.onChange;
 }
 
-/**
- * What the tab in force counts in this route, and how much the route carries in all.
- *
- * The second figure is the tie-break: within one count the route bringing more is the better
- * one, which is also what Balanced orders by on its own.
- */
+/** What the tab in force counts in this route, and how much the route carries in all. */
 function scoreOf(route, section) {
     const resources = route?.resources ?? [];
     try {
@@ -411,12 +332,7 @@ export function matchesFilter(route, section) {
     return scoreOf(route, section).counted > 0;
 }
 
-/**
- * The order the section's routes belong in: most of what the tab counts first.
- *
- * Used to sort the MODEL's array - see the ⚠️ at the top of this file about why the cards
- * themselves are never moved.
- */
+/** The order the section's routes belong in: most of what the tab counts first. */
 export function compareRoutes(first, second, section) {
     const a = scoreOf(first, section);
     const b = scoreOf(second, section);
@@ -447,17 +363,7 @@ function renderIcon(host, tab) {
     host.appendChild(cluster);
 }
 
-/**
- * Slides the little brass marker under the tab in force.
- *
- * ⚠️ Measured, because that is how the game does it: `TabListComponent` writes `left` and
- * `width` onto the indicator from the two bounding rectangles. There is no CSS that puts it
- * under the right tab on its own.
- *
- * ⚠️ Retried on the next frame while the strip has no width yet. It is built inside a section
- * that may still be collapsed or still being laid out, and a measurement taken then puts the
- * marker at the left edge and leaves it there.
- */
+/** Slides the little brass marker under the tab in force. */
 function positionIndicator(bar, attempt = 0) {
     const indicator = bar.querySelector(`.${INDICATOR_CLASS}`);
     const active = bar.querySelector(`.${ACTIVE_CLASS}`);
@@ -537,15 +443,7 @@ function buildStrip(section) {
         renderIcon(item, tab);
         bindActivatable(item, () => pick(section, tab.key));
 
-        /*
-         * The game's framed tooltip, the one the buttons on the Resources tab use - a titled
-         * frame rather than a bare box of text, so this strip does not introduce a second
-         * visual language onto a screen that already has one. See framed-tooltip.js.
-         *
-         * ⚠️ The trigger comes back wrapped, so the flex item on the bar is the MOUNT and the
-         * tab sits inside it filling it. The selection indicator measures the tab, and the two
-         * have to be the same size for that measurement to land under the right tab.
-         */
+/** The game's framed tooltip, as on the Resources tab buttons: a titled heading over a card. */
         const mount = makeElement('div', `${ITEM_CLASS}-mount`);
         appendWithFramedTooltip(mount, item, {
             scope: tooltipScopeFor(section),
@@ -568,23 +466,13 @@ function buildStrip(section) {
     return host;
 }
 
-/**
- * Gives a section its strip, or brings the one it has up to date.
- *
- * ⚠️ First child of the cards row, which is the collapsible section's BODY - so the strip
- * sits under the ribbon that opens and closes the section and disappears with it, rather than
- * floating above a section that has been collapsed.
- */
+/** Gives a section its strip, or brings the one it has up to date. */
 export function ensureSortTabs(row, section) {
     const existing = row.querySelector(`.${SORT_CLASS}`);
     const wanted = offeredTabs(section).map((tab) => tab.key).join(',');
     if (existing) {
         const bar = existing.querySelector(`.${BAR_CLASS}`);
-        /*
-         * Rebuilt when the strip belongs to the other section - the row has been reused for
-         * different routes - or when the tabs on offer have changed, which happens as soon as
-         * a resource appears in reach that nobody could trade for last turn.
-         */
+    // Rebuilt when the row has been reused for the other section.
         if (bar?.dataset.najaneSortSection !== section || bar?.dataset.najaneSortTabs !== wanted) {
             // The frames are anchored to the tabs about to be discarded.
             disposeFramedTooltips(tooltipScopeFor(bar?.dataset.najaneSortSection ?? section));

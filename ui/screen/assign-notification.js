@@ -1,55 +1,23 @@
 /**
  * Hiding "Resource Assignments Available" when there is nothing you could do about it.
  *
- * The game raises `NOTIFICATION_ASSIGN_NEW_RESOURCES` when a resource reaches the player's
- * pool, or when a settlement gains a slot. Its row in `notification.xml` is HIGH severity
- * with `ExpiresEndOfTurn="False"`, so once raised it holds the turn button until it is
- * acted on - including when there is nothing that could be done about it.
+ * The row in `notification.xml` is HIGH severity with `ExpiresEndOfTurn="False"`, so once raised
+ * it holds the turn button until acted on. ⚠️ What RAISES it is engine-side and appears nowhere
+ * in the data - the two triggers are observed in play, and an earlier guess at them reached a
+ * player-facing tooltip before anyone checked.
  *
- * ⚠️ Those two triggers are OBSERVED IN PLAY, not read from the data. The row carries the
- * severity and the expiry; what raises it is engine-side and appears nowhere in
- * `notification.xml`. An earlier version of this note asserted the condition was simply
- * "you have unassigned resources", which was an inference and wrong - and it had already
- * been copied into a player-facing tooltip before anyone checked.
+ * ⚠️ The test is whether any UNASSIGNED resource would be ACCEPTED anywhere - not "are there free
+ * slots", which was the first version and almost never fired, and not "can nothing be done",
+ * which would be untrue since the player can always rearrange.
  *
- * ⚠️ Not that nothing CAN be done - the player can always open the screen and rearrange
- * what is already assigned, swapping one resource for another. That is why the test below
- * is whether any UNASSIGNED resource can go anywhere: the case where rearranging would be
- * for its own sake. Saying "you cannot act on this" would be untrue.
+ * ⚠️ TWO places draw this notification and they do not share a source. The notification TRAIN
+ * takes only non-blocking notifications; the ICON in the end-turn ring (`panel-action`) reads
+ * `Game.Notifications.getIdsForPlayer` directly and takes only blocking ones. This one blocks,
+ * so suppressing it in the model removed it from a list it was never in. The way to the icon is
+ * `panel-action`'s own `getNotificationInfo`: returning null for an id hides it. `panel-action`
+ * is an old-framework component, so its prototype can be wrapped.
  *
- * With this, it is not shown while nothing you hold could legally be placed anywhere. It
- * comes back the moment that changes.
- *
- * ⚠️ The test is NOT "are there free slots". That was the first version and it almost never
- * fired: one spare slot in one town anywhere in the empire was enough to bring the nag
- * back, and there usually is one. What matters is whether any (resource, settlement) pair
- * would actually be accepted - a settlement can have room and still refuse everything you
- * are holding, which is exactly when the notification is at its most useless.
- *
- * TWO places draw it, and they do not share a source
- * --------------------------------------------------
- * ⚠️ This is the whole reason the first attempt did nothing visible.
- *
- *   1. The notification TRAIN (`panel-notification-train`) reads `NotificationModel`, and
- *      only takes notifications that do NOT block turn advancement - see its
- *      `isSoftNotification` check.
- *   2. The ICON in the ring around the end-turn button (`panel-action`) reads
- *      `Game.Notifications.getIdsForPlayer` DIRECTLY and takes only the ones that DO
- *      block turn advancement.
- *
- * This notification blocks, so it is drawn by the second and ignored by the first.
- * Suppressing it in the model - which is what a notification handler can do - therefore
- * removed it from a list it was never in. The icon the player actually sees comes from
- * `panel-action`, and the way to that one is its own `getNotificationInfo`: the list is
- * built by mapping every id through it and dropping the nulls, so returning null for a
- * notification hides its icon.
- *
- * `panel-action` is an OLD-framework component (`Controls.define`), so unlike the ui-next
- * screens its class is exported and its prototype can be wrapped.
- *
- * ⚠️ Nothing is dismissed, cancelled or acknowledged, and turn blocking is untouched -
- * that is decided by the engine, not by whether an icon is drawn. This only declines to
- * draw it, which keeps the mod's promise that no game state is changed.
+ * ⚠️ Nothing is dismissed and turn blocking is untouched - this only declines to draw.
  */
 import { PanelAction } from '/base-standard/ui/action/panel-action.js';
 
@@ -68,24 +36,31 @@ import { heldResourceType } from '../engine/resource-types.js';
 import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
 
 const NOTIFICATION_TYPE = 'NOTIFICATION_ASSIGN_NEW_RESOURCES';
+
+/** ⚠️ `Game.getHash` is a lookup, and this was being asked inside `refreshActionButton`. */
+let notificationHash = null;
+
+function hiddenNotificationType() {
+    if (notificationHash === null) {
+        notificationHash = Game.getHash(NOTIFICATION_TYPE);
+    }
+    return notificationHash;
+}
 const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
+/**
+ * ⚠️ Cannot go into a Town at all, and the engine's refusal for that pair carries no reason -
+ * `place.js` records the same thing where it explains why a pass placed nothing. Asking about
+ * it anyway is the most expensive call in this mod spent on an answer written in the pedia:
+ * "City Resources must be assigned to a City with available Resource Capacity"
+ * (LOC_PEDIA_CONCEPTS_CITY_RESOURCES_TOOLTIP).
+ */
+const CITY_RESOURCE_CLASS = 'RESOURCECLASS_CITY';
 
 /**
  * Whether this mod may decline to draw the notification at all.
  *
- * TWO conditions, and either one alone turns the whole thing off - in which case the game
- * behaves exactly as it does without this mod: nothing is wrapped away, the icon is drawn,
- * and the turn button blocks as the engine intends.
- *
- * 1. ⚠️ The player's own switch. Hiding a prompt the game raised is the most intrusive thing
- *    in this file, so it is worth being able to say no to outright.
- *
- * 2. ⚠️ Automatic assignment must be doing something. The justification for hiding
- *    "Resource Assignments Available" is that the mod has already assigned the resources -
- *    sending the player to a screen where the work is done is the nag, not the notification
- *    itself. With automatic assignment Off the mod assigns nothing on its own, so the
- *    notification is telling the player something true and actionable and taking it away
- *    would remove a prompt they still need.
+ * ⚠️ Needs automatic assignment ON as well as the checkbox: with it off the mod places nothing
+ * for you, so the prompt is telling you something you still have to act on.
  */
 function suppressionEnabled() {
     return CommerceOptions.skipAssignPrompt && CommerceOptions.autoAssignMode !== AutoAssignMode.Off;
@@ -95,23 +70,36 @@ function suppressionEnabled() {
 const ACTION_PANEL = 'panel-action';
 
 /**
- * Events after which the answer may have changed.
+ * ⚠️ `panel-action` does NOT listen for resource events - its refresh is driven by notification
+ * and unit events - so without these the icon keeps whatever it decided last, which after an
+ * automatic pass is always "show".
+ */
+/**
+ * The ones that can change the ANSWER, and therefore throw the cached one away.
  *
- * ⚠️ `panel-action` does NOT listen for these - its own refresh is driven by notification
- * and unit events - so without this the icon would keep whatever it decided last, which
- * after an automatic pass is always "show", since that is what we answer mid-pass.
+ * ⚠️ The two city events are here because nothing else covers them. Taking or losing a
+ * settlement changes which settlements have room, which is half of what the answer is made
+ * of, and it raises none of the resource events above.
  */
-/*
- * ⚠️ Raised for EVERY player. `ResourceAssigned` in particular fires once per resource per
- * assignment anywhere in the game - place.js says so in as many words, which is why its own
- * confirmation loop refuses to wait on it - so an AI tidying its empire used to schedule a
- * full `refreshActionButton` on the player's action panel, animations and all, every 400ms.
- * Subscribed through `onLocalPlayerEvent`; see engine/events.js.
- */
-const RECHECK_EVENTS = [
+const BOARD_EVENTS = [
     'ResourceAssigned',
     'ResourceUnassigned',
     'ResourceCapChanged',
+    'CityTransfered',
+    'CityAddedToMap',
+];
+
+/**
+ * The ones that change only WHETHER TO ASK, and must not throw the answer away.
+ *
+ * ⚠️ `NotificationAdded` used to sit in the list above, and that is what made the cache
+ * almost worthless. A notification appearing cannot change whether a resource you hold would
+ * be accepted somewhere - but it fires constantly, and every one of them threw away an answer
+ * that `anythingCanBePlaced` then had to work out again from scratch: in the worst case one
+ * `canStart` per unassigned resource per settlement with room, several times a second, for
+ * the whole game. The re-check it asks for is still worth doing; the forgetting was not.
+ */
+const RECHECK_ONLY_EVENTS = [
     // The notification itself: it is raised after the resource lands, so without this the
     // first chance to dismiss it would be whatever happened next.
     'NotificationAdded',
@@ -128,26 +116,30 @@ let refreshing = false;
 /**
  * Could anything the player holds actually be placed somewhere?
  *
- * Settlements with room are tried first and the search stops at the first pair the engine
- * accepts, so in the normal case - where plenty can be placed - this costs one call. The
- * expensive case is the one where the answer is "no", and that is also the case where the
- * notification is about to be hidden for the rest of the turn.
+ * Settlements with room are tried first and it stops at the first accepted pair, so the normal
+ * case costs one call. The expensive case is "no" - which is also when the notification is about
+ * to be hidden for the rest of the turn.
  *
- * ⚠️ Settlements with no free slot are skipped entirely rather than asked. `canAssign`
- * goes through `Game.PlayerOperations.canStart`, which is the single most expensive call
- * in this mod (see the assignment loop), and a full settlement cannot take anything.
+ * ⚠️ Full settlements are skipped rather than asked: `canAssign` goes through
+ * `Game.PlayerOperations.canStart`, the most expensive call in this mod.
  *
- * ⚠️ A PURE question about the board, with no view on timing. It used to answer "yes" while
- * an assignment pass was pending, which is a display policy rather than a fact - and that
- * leaked: the dismissal below asks the same question and was told "yes, something can be
- * placed" during the pass's grace window, so it never dismissed anything. The timing
- * policy now lives only where it belongs, in the icon filter.
+ * ⚠️ A PURE question about the board, with no view on timing. It used to answer "yes" while a
+ * pass was pending, which leaked: the dismissal path asks the same question and was told "yes"
+ * during the grace window, so it never dismissed anything.
  */
 let cachedAnswer = null;
 let cachedAt = 0;
 
-/** How long an answer stays good. Long enough to cover a burst of refreshes, no longer. */
-const ANSWER_CACHE_MS = 250;
+/**
+ * How long an answer stays good WITHOUT anything having happened.
+ *
+ * ⚠️ This is the safety net, not the invalidation. What actually throws the answer away is
+ * `forgetPlaceability`, wired to every event that can change it - see `BOARD_EVENTS`. At 250ms
+ * this timer was doing the invalidating instead, which meant the most expensive call in this
+ * mod ran four times a second forever while the board sat still. Long enough now to be the
+ * backstop it was meant to be.
+ */
+const ANSWER_CACHE_MS = 3000;
 
 export function forgetPlaceability() {
     cachedAnswer = null;
@@ -157,7 +149,7 @@ export function forgetPlaceability() {
  * Whether any unassigned resource of ours would actually be accepted somewhere.
  *
  * ⚠️ Exported for `dock-resource-button.js`, which pulses the HUD button on this answer. The
- * 250ms cache below is what makes that safe to call from an event handler: several engine
+ * cache below is what makes that safe to call from an event handler: several engine
  * events arrive together on a turn boundary and this is the most expensive call in the mod.
  */
 export function anythingCanBePlaced() {
@@ -187,20 +179,21 @@ function computeAnythingCanBePlaced() {
                 assigned.add(resource.value);
             }
             if ((resources.getAssignedResourcesCap() ?? 0) - slotted.length > 0) {
-                // The factory answer is carried along; see the note where it is used.
-                withRoom.push({ cityID: city.id, hasFactory: settlementHasFactory(resources) });
+                // The factory and town answers are carried along; see the notes where they
+                // are used. Both are read here so the pair loop below asks nothing twice.
+                withRoom.push({
+                    cityID: city.id,
+                    hasFactory: settlementHasFactory(resources),
+                    isTown: !!city.isTown,
+                });
             }
         }
 
         /*
-         * Unassigned is the player's list minus what the settlements report; there is no
-         * accessor for it. Same subtraction the planner does.
-         *
-         * ⚠️ Empire and treasure resources are dropped, exactly as the game's own pool drops
-         * them - they are never assigned to a settlement. Keeping them meant asking
-         * `canAssign` about every one of them against every settlement with room, which is
-         * the most expensive call in this mod, for pairs the engine was always going to
-         * refuse. It could not change the answer, only how long it took to reach it.
+         * Unassigned is the player's list minus what the settlements report; there is no accessor.
+         * ⚠️ Empire and treasure resources are dropped exactly as the game's own pool drops them -
+         * keeping them meant asking `canAssign` about pairs the engine was always going to refuse.
+         * The type is resolved ONCE here and carried.
          */
         // ⚠️ The type is resolved ONCE here and carried, not looked up again by each of the
         // two loops below. All three used to run the same lookup over the same list.
@@ -213,25 +206,14 @@ function computeAnythingCanBePlaced() {
             if (!isAssignableToSettlement({ resourceType, resourceValue: resource.value })) {
                 continue;
             }
-            /*
-             * ⚠️ Shaped so the planner's own `resourceClassOf` can read it: it looks for
-             * `resourceType` first and falls back to `resourceValue`. The old code passed it
-             * `{ resourceType: type }` with no value at all, so a resource whose type could
-             * not be resolved had no second chance.
-             */
+            // ⚠️ Shaped so `resourceClassOf` can read it: it looks for `resourceType` first and
+            // falls back to `resourceValue`, which the old shape did not carry.
             unassigned.push({ value: resource.value, resourceValue: resource.value, resourceType });
         }
 
         /*
-         * ⚠️ A camel is always placeable, full empire or not.
-         *
-         * It carries two slots of its own, so it can be put into a settlement that has no
-         * room by making room - which is what this mod's own camel handling does. Counting
-         * free slots alone would hide the icon while the one resource that could fix the
-         * shortage is sitting in the pool.
-         *
-         * Asked of the data rather than of a resource name: `BonusResourceSlots` is a
-         * schema column, so anything a patch or another mod gives the property is covered.
+         * ⚠️ A camel is always placeable, full empire or not: it carries two slots of its own.
+         * Asked of `BonusResourceSlots`, a schema column, never of a resource name.
          */
         for (const { resourceType } of unassigned) {
             if (resourceType && grantsBonusSlots(resourceType)) {
@@ -244,21 +226,21 @@ function computeAnythingCanBePlaced() {
         }
         for (const resource of unassigned) {
             /*
-             * ⚠️ A factory resource needs a settlement WITH A FACTORY, and the engine does
-             * not say so: `canAssign` accepts the pair and the resource then sits in a
-             * settlement that cannot run it. So the icon kept being offered for a haul of
-             * factory resources while every settlement with a free slot lacked a factory -
-             * "you can act on this" for an action worth nothing.
-             *
-             * Same answer as the planner's, from the same function, deliberately: two
-             * definitions of "has a factory" is how the screen and the engine come to
-             * disagree.
+             * ⚠️ A factory resource needs a settlement WITH A FACTORY and the engine does not say
+             * so - `canAssign` accepts the pair and the resource then sits somewhere that cannot
+             * run it. Same answer as the planner's, from the same function, deliberately.
              */
-            const needsFactory =
-                resource.resourceType && resourceClassOf(resource) === FACTORY_CLASS;
+            const resourceClass = resource.resourceType ? resourceClassOf(resource) : null;
+            const needsFactory = resourceClass === FACTORY_CLASS;
+            // ⚠️ A City resource against a Town is a refusal the data already knows about;
+            // see CITY_RESOURCE_CLASS.
+            const needsCity = resourceClass === CITY_RESOURCE_CLASS;
 
             for (const settlement of withRoom) {
                 if (needsFactory && !settlement.hasFactory) {
+                    continue;
+                }
+                if (needsCity && settlement.isTown) {
                     continue;
                 }
                 if (canAssign(settlement.cityID, resource.value)) {
@@ -276,39 +258,28 @@ function computeAnythingCanBePlaced() {
 }
 
 /**
- * Asks the panel to work its icons out again, once nothing is being placed any more.
- *
- * Reschedules rather than deciding while a pass is running: the whole point of the guard
- * in `anythingCanBePlaced` is that a mid-pass board is not worth reading, so a refresh
- * taken then would only bake in the same non-answer.
+ * Asks the panel to work its icons out again, once nothing is being placed any more. A mid-pass
+ * board is not worth reading, so a refresh taken then would bake in the same non-answer.
  */
 function scheduleRecheck({ force = false } = {}) {
     /*
-     * ⚠️ Nothing is being hidden, so there is nothing to put back. With suppression off - and
-     * it is off by default, because it needs automatic assignment to be on - the filter
-     * returns the game's own answer untouched, and refreshing the panel to hear that answer
-     * again is a repaint bought for nothing.
-     *
-     * ⚠️ `force` is for the options change, and only for it. SWITCHING SUPPRESSION OFF is
-     * exactly the moment an icon this mod is currently hiding has to come back, and it is
-     * also the one moment when the test above has just turned false - so without the
-     * exception the icon would stay hidden until the next resource event happened to refresh
-     * the panel.
+     * ⚠️ With suppression off the filter returns the game's own answer untouched, so refreshing to
+     * hear it again is a repaint bought for nothing. `force` is for the options change only:
+     * switching suppression OFF is exactly when a hidden icon has to come back, and also when the
+     * test above has just turned false.
      */
     if (!force && !suppressionEnabled()) {
         return;
     }
-    // ⚠️ Not while a refresh is running. The refresh calls the filter, and anything the
-    // filter asks for here would schedule the next refresh - a loop that repaints the
-    // panel's icons on a timer and shows up as flicker.
+    // ⚠️ Not while a refresh is running: the refresh calls the filter, and anything the filter
+    // asks for here is a loop that repaints the icons on a timer. That was the flicker.
     if (recheckTimer !== null || refreshing) {
         return;
     }
     recheckTimer = setTimeout(() => {
         recheckTimer = null;
-        // ⚠️ `isAutoAssignRunning`, not `isAutoAssignPending`: the grace window that makes
-        // the filter hide EARLY would make this wait for it to expire every time, adding a
-        // second of delay to an icon that should already be back.
+        // ⚠️ `isAutoAssignRunning`, not `isAutoAssignPending`: the grace window would make this
+        // wait for it to expire every time.
         if (isAutoAssignRunning() || isAssignmentInProgress()) {
             // Carries `force` with it, or a refresh asked for by the options change could
             // still be dropped by the test above on the way round again.
@@ -329,15 +300,10 @@ function scheduleRecheck({ force = false } = {}) {
 }
 
 /*
- * ⚠️ DEAD END, recorded so it is not tried again: dismissing this notification.
- *
- * `Game.Notifications.dismiss(id)` runs and is accepted - the log showed "dismissed 1" -
- * but the notification is back within the second. Its row in `notification.xml` carries
- * `AutoNotify="True"`, so the engine puts it back on its own.
- *
- * ⚠️ What exactly it re-checks is NOT knowable from the data, and guessing at it is how a
- * wrong claim reached a player-facing tooltip. All that is established here is the
- * behaviour: dismissing does not stick.
+ * ⚠️ DEAD END, recorded so it is not tried again: `Game.Notifications.dismiss(id)` runs and is
+ * accepted, but the notification is back within the second - its row carries `AutoNotify="True"`.
+ * What exactly it re-checks is NOT knowable from the data; guessing at it is how a wrong claim
+ * reached a player-facing tooltip.
  */
 
 /**
@@ -353,7 +319,7 @@ function blockingPointlessly(playerID) {
             return false;
         }
         const blockerId = Game.Notifications.findEndTurnBlocking(playerID, type);
-        if (!blockerId || Game.Notifications.getType(blockerId) !== Game.getHash(NOTIFICATION_TYPE)) {
+        if (!blockerId || Game.Notifications.getType(blockerId) !== hiddenNotificationType()) {
             return false;
         }
         return !anythingCanBePlaced();
@@ -364,14 +330,10 @@ function blockingPointlessly(playerID) {
 }
 
 /**
- * Runs `body` with the game answering "nothing blocks the turn".
- *
- * Rather than reproduce what the panel does when nothing blocks, the game is asked the
- * question differently: `getEndTurnBlockingType` stands in for the duration of one call,
- * so the untouched original takes its own no-blocker path. Restored in `finally`, so
- * nothing outside that call ever sees the substitute.
- *
- * @returns the body's result, and whether the substitution actually took
+ * Runs `body` with the game answering "nothing blocks the turn": `getEndTurnBlockingType` stands
+ * in for the duration of one call, so the untouched original takes its own no-blocker path.
+ * Restored in `finally`, and verified - if the engine object refuses the substitution the
+ * original runs normally rather than half-changing something.
  */
 function withoutOurBlocker(body) {
     const realGetType = Game.Notifications.getEndTurnBlockingType;
@@ -391,26 +353,15 @@ function withoutOurBlocker(body) {
 }
 
 /**
- * Stops the main action button from presenting an action that cannot be taken - and from
- * acting on it when clicked.
+ * Stops the main action button presenting an action that cannot be taken - and from acting on it
+ * when clicked.
  *
- * ⚠️ TWO methods, because the panel asks the same question twice for two different
- * purposes. Wrapping only the first is what produced a button reading "End Turn" that
- * opened the Commerce screen when clicked:
+ * ⚠️ TWO methods, because the panel asks the same question twice: `refreshActionButton` decides
+ * what the button LOOKS like, `tryEndTurn` what pressing it DOES. Wrapping only the first
+ * produced a button reading "End Turn" that opened the Commerce screen.
  *
- *   refreshActionButton  what the button LOOKS like
- *   tryEndTurn           what pressing it DOES - `canEndTurn` re-reads the blocker, and
- *                        on finding one calls `activateBlockingNotification` instead of
- *                        ending the turn
- *
- * ⚠️ It also settles the safety question. `canEndTurn` is a UI method reading a UI-facing
- * query, and ending the turn is `GameContext.sendTurnComplete()` - so with the blocker
- * out of the way the turn genuinely ends. The hold was the panel's, not the engine's, and
- * nothing the engine enforces is being worked around.
- *
- * Measured in game: 140 resources in the pool, 0 of 18 settlements with a free slot. The
- * notification is factually right and completely useless, and the game still promotes it
- * to the main button once every other action is done.
+ * ⚠️ The turn genuinely ends: `canEndTurn` is a UI method reading a UI-facing query. The hold was
+ * the panel's, not the engine's.
  */
 function wrapActionButton() {
     const wrap = (name, callWithPlayer) => {
@@ -433,23 +384,16 @@ function wrapActionButton() {
 }
 
 /**
- * Wraps the action panel's own filter.
- *
- * `refreshActionButton` maps every notification id through `getNotificationInfo` and keeps
- * the ones that come back non-null. Returning null is therefore the panel's own way of
- * saying "not this one", and costs nothing else: the slot logic, the animations and the
- * turn-blocking machinery all carry on as they were.
- *
- * The panel refreshes on `NotificationAdded`, `NotificationUpdated`, `LocalPlayerTurnBegin`
- * and unit events, so the icon comes back on its own once something is placeable again -
- * no extra event handling needed here.
+ * Wraps the panel's own filter. `refreshActionButton` maps every notification id through
+ * `getNotificationInfo` and keeps the non-nulls, so returning null is the panel's own way of
+ * saying "not this one" - the slot logic, animations and turn blocking carry on untouched.
  */
 export function startAssignNotification() {
     if (attached) {
         return;
     }
     try {
-        const hiddenType = Game.getHash(NOTIFICATION_TYPE);
+        const hiddenType = hiddenNotificationType();
         const original = PanelAction?.prototype?.getNotificationInfo;
         if (typeof original !== 'function') {
             // Loud, not quiet: if this ever fails the feature silently does nothing, which
@@ -466,14 +410,9 @@ export function startAssignNotification() {
                 return info;
             }
             /*
-             * A pass is running or on its way: HIDE, rather than draw something that is
-             * wrong a second later. Never the last word - the re-check below asks again
-             * once nothing is being placed.
-             *
-             * ⚠️ Deliberately does NOT ask for a re-check from here. This runs FROM a
-             * refresh, so doing so is a loop: refresh -> filter -> re-check -> refresh,
-             * every few hundred ms, re-running the panel's slot animations each time.
-             * That was the flicker. The resource events drive it instead.
+             * A pass is running or due: HIDE rather than draw something wrong a second later.
+             * ⚠️ Deliberately does NOT ask for a re-check from here - this runs FROM a refresh, so
+             * that is a loop. The resource events drive it instead.
              */
             if (isAutoAssignPending() || isAssignmentInProgress()) {
                 log('an assignment pass is running or due; holding the assign icon back');
@@ -481,16 +420,11 @@ export function startAssignNotification() {
             }
             const placeable = anythingCanBePlaced();
             /*
-             * ⚠️ Probe, not logic. `panel-action` draws this notification twice over: as a
-             * slot icon (which this filter controls) and, when it is what blocks the end of
-             * the turn, on the main action button - and that one is fetched straight from
-             * `findEndTurnBlocking`, never through here. Knowing which of the two we are
-             * looking at is the difference between hiding a nag and hiding the reason the
-             * turn will not end.
+             * ⚠️ Probe, not logic, and gated on DIAGNOSTICS because the three engine calls are the
+             * expensive part. `panel-action` draws this twice over - as a slot icon (this filter)
+             * and, when it blocks the turn, on the main button, fetched from `findEndTurnBlocking`
+             * and never through here.
              */
-            // ⚠️ Gated here rather than inside `log`, because the three engine calls are the
-            // expensive part and the printing is the free one. This runs from the action
-            // panel's own refresh, which is one of the busiest things on screen.
             if (DIAGNOSTICS) {
                 let blocking = 'unknown';
                 try {
@@ -507,11 +441,14 @@ export function startAssignNotification() {
             }
             return placeable ? info : null;
         };
-        for (const name of RECHECK_EVENTS) {
+        for (const name of BOARD_EVENTS) {
             onLocalPlayerEvent(name, () => {
                 forgetPlaceability();
                 scheduleRecheck();
             });
+        }
+        for (const name of RECHECK_ONLY_EVENTS) {
+            onLocalPlayerEvent(name, () => scheduleRecheck());
         }
         // Switching automatic assignment on or off changes whether the icon may be hidden
         // at all, and no engine event follows an options change - so without this the

@@ -118,6 +118,13 @@
             <Text>The same for Gold: Jade, Cowrie, Rubies, Silver, Cloves and the rest are gathered into the City that already makes the most Gold - and deliberately not the Culture one, so the two piles do not compete for the same slots. Settlements you have given a priority of their own are served first.</Text>
         </Row>
 
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS">
+            <Text>Don't show tooltips on the Commerce screen</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION">
+            <Text>With this on, none of the explanations this mod adds to the Commerce screen are drawn: the framed tooltips on its own buttons, switches and settlement controls, the plain ones on its bars, totals, padlocks and trade-route titles, and the extended resource tooltip on the Empire, Factory and Treasure cards. The round "?" marks go with them, since a mark exists only to carry a tooltip.[N][N]The game's OWN tooltips are untouched - they are not this mod's to take away.[N][N]Off by default. The explanations are the point of most of what this mod adds; this is for the player who has read them and wants the screen quiet.[N][N]Takes full effect the next time the Commerce screen is opened.</Text>
+        </Row>
+
         <!-- The "?" beside the buttons -->
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS">
             <Text>Mouse shortcuts</Text>

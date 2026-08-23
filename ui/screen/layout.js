@@ -1,22 +1,11 @@
 /**
- * Layout tidy-up for the Commerce screen.
+ * Layout tidy-up for the Commerce screen: a wider, shorter tab strip so "Trade Routes" fits on one
+ * line, the standing instruction line dropped, and a third off the dropdown height.
  *
- *   1. the tab strip gets wider and shorter, so "Trade Routes" fits on one line;
- *   2. the standing instruction line above the panel is dropped, keeping one gap's
- *      worth of breathing room where it used to be;
- *   3. the filter and sort dropdowns lose a third of their height.
- *
- * Two stylesheets, on purpose. The tab strip belongs to the whole screen, so its rules
- * are attached once and scoped by the `screen-resource-allocation` element - which only
- * exists while the screen is open, so nothing leaks. Everything else belongs to the
- * Resources tab and is attached and removed with it, which keeps the other three tabs
- * untouched by construction rather than by selector.
- *
- * ⚠️ The unassigned-resource yield totals used to be restyled as badges here. Removed:
- * the row they live in is built from `getUnassignedResourceYieldBonus`, which is zero for
- * every yield unless something specifically pays you for leaving resources unassigned. For
- * almost every game the row is empty, so the styling had nothing to apply to and the
- * feature was invisible - it was not broken, there was simply nothing there.
+ * Two stylesheets on purpose. The tab strip belongs to the whole screen, so its rules are attached
+ * once and scoped by the `screen-resource-allocation` element, which only exists while the screen
+ * is open. Everything else belongs to the Resources tab and goes with it, which keeps the other
+ * tabs untouched by construction rather than by selector.
  */
 import { COMMERCE_SCREEN_SELECTOR, TAB_LIST_SELECTOR } from './screen-parts.js';
 import { log, warn } from '../support/diagnostics.js';
@@ -29,25 +18,14 @@ const FILTER_SLOT_SELECTOR = '[data-name="filter-and-sort"]';
 /** The tab's instruction line. Utility classes, so verified at runtime - see checkDescription. */
 const DESCRIPTION_SELECTOR = `${COMMERCE_SCREEN_SELECTOR} .text-base.w-full.text-center.my-4`;
 
-
 /**
- * The tab strip.
+ * The tab strip. The game asks for w-187/min-h-16, at which a two-word title wraps and the strip
+ * grows to two lines; wider and shorter fixes both, and the decorative bar and end caps are
+ * `absolute inset-0` inside it so they follow.
  *
- * The game asks for w-187 (41.5555rem) and min-h-16 (3.5555rem); at that width a
- * two-word tab title wraps and the strip grows tall enough for two lines. Wider and
- * shorter fixes both - the decorative bar and end caps are `absolute inset-0` inside
- * this element, so they follow it.
- *
- * It is also pushed to the right, out of `self-center`, to clear the three buttons that
- * sit at the left of the same row. Both sides are sized in rem, and this UI scales rem
- * with the resolution, so the gap between them stays proportional instead of closing up
- * on smaller screens.
- *
- *   left edge   2rem + three 10.5rem buttons + gaps  ≈ 35rem
- *   right edge  30rem strip + 6rem margin            ≈ 36rem
- *
- * 30rem is enough because the tabs carry icons rather than words (tab-icons.js). Widen
- * this again if they ever go back to text.
+ * It is also pushed right, out of `self-center`, to clear the buttons at the left of the same row.
+ * Both sides are in rem and this UI scales rem with resolution, so the gap stays proportional.
+ * 30rem is enough only because the tabs carry icons rather than words - widen it if that changes.
  */
 const TAB_STYLE = `
 ${COMMERCE_SCREEN_SELECTOR} ${TAB_LIST_SELECTOR} {
@@ -78,12 +56,7 @@ ${DESCRIPTION_SELECTOR} + div {
 }
 `;
 
-/*
- * Dropdown height comes from three places at once: the class the screen passes in
- * (min-h-14, 3.1111rem), the component's own min-h-10 on the same element, and the
- * open-arrow's min-h-12. Overriding only the first one left them nearly as tall, so all
- * three are pinned to the game's own min-h-8.
- */
+/* Dropdown height comes from three places at once, so all three are overridden. */
 const TAB_CONTENT_STYLE = `
 ${FILTER_SLOT_SELECTOR} .dropdown__container {
     min-height: 1.7777777778rem;
@@ -106,16 +79,9 @@ function checkDescription() {
 }
 
 /**
- * Waits for the tab's header bar to exist, then checks the one selector that is guesswork.
- *
- * It cannot be found in onMount: `CommerceScreenBaseTabContent` renders the tab's content
- * inside a `ThrobberSuspense`, so at mount time it is still a placeholder. Looking once
- * found nothing every time, so the search runs from a broad observer and stops as soon as
- * it succeeds.
- *
- * Everything this module does is CSS; the only thing that needs the DOM is confirming
- * that the instruction line's selector still matches exactly one element, since that one
- * is built from the game's utility classes rather than a `data-name`.
+ * Waits for the tab's header bar, then checks the one selector that is guesswork.
+ * ⚠️ The instruction line is matched by utility classes, which a patch can renumber - so it is
+ * verified at runtime and a miss is logged rather than silently doing nothing.
  */
 function tryAttachToHeaderBar() {
     if (!document.querySelector(FILTER_SLOT_SELECTOR)?.parentElement) {
@@ -129,12 +95,8 @@ function tryAttachToHeaderBar() {
 }
 
 /**
- * The rules that belong to the whole screen rather than to one tab: the tab strip, and
- * the standing instruction line every tab opens with.
- *
- * Put in once and never taken out - they are scoped to the screen element, which is
- * itself transient. Exported because the Trade Routes tab needs them too, and it must not
- * depend on the player having visited the Resources tab first.
+ * The rules that belong to the whole screen rather than to one tab. Exported because the Trade
+ * Routes tab needs them too and must not depend on the Resources tab having been visited first.
  */
 export function ensureScreenLayout() {
     ensureStyle(TAB_STYLE_ID, TAB_STYLE);

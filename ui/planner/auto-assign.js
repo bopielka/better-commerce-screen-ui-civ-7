@@ -1,63 +1,28 @@
 /**
- * Assigning newly acquired resources by itself, with the Commerce screen closed.
+ * Assigning newly acquired resources by itself, with the Commerce screen closed. Off by
+ * default; how far it goes is one four-step setting in ui/options/najane-commerce-options.js.
  *
- * Improve a tile, bring a resource in on a trade route or take an enemy settlement and the
- * haul normally sits unassigned until you remember to go and place it. With this on, it is
- * placed the moment it arrives, using the same ordering "Assign All" uses.
+ * ⚠️ This module decides WHEN and nothing else - the work goes through run.js, the same entry
+ * points the buttons use. It used to place resources itself with its own "is a pass running"
+ * flag, and two flags meant two answers: an automatic pass could start while Reassign All was
+ * halfway through emptying the empire.
  *
- * How far it goes is one setting with four steps - off, the new resource only, everything
- * unassigned, or a full rebuild of the empire. See ui/options/najane-commerce-options.js.
+ * ⚠️ Only NEW resources are touched. A player who left something unassigned did that on purpose,
+ * so `known` records every resource owned and only unseen values are candidates. It is seeded as
+ * soon as the game can answer, NOT on the first event - seeding on the first event swallowed it,
+ * and that was usually the very thing the player was waiting to see work.
  *
- * Off by default, and deliberately so: it acts on the player's behalf without being asked
- * and shows nothing while doing it.
+ * ⚠️ There is no "resource acquired" engine event, so a spread of cheap ones is watched and each
+ * asks two questions: has the resource set grown, and has the empire gained room? Behind them a
+ * periodic sweep, because the event list was wrong three times running and every gap looks
+ * identical to the player. Events make it feel instant, the sweep makes it correct.
  *
- * ⚠️ This module decides WHEN, and nothing else. The work goes through run.js, the same
- * entry points the buttons use.
+ * ⚠️ A trigger that cannot be acted on yet is HELD, not dropped - screen open, button mid-run,
+ * pass in flight. Closing the screen raises no engine event, so it asks again. Returning early
+ * instead was the likeliest cause of "automatic assignment does nothing at all".
  *
- * It used to place resources itself, calling `placeResources` directly and keeping its own
- * "is a pass running" flag beside run.js's. Two flags meant two answers: an automatic pass
- * could start while Reassign All was halfway through emptying the empire, and the two then
- * planned against each other's half-finished board. It also grew its own copy of "empty
- * every settlement", which drifted from the button's - see engine/unassign.js.
- *
- * Only NEW resources are touched
- * ------------------------------
- * Not everything that happens to be unassigned - a player who left something out did that
- * on purpose. Every resource the player owns is remembered; only values that were not there
- * last time are candidates, so a save full of deliberately unassigned resources is left
- * alone.
- *
- * That remembering happens as soon as the game is far enough along to ask, NOT on the first
- * event. Seeding on the first event meant the first thing that ever happened was swallowed
- * to build the list - and since the player usually turns the option on and then goes and
- * does something, the first thing that happened was exactly the thing they were waiting to
- * see work.
- *
- * When it runs
- * ------------
- * There is no "resource acquired" engine event - checked against the engine's own event
- * names, the closest are `ResourceAddedToMap` (a resource appearing on the MAP, not in your
- * hands) and `ResourceAssigned`. So a spread of cheap events is watched and two questions
- * are asked on each: has the set of resources grown, and has the empire's room for them?
- *
- * ⚠️ And behind all of them, a periodic sweep - because the event list was wrong three times
- * running. The engine's event surface is not documented, the names that exist are not the
- * names one would guess, and every gap looks identical to the player: the feature does
- * nothing. The events make it feel instant; the sweep makes it CORRECT. See SWEEP_MS.
- *
- * ⚠️ A trigger that cannot be acted on yet is HELD, not dropped. The Commerce screen being
- * open, a button mid-run or a pass already in flight all mean "not now", and closing the
- * screen raises no engine event - so the check asks again every second and a half until the
- * way is clear. Returning early instead is the likeliest reason for "automatic assignment
- * does nothing at all": the workflow that produces it is the ordinary one, where the player
- * is in the Commerce screen when the resource lands.
- *
- * ⚠️ The trigger fires BEFORE the resource is in your hands.
- * `ConstructibleBuildCompleted` announces that the improvement finished; the resource shows
- * up in `player.Resources.getResources()` a moment later. A single debounced look therefore
- * finds nothing new and, without the retries below, the pass would sit out until the next
- * `LocalPlayerTurnBegin` - i.e. next turn. A player who improves a tile and immediately
- * opens the screen sees nothing happen and reasonably concludes the option is broken.
+ * ⚠️ The trigger fires BEFORE the resource is in your hands: `ConstructibleBuildCompleted` says
+ * the improvement finished, the resource appears a moment later. Hence the late-arrival retries.
  */
 import { assignAll, isAssignmentInProgress, reassignAll } from './run.js';
 import { isAssignableToSettlement } from './facts.js';
@@ -73,39 +38,19 @@ import CommerceOptions, {
 import { log, warn } from '../support/diagnostics.js';
 
 /**
- * ⚠️ Two kinds of trigger, and the second half was missing.
+ * Raised for EVERY player, several times a turn each, and there are hundreds in a late game.
+ * They carry a `location`, so the plot is asked who owns it - the check
+ * `panel-production-chooser.ts` makes on `ConstructibleAddedToMap`.
  *
- * The first four say "you may have gained a resource". The rest say "the empire may have
- * gained somewhere to PUT one" - a captured settlement, a wonder or a building carrying
- * resource slots, a new settlement. Without those, a Marketplace or a Colossus finished
- * while the pool was full changed nothing until the next turn began, and a resource that
- * had failed to place sat there with room now waiting for it.
- *
- * `LocalPlayerTurnBegin` remains the catch-all behind all of it.
- */
-/**
- * The three that are raised for EVERY player in the game, several times a turn each.
- *
- * ⚠️ Split out so they can be filtered by whose they are. A building going up in an AI city
- * cannot give you a resource or somewhere to put one, and there are hundreds of them in a
- * late game - each one used to arm a debounce, three late-arrival timers behind it, and a
- * walk over your resources and your settlements. They carry a `location`, so the plot is
- * asked who owns it: the same check `panel-production-chooser.ts` makes on
- * `ConstructibleAddedToMap`. See engine/events.js.
- *
- * ⚠️ The rest of the list is deliberately NOT filtered. `CityTransfered` is the case that
- * settles it: a settlement changing hands is exactly when the owner on the payload is the
- * one thing about it that is ambiguous, and dropping that trigger would cost the feature the
- * resources that came with the city. They are rare enough that leaving them alone is free.
+ * ⚠️ The rest of the list below is deliberately NOT filtered. `CityTransfered` settles it: a
+ * settlement changing hands is exactly when the owner on the payload is the ambiguous part, and
+ * they are rare enough that leaving them alone is free.
  */
 const PER_PLAYER_TRIGGER_EVENTS = [
     'ConstructibleBuildCompleted', // a tile improved onto a resource - or a building with slots
     /*
-     * ⚠️ `ConstructibleBuildCompleted` is not enough on its own: it announces something the
-     * PRODUCTION QUEUE finished. An improvement that appears because the city expanded onto
-     * the tile is added to the map without ever being built, and raises only these two. That
-     * gap is exactly the case a player tests with - improve a tile, look at the screen - and
-     * it produced no trigger at all.
+     * ⚠️ Not enough on its own: it announces something the PLAYER built. A resource can also
+     * appear because the tile was improved by a Settler or handed over with a captured city.
      */
     'ConstructibleAddedToMap',
     'ConstructibleChanged',
@@ -126,13 +71,7 @@ const TRIGGER_EVENTS = [
 /** Events arrive in bursts; one pass per burst is enough. */
 const DEBOUNCE_MS = 400;
 
-/**
- * How long to keep looking after a trigger that found nothing new.
- *
- * Covers the gap between "the improvement finished" and "the resource is in your hands"
- * without polling all turn: a few cheap set comparisons, then it gives up and leaves the
- * next trigger to it.
- */
+/** Covers the gap between "the improvement finished" and "the resource is in your hands". */
 const LATE_ARRIVAL_DELAYS_MS = [600, 1500, 3000];
 
 /** How long to keep trying to read the player's resources after the UI loads. */
@@ -142,35 +81,18 @@ const SEED_ATTEMPTS = 30;
 /**
  * How often to look again while something is in the way.
  *
- * ⚠️ A trigger that arrives while the Commerce screen is open used to be DROPPED, and that is
- * the single likeliest reason for "automatic assignment does nothing". The workflow that
- * produces it is the ordinary one: the player is in the Commerce screen, empties the empire,
- * improves a tile, and the arrival lands while the screen is still up. `check` returned
- * early, nothing rescheduled it, and CLOSING the screen raises no engine event - so the pass
- * waited for the next turn, or for the next acquisition, and to the player it simply never
- * happened.
- *
- * Closing the screen is not something this module can be told about without reaching into
- * the screen, so it asks again instead. The cost is one set comparison per interval, and
- * only while blocked.
+ * ⚠️ A trigger arriving while the Commerce screen is open used to be DROPPED - the likeliest
+ * cause of "automatic assignment does nothing". Closing the screen raises no engine event, so
+ * this asks again instead. One set comparison per interval, and only while blocked.
  */
 const BLOCKED_RETRY_MS = 1500;
 
 /**
  * The safety net: look again every so often, whatever did or did not fire.
  *
- * ⚠️ Added after the THIRD time an event turned out to be missing from the list above. The
- * engine's event surface is not documented, the names that exist are not the names one would
- * guess, and every gap presents identically to the player - the feature simply does nothing.
- * Chasing them one at a time is a losing game: each fix is right and the next gap is still
- * out there.
- *
- * So the events stay - they make it feel instant - and this makes it CORRECT. Whatever we
- * failed to hear, the pass happens within this interval.
- *
- * Cheap enough to justify: one walk over the player's resources and one over the cities, no
- * `canStart` calls, and it stops at the first comparison when nothing has changed. Sweeps are
- * silent when they find nothing, or the log would fill with them.
+ * ⚠️ Added after the THIRD time an event turned out to be missing from the list above. Chasing
+ * them one at a time is a losing game - each fix is right and the next gap is still out there.
+ * Costs one walk over the resources and one over the cities, no `canStart` calls.
  */
 const SWEEP_MS = 15000;
 
@@ -179,17 +101,11 @@ let knownCapacity = null;
 let running = false;
 
 /**
- * Whether a pass is in flight, or about to be.
+ * Whether a pass is in flight, or about to be. Read by the icon filter, which is why it can hide
+ * the icon before it is ever drawn.
  *
- * Read by the action-icon filter, and the reason it can hide the icon BEFORE it is ever
- * drawn rather than a second afterwards: if a pass is coming, whatever is unassigned right
- * now says nothing about what will be unassigned when it finishes.
- *
- * ⚠️ `lastTriggerAt` is here because of event ORDER. The engine raises the notification and
- * the events this watcher listens for in the same burst, and nothing promises which lands
- * first - so "is a pass scheduled" can still be false at the moment the notification is
- * offered. Treating a trigger from the last moment as pending closes that window; the
- * penalty for being wrong is one late re-check, which happens anyway.
+ * ⚠️ `lastTriggerAt` is here because of event ORDER: the engine raises the notification and these
+ * triggers in the same burst, and nothing promises which lands first.
  */
 const TRIGGER_GRACE_MS = 1500;
 
@@ -215,14 +131,11 @@ let attached = false;
 let lastTriggerAt = 0;
 
 /**
- * The resources the player owns that this module could ever do anything about.
+ * The resources the player owns that this module could act on.
  *
- * ⚠️ Empire and treasure resources are left out. They are never assigned to a settlement -
- * see `isAssignableToSettlement` - so acquiring one is not an event this watcher can act on.
- * Counting them was worse than pointless: improving a Gold tile in Antiquity produced a
- * "newly acquired resource", the pass that followed could place nothing, and because an
- * arrival is only forgotten after a pass that placed SOMETHING, that same arrival was
- * retried on every trigger for the rest of the game.
+ * ⚠️ Empire and treasure resources are left out - they are never assigned to a settlement, so
+ * one arriving produced a pass that could place nothing, and because an arrival is only
+ * forgotten after a pass that placed SOMETHING it was retried forever.
  */
 function currentResourceValues() {
     const player = Players.get(GameContext.localPlayerID);
@@ -238,14 +151,8 @@ function currentResourceValues() {
 }
 
 /**
- * How many resource slots the empire has in total, and how many are filled.
- *
- * `capacity` is the cheap half of "is there anywhere to put something now that there was not
- * before" - buildings and wonders that carry slots raise it, so does taking a settlement.
- * `assigned` turns the owned-resource count into "is anything sitting unassigned", without
- * building the whole board.
- *
- * One walk over the cities for both, because they are always wanted together.
+ * Total capacity and how much of it is filled - the cheap half of "is there anywhere to put
+ * something now that there was not before". One walk over the cities for both.
  */
 function readBoardCounts() {
     let capacity = 0;
@@ -258,13 +165,9 @@ function readBoardCounts() {
 }
 
 /**
- * @param options carried whole so a blocked trigger can be retried exactly as it arrived.
- *
- * ⚠️ Whole, not destructured into three names. `retryWhenUnblocked` hands these straight back
- * to `check`, and it was being passed a bare `options` that this function never declared - a
- * `ReferenceError` thrown from a timer, before the try block, every time a trigger arrived
- * while the Commerce screen was open or a pass was already running. Which is to say: exactly
- * the case the whole BLOCKED_RETRY_MS mechanism exists to handle never ran at all.
+ * ⚠️ `options` is carried whole, not destructured into three names: `retryWhenUnblocked` hands
+ * these straight back, and it was passing a bare `options` this function never declared - a
+ * ReferenceError from a timer, so the BLOCKED_RETRY_MS mechanism never ran at all.
  */
 async function check(trigger, options = {}) {
     const { isRetry = false, quiet = false, isSweep = false } = options;
@@ -279,11 +182,7 @@ async function check(trigger, options = {}) {
         log(`${trigger}: automatic assignment is switched off (Options -> Mods)`);
         return;
     }
-    /*
-     * ⚠️ Blocked, not cancelled. Both of these used to `return` and the trigger was gone for
-     * good - see the note on BLOCKED_RETRY_MS for why that is the likeliest cause of
-     * "automatic assignment does nothing at all".
-     */
+    // ⚠️ Blocked, not cancelled. Both used to `return` and the trigger was gone for good.
     if (getCommerceModel()) {
         retryWhenUnblocked(trigger, options, `${trigger}: the Commerce screen is open, waiting`);
         return;
@@ -319,31 +218,16 @@ async function check(trigger, options = {}) {
         knownCapacity = capacity;
 
         /*
-         * ⚠️ New room is a reason to run, but NOT in "the new resource only".
-         *
-         * A Marketplace does not hand the player a resource, so in that mode there is
-         * genuinely nothing new to place and the resources sitting in the pool are ones
-         * the player left there. The other two modes are explicitly about the pool, so
-         * more room is exactly their cue.
-         *
-         * A resource that arrived and could not be placed is covered either way: `known`
-         * is only advanced after a pass that placed something, so it stays in `fresh`
-         * until it lands.
+         * ⚠️ New room is a reason to run, but NOT in "the new resource only": a Marketplace hands
+         * you nothing, so in that mode the pool holds resources the player left there on purpose.
          */
         const actOnRoom = roomGrew && mode !== AutoAssignMode.NewOnly;
 
         /*
-         * ⚠️ EVERY mode still waits for something to actually happen. What the modes differ
-         * in is SCOPE - how much of the pool an arrival is a cue to tidy - not in when they
-         * run.
-         *
-         * "Place everything unassigned" briefly meant "any time anything is in the pool",
-         * added while chasing arrivals that were being missed. It was the wrong fix for the
-         * right complaint: the arrivals were being lost to gaps in the event list, and those
-         * are fixed above. What it left behind was a mode that emptied the pool on load and
-         * again every fifteen seconds, which is not a cue - nothing happened - and which
-         * quietly overrode "a player who left something out did that on purpose", the one
-         * principle this whole module is built on.
+         * ⚠️ EVERY mode waits for something to happen; the modes differ in SCOPE, not in when they
+         * run. "Place everything unassigned" briefly meant "any time anything is in the pool",
+         * which emptied the pool on load and again every fifteen seconds - overriding the one
+         * principle this module is built on.
          */
         if (fresh.size === 0 && !actOnRoom) {
             if (!quiet) {
@@ -352,14 +236,9 @@ async function check(trigger, options = {}) {
                         `${assigned} assigned, ${capacity} slots)`,
                 );
             }
-            // ⚠️ `known` is deliberately NOT updated here. It already equals `current`,
-            // and leaving it alone keeps the retry below comparing against the same
-            // baseline.
-            // ⚠️ Only a real trigger arms these. A retry that armed more retries would
-            // never stop - three become nine become twenty-seven, all turn long.
-            // ⚠️ And not for the sweep either. The sweep exists to catch what the events
-            // missed; nothing "arrived late" relative to a clock, so three more timers every
-            // fifteen seconds, all game, bought nothing.
+            // ⚠️ `known` is deliberately NOT updated: it already equals `current`, and leaving it
+            // keeps the retries comparing against the same baseline. Only a real trigger arms
+            // them - a retry arming retries never stops - and not the sweep either.
             if (!isRetry && !isSweep) {
                 scheduleLateArrivalChecks(trigger, quiet);
             }
@@ -385,14 +264,9 @@ async function check(trigger, options = {}) {
         });
 
         /*
-         * ⚠️ Only now, and only if something landed.
-         *
-         * Updating it before the work meant a pass that placed nothing still swallowed the
-         * arrival: the next trigger saw no new resources and did nothing, so one badly
-         * timed event could cost the player the whole feature until their next acquisition.
-         *
-         * `assignAll` answers how many landed, or `false` if it refused to start at all -
-         * and `> 0` is false for both of those, which is the point.
+         * ⚠️ Only now, and only if something landed. Updating before the work meant a pass that
+         * placed nothing still swallowed the arrival. `assignAll` answers how many landed, or
+         * `false` if it refused to start - `> 0` is false for both, which is the point.
          */
         if (placed > 0) {
             known = current;
@@ -415,11 +289,7 @@ let blockedLogged = false;
 
 /**
  * Asks again shortly, because something was in the way rather than because nothing was found.
- *
- * ⚠️ Logged once per WAIT, not once per retry. Guarding on `blockedTimer` alone is not
- * enough - the timer is null again by the time the retry runs, so every attempt logged and a
- * player sitting in the Commerce screen for half a minute produced fifteen identical lines.
- * `blockedLogged` is cleared when the wait ends, in `clearBlockedRetry`.
+ * ⚠️ Logged once per WAIT, not per retry: the timer is null again by the time the retry runs.
  */
 function retryWhenUnblocked(trigger, options, message) {
     if (blockedTimer !== null) {
@@ -465,11 +335,9 @@ function clearLateArrivalChecks() {
 }
 
 function scheduleCheck(trigger, quiet = false, isSweep = false) {
-    /*
-     * ⚠️ The watchers are detached while the setting is Off, so in the ordinary case nothing
-     * reaches this at all. What still can is the sweep's own timer, in the window between the
-     * player switching it off and `detachWatchers` running.
-     */
+    // ⚠️ The watchers are detached while the setting is Off, so normally nothing reaches this.
+    // What still can is the sweep's own timer, between the player switching it off and
+    // `detachWatchers` running.
     if (CommerceOptions.autoAssignMode === AutoAssignMode.Off) {
         return;
     }
@@ -512,13 +380,10 @@ function trySeed() {
 function seedWithRetries(attemptsLeft) {
     if (trySeed() || attemptsLeft <= 0) {
         /*
-         * ⚠️ THE MODE IS READ HERE, NOT AT LOAD, and that is the point of putting it here.
-         *
-         * `CommerceOptions.autoAssignMode` goes through `UI.getOption` and MEMOISES what it
-         * gets, so reading it before the game can answer would cache a wrong value - Off -
-         * for the rest of the session, and since 1.9 that decides whether the watcher is
-         * installed at all. This retry loop already exists to wait for the game to be
-         * readable; by the time it succeeds, so are the options.
+         * ⚠️ THE MODE IS READ HERE, NOT AT LOAD. `CommerceOptions.autoAssignMode` memoises what
+         * `UI.getOption` gives it, so reading before the game can answer caches Off for the whole
+         * session - and that now decides whether the watcher is installed at all. This retry loop
+         * already waits for the game to be readable.
          */
         applyAutoAssignMode();
         if (known === null) {
@@ -542,17 +407,10 @@ let subscriptions = [];
 let sweepTimer = null;
 
 /**
- * ⚠️ NOTHING IS LISTENED FOR WHILE THE SETTING IS OFF, AND OFF IS THE DEFAULT.
- *
- * This used to attach unconditionally and answer "switched off" inside `check`, which sounds
- * harmless and is not: the answer came AFTER a dozen engine subscriptions had each woken a
- * debounce, and after the sweep had fired every fifteen seconds for the whole game. A player
- * who never turns automatic assignment on was paying for all of it - the largest single cost
- * this mod had, for a feature they had not asked for.
- *
- * Attaching and detaching on the option instead is exact rather than merely cheaper: with the
- * mode Off the watcher is not installed at all, so there is no path from an engine event into
- * this module.
+ * ⚠️ NOTHING IS LISTENED FOR WHILE THE SETTING IS OFF, AND OFF IS THE DEFAULT. This used to
+ * attach unconditionally and answer "switched off" inside `check` - after a dozen subscriptions
+ * had each woken a debounce and the sweep had fired all game. Attaching on the option instead is
+ * exact rather than merely cheaper: there is no path from an engine event into this module.
  */
 function attachWatchers() {
     if (subscriptions.length > 0 || sweepTimer !== null) {
@@ -615,26 +473,14 @@ export function startAutoAssign() {
     // about the previous one's settlements does not apply to this one.
     forgetPriorityMemory();
 
-    /*
-     * ⚠️ The only thing installed unconditionally. Turning the setting on has to start the
-     * watcher there and then - no engine event follows an options change - and turning it off
-     * has to stop it, or "off" would only mean "still listening, still sweeping, and
-     * declining to act".
-     */
+    // ⚠️ The only thing installed unconditionally: no engine event follows an options change, so
+    // turning the setting on has to start the watcher there and then.
     window.addEventListener(CommerceOptionsChangedEventName, applyAutoAssignMode);
 
     /*
-     * ⚠️ Seeded whatever the mode is, and that is on purpose rather than an oversight.
-     *
-     * `known` is what tells a resource that ARRIVED from one the player deliberately left in
-     * the pool, and it has to describe the board as it was when the game was loaded - not as
-     * it is at the moment the player happens to switch the option on. Seeding from
-     * `attachWatchers` instead would mean everything acquired while the setting was Off was
-     * silently reclassified as "always been there", and turning the option on would then do
-     * nothing until the NEXT acquisition.
-     *
-     * The cost is one walk over the player's resources, once, and it is why this is the only
-     * work this module does with the feature switched off.
+     * ⚠️ Seeded whatever the mode is. `known` has to describe the board as it was when the game
+     * loaded, not when the player happened to switch the option on - otherwise everything
+     * acquired while it was Off is silently reclassified as "always been there".
      */
     seedWithRetries(SEED_ATTEMPTS);
 }

@@ -1,28 +1,17 @@
 /**
  * How hard the planner works to keep settlements out of negative happiness.
  *
- * The rescue tier sits above every other consideration in scoring.js - above factories,
- * above camels, above a settlement's own priority - so it is the single largest thing this
- * mod does to a layout, and until it was made a setting the player had no say in it. Some
- * players want an unhappy town left alone; some do not want the rule at all.
- *
- * The value lives here rather than in ui/options/ for the same reason factory-first's does:
- * the assignment engine has to be able to ask the question with the Commerce screen closed
- * and without importing anything that pulls in the options screen. The dropdown in
- * ui/options/najane-commerce-options.js writes to this module.
+ * The rescue tier sits above every other consideration in scoring.js, so it is the largest
+ * single thing this mod does to a layout - hence a setting. Here rather than in ui/options/ so
+ * the engine can ask it with the Commerce screen closed; the dropdown writes to this module.
  */
 import { storedChoice } from '../engine/stored-setting.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
 
 /**
- * ⚠️ Append only, and note that these are NOT what gets stored - see engine/stored-setting.js
- * for why a choice is stored one higher than its value. "Never" is 0, which is exactly the
- * number `UI.getOption` answers for an option nobody has ever set.
- *
- *   Never            the rescue tier does not run at all; happiness is just another yield
- *   CitiesOnly       cities are rescued, towns are left where they fall
- *   AllSettlements   cities first as a class, then towns - the original behaviour
+ * ⚠️ Append only, and NOT what gets stored - a choice is stored one higher; see
+ * engine/stored-setting.js. "Never" is 0, which is what `UI.getOption` answers for unset.
  */
 export const HappinessPriorityMode = {
     Never: 0,
@@ -35,11 +24,7 @@ export const HappinessPriorityChangedEventName = 'najane-commerce-happiness-prio
 const MODES = [HappinessPriorityMode.Never, HappinessPriorityMode.CitiesOnly, HappinessPriorityMode.AllSettlements];
 const MODE_NAMES = ['never', 'cities only', 'all settlements'];
 
-/*
- * Never touched: rescue everything. An empire in revolt is the one situation where overriding
- * what the player asked each settlement for is worth it, so that stays the default; the
- * setting is there to opt out of it.
- */
+// Never touched: rescue everything. An empire in revolt is worth overriding the player for.
 const setting = storedChoice({
     option: `${MOD_ID}.happinessPriorityMode`,
     values: MODES,

@@ -15,6 +15,7 @@ through here — and everything the game raises comes back through here too.
 | `resource-locks.js` | resources pinned in place; obeyed by `unassign.js`, cleared when one leaves |
 | `treasure-convoys.js` | sends loaded Treasure Convoys home and unloads them |
 | `treasure-return-setting.js` | the switch that turns that off; **on** by default |
+| `tooltip-setting.js` | the switch that hides every tooltip this mod draws; **off** by default |
 | `diplomacy.js` | proposing "Improve Trade Relations" |
 | `wait.js` | waiting for a queued operation to land |
 | `age.js` | which age this is, worked out once |
@@ -44,9 +45,40 @@ This module is that check, written once.
 onEngineEvent(name, handler)              // → a handle, or null
 onLocalPlayerEvent(name, handler)         // the same, everybody else's dropped first
 onEngineEvents(names, handler, { localPlayerOnly = true })
-stopEngineEvents(handles)                 // engine.off for a whole list
+stopEngineEvents(handles)                 // takes a whole list off again
 isSomeoneElses(data)                      // for the one place that has to ask directly
+logEventStats()                           // diagnostics only; see below
 ```
+
+### One `engine.on` per event name, however many listeners
+
+⚠️ **Six modules here want the same handful of names.** `LocalPlayerTurnBegin` has six
+subscribers, `ResourceUnassigned` and `ResourceCapChanged` four each, `ResourceAssigned` and
+`TradeRouteChanged` three, `UnitMoved` and `UnitMoveComplete` two. Every one of those used to be
+its own `engine.on`: **53 subscriptions over 27 distinct names**, so one thing happening in the
+game crossed into this mod's JavaScript up to six times, and the same payload was then asked "was
+that mine?" up to six times over.
+
+The subscription is now shared. The first listener for a name installs one dispatcher, the rest
+join a list behind it, and the last to leave takes it off again. The owner is worked out **at most
+once per event**, lazily — a name whose listeners are all unfiltered never asks, which matters
+because for a payload carrying only a `location` that question is a map query.
+
+⚠️ **The handle is the identity now, not the function.** `engine.off` never sees a listener's own
+function at all, only the shared dispatcher, so a handle must be kept if the listener is ever to be
+removed. A listener that throws is caught and logged; it cannot stop the ones behind it.
+
+### Measuring it
+
+`logEventStats()` prints, per event name, how many arrived since the last call and how many
+milliseconds this mod spent hearing them — sorted by cost. It is **diagnostics only**: with
+`DIAGNOSTICS` off nothing is counted and the entry point does not even install the turn-begin
+listener that prints it.
+
+⚠️ This is the **first** measurement to take when the report is "the game runs slowly with this mod
+on". Everything this mod hears goes through one dispatcher, so one counter measures the whole mod,
+and it answers the question reading the code cannot: which names actually arrive in their
+thousands in *that* player's game.
 
 ⚠️ **An unknown owner is never filtered out.** Not every payload carries one, and dropping an
 event because we could not name its owner would trade a performance problem for a correctness
@@ -223,11 +255,39 @@ merchantOffer(cityID)                         // → { definition, cost, canBuy,
 purchaseSite(preferredCityID, targetCity)     // → { city, offer } — who actually buys
 purchaseMerchant(cityID, definition)          // sends the purchase
 purchaseAndCollectMerchant(cityID, definition)// → Promise<unit|null>
-approachLocations(unit, city)                 // → plots to walk to, best first
+approachLocations(unit, city)                 // → plots to walk to, best first (probe-capped)
 moveMerchant(unit, location)                  // MOVE_TO
 canSignRoute(unit, location) / signRoute(…)   // MAKE_TRADE_ROUTE
 goldBalance() / unitKey(unitID)
 ```
+
+### ⚠️ `approachLocations` is probe-capped, and that cap is a turn-time fix
+
+`Units.getPathTo` is a **full pathfinder query**. This function used to run one for *every plot
+the target settlement owns* — a developed Exploration-age city owns thirty to fifty — and
+`advance` then put every plot that came back through `moveMerchant`, which pathfinds again
+inside `canStart`. **Eighty searches per merchant per attempt.**
+
+⚠️ And the expensive case is the one that actually happens. A search that **succeeds** stops
+when it reaches the target; a search that **fails** must exhaust everything the unit can reach
+before it can say so. A merchant that cannot get there — unexplored ocean, a war in the way —
+therefore paid the most expensive possible query, forty times over, three times a turn (the
+attempt cap), for every merchant under an order. All synchronous, all at
+`LocalPlayerTurnBegin`, where movement is handed back and the pass is woken.
+
+That is tens of seconds on a big Exploration map, and CPU does not fix it: it is one thread
+asking the engine for hundreds of failed A* searches.
+
+`MAX_PATH_PROBES = 10` and `ENOUGH_REACHABLE = 3` bound it. Nearest-first is what makes the cap
+safe rather than merely cheap — the plots are sorted by distance **from the unit**, so the ones
+probed first are on the unit's own side of the settlement, which for the case this list exists
+for (a ship approaching an inland capital) are exactly the coastal ones. When the cap bites,
+the settlement centre is still handed back, the engine still refuses, and the attempt is still
+counted — the behaviour is unchanged, only the bill is.
+
+⚠️ Note that **`turnsUntilRouteOpens` is currently unused** and pathfinds too; if anything ever
+calls it again, it needs the same treatment (or a per-card cache) before it goes on a tab that
+draws twenty of them.
 
 The three engine calls are the game's own, taken from where the game makes them:
 

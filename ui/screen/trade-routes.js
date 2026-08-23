@@ -1,26 +1,18 @@
 /**
  * Tidying the Trade Routes tab.
  *
- * A route card carried its destination in a sentence under the title - "Delivered to
- * settlement Bogdan by Sea" - and, at the bottom, how much gold the other leader would
- * make. Both are lines of prose where the eye wants a shape. The title now says the whole
- * thing on one line, and the prose goes:
+ * A card carried its destination in a sentence under the title and the other leader's gold at
+ * the bottom. Both become one line:
  *
  *     [hex] [sea]  MEKKA -> BOGDAN                      [leader]
  *
- * The routes that cannot be started are also split in two - the ones only the trade limit
- * blocks, and the ones out of range - because those are different news.
+ * The routes that cannot be started are split in two - only the trade limit blocks them, or they
+ * are out of range - because those are different news.
  *
- * Where the destination comes from
- * --------------------------------
- * NOT from parsing that sentence. The model hands the card `domainString`, already
- * composed and translated, and taking it apart again would break in every language that
- * words it differently. The route is looked up instead through
- * `Trade.projectPossibleTradeRoutes`, the same call the model itself uses, which carries
- * `domain` and `nearestCityId` as data.
- *
- * The icons are the game's own `TRADE_ROUTE_LAND` / `TRADE_ROUTE_SEA`, the pair the trade
- * route chooser draws (base-standard/data/icons/trade-icons.xml).
+ * ⚠️ The destination is NOT parsed out of that sentence. `domainString` is already composed and
+ * translated, and taking it apart would break in every language that words it differently. The
+ * route is looked up through `Trade.projectPossibleTradeRoutes` - the same call the model uses -
+ * which carries `domain` and `nearestCityId` as data.
  */
 import { onCleanup, onMount, untrack } from '/core/vendor/solid-js/dist/solid.js';
 import { ComponentRegistry } from '/core/ui-next/services/component-registry.js';
@@ -53,7 +45,7 @@ import { onEngineEvent, stopEngineEvents } from '../engine/events.js';
 import { watchCommerceScreen } from './screen-observer.js';
 import { gameIcon } from './icons.js';
 import { TRADE_CARD_SELECTOR as CARD_SELECTOR, TRADE_HEAD_CLASS as HEAD_CLASS } from './screen-parts.js';
-import { appendAll, bindActivatable, ensureStyle, makeElement } from '../support/dom.js';
+import { appendAll, bindActivatable, ensureStyle, makeElement, setTooltip } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
 /** The row the cards wrap within; the tab measures it to decide their width. */
@@ -69,11 +61,8 @@ const RELATIONSHIP_TOOLTIP_SELECTOR = '[data-name="Relationship-Tooltip"]';
 
 const CLASS = 'najane-trade-destination';
 
-/*
- * The mark on the card's title row - HEAD_CLASS, imported above - lives in screen-parts.js:
- * `decorate` applies it here and trade-buy-merchant.js hangs its button stack in that row,
- * and this module imports that one, so the constant cannot travel the other way.
- */
+// HEAD_CLASS lives in screen-parts.js: this module applies it and trade-buy-merchant.js hangs
+// its stack in that row, and this module imports that one - so the constant cannot travel back.
 
 /** Our mark on the game's own route-name element. */
 const NAME_CLASS = 'najane-trade-name';
@@ -98,13 +87,7 @@ let measuredStyle = null;
 let measuredRowWidth = 0;
 const STYLE_ID = 'najane-trade-routes-style';
 
-/**
- * The two prose lines, matched by the classes the card's own templates carry.
- *
- * `[class="mt-2"]` is an exact-attribute match on purpose: the yields line is a bare
- * `<div class=mt-2>`, while the relationship badge in the corner also has `mt-2` among
- * several other classes and must stay.
- */
+/** The two prose lines, matched by the classes the card's own templates carry. */
 const STYLE = `
 ${CARD_SELECTOR} p.mt-1.mr-13 { display: none; }
 ${CARD_SELECTOR} [class="mt-2"] { display: none; }
@@ -351,18 +334,8 @@ let routesByCityName = null;
 /** Leaders we could sign a route with right now; filled by the same pass as the map. */
 let startableLeaders = null;
 
-/**
- * Every projected route, keyed by the name on the card.
- *
- * Cached because the projection is real work - it is what the model runs to build this
- * whole tab - and a tab full of cards would otherwise run it once per card.
- */
-/**
- * The resources a projected route would deliver, as type names.
- *
- * ⚠️ `importPayloads` carries the resource as `uniqueResource.resource`, a hash - the same
- * unwrapping the game's own `trade-routes-model.js` does to draw the icons on the card.
- */
+/** Every projected route, keyed by the name on the card. */
+/** The resources a projected route would deliver, as type names. */
 function importedResourceTypes(route) {
     const types = [];
     for (const payload of route.importPayloads ?? []) {
@@ -394,32 +367,18 @@ function routeInfo() {
                 isLand: route.domain === DomainType.DOMAIN_LAND,
                 recipient: Locale.compose(recipient.name),
                 status,
-                /*
-                 * The two ends of the route as ids rather than names, for the button that
-                 * buys a merchant: `targetCityId` is the other empire's settlement, and
-                 * `nearestCityId` is the settlement of ours the route is measured from -
-                 * which is also the one the merchant is bought in. See trade-buy-merchant.js.
-                 */
+/** The two ends as ids rather than names, for the button that buys and sends a merchant. */
                 targetCityId: route.targetCityId,
                 nearestCityId: route.nearestCityId,
-                /*
-                 * Whose settlement it is. Trade capacity is counted per LEADER, so the buy
-                 * button needs the owner as well as the settlement - see trade-buy-merchant.js.
-                 */
+/** Whose settlement it is - trade capacity is counted per LEADER, so the buy button needs it. */
                 leaderId: target.owner,
                 startable: status.includes(TradeRouteStatus.SUCCESS),
                 established: status.includes(TradeRouteStatus.ALREADY_EXISTS),
-                /*
-                 * What the route would actually bring, as resource type names - the figure
-                 * the sort tabs order the cards by. Read here rather than off the card,
-                 * because the card draws icons and the tabs need to know what each icon IS.
-                 */
+/** What the route would actually bring, as resource type names. */
                 resources: importedResourceTypes(route),
             };
             routesByCityName.set(Locale.compose(target.name), entry);
-            // SUCCESS means every criterion is met - the route only needs signing. The
-            // summary above the tabs uses this to tell free capacity apart from capacity
-            // with nothing in reach.
+/** SUCCESS means every criterion is met - the route only needs signing. */
             if (status.includes(TradeRouteStatus.SUCCESS) && target.owner !== undefined) {
                 startableLeaders.add(target.owner);
             }
@@ -433,33 +392,20 @@ function routeInfo() {
 }
 
 /**
- * Opens the sections that the model asks to be drawn closed.
+ * Opens the sections the model asks to be drawn closed - only "unavailable trade routes" does.
+ * That made sense for a list nobody could act on; this mod splits it into "one trade slot away"
+ * and "out of range" and puts a sort strip on it.
  *
- * Only one does: "unavailable trade routes" carries `initiallyCollapsed` in
- * `commerce-screen-model.js`. That made sense for a list nobody could act on, but this mod
- * splits it into "one trade slot away" and "out of range" - the first of which is the next
- * thing to work towards - and puts a sort strip on it. A section that has to be opened before
- * any of that is visible is a section most players will never see.
- *
- * ⚠️ The DATA is changed, not the DOM. `CollapsibleContainer` reads `initiallyCollapsed` once,
- * into a signal, when it is created; by the time there is an element to click, the flag has
- * already been read and clicking it from script would mean forging the engine's own input
+ * ⚠️ The DATA is changed, not the DOM. `CollapsibleContainer` reads `initiallyCollapsed` once
+ * into a signal at creation, and clicking from script would mean forging the engine's own input
  * event - `Activatable` ignores DOM clicks.
  *
- * ⚠️ Written in place, and only when it differs. The sections are entries in the model's
- * store: replacing them with copies would give Solid new identities on every read and rebuild
- * every card in the tab.
- *
- * Called from the screen's own transcription, which is where the tab's data passes through
- * this mod - see factory-tab.js.
+ * ⚠️ Written in place and only when it differs: the sections are entries in the model's store, so
+ * replacing them with copies would give Solid new identities and rebuild every card.
  */
 export function prepareTradeTabData(tabData) {
-    /*
-     * ⚠️ Untracked. This reads a value out of a mutable store and writes it back, and it runs
-     * inside the tab's own render - which is exactly the shape that makes a computation
-     * invalidate itself. It settles after one extra pass even without this, but the same shape
-     * one layer over already hung the game once, and this costs nothing.
-     */
+    // ⚠️ Untracked: this reads out of a mutable store and writes back, from inside the tab's own
+    // reactive scope. Tracking it would make the write wake the read.
     untrack(() => {
         for (const section of tabData?.tradeRouteSections ?? []) {
             const collapsible = section?.collapsibleContainerData;
@@ -483,14 +429,7 @@ export function forgetTradeRoutes() {
 
 let summaryShown = false;
 
-/**
- * Puts the total above the tabs, or leaves the one already there alone.
- *
- * ⚠️ Idempotent on purpose. This runs from the observer callback, and an append that
- * happens every pass is itself a mutation - the shape that froze the game once already.
- * Rebuilt only when the routes changed, or when the screen dropped the element from a row
- * it owns and rebuilds on its own schedule.
- */
+/** Puts the total above the tabs, or leaves the one already there alone. */
 function refreshSummary() {
     if (summaryShown && document.querySelector(`.${SUMMARY_CLASS}`)) {
         return;
@@ -517,14 +456,8 @@ function decorate(card) {
         return;
     }
 
-    /*
-     * Marked every pass, not once: the class and the tooltip are ours but the row is
-     * Solid's, and a redraw takes both with it.
-     *
-     * ⚠️ The tooltip goes on the TEXT, not on the row. On the row it also answered for the
-     * icons, so hovering the domain icon showed the route name instead of what that icon
-     * means.
-     */
+    // Marked every pass, not once: the class and the tooltip are ours but the row is Solid's and
+    // comes back without them.
     row.classList.add(HEAD_CLASS);
     title.classList.add(NAME_CLASS);
     const reasons = route.startable || route.established ? [] : blockedReasons(route);
@@ -532,13 +465,11 @@ function decorate(card) {
         ? `${name} → ${route.recipient}[N][N]${reasons.join('[N][N]')}`
         : `${name} → ${route.recipient}`;
     if (title.getAttribute('data-tooltip-content') !== fullLine) {
-        title.setAttribute('data-tooltip-content', fullLine);
+        setTooltip(title, fullLine);
     }
 
-    /*
-     * ⚠️ Before the "already decorated" check below, not after it, and AFTER the row has been
-     * marked above - the stack hangs on the title row and is found by that mark.
-     */
+    // ⚠️ Before the "already decorated" check, and AFTER the row is marked - the stack hangs on
+    // the title row and is found by that mark.
     try {
         decorateBuyMerchant(card, route, unavailableGroupFor(route));
     } catch (error) {
@@ -556,11 +487,7 @@ function decorate(card) {
         return;
     }
 
-    /*
-     * The domain icon goes next to the settlement's own icon at the head of the line,
-     * where it reads as another mark on the route rather than as punctuation in the
-     * middle of it. Index 1: straight after that icon, before the name.
-     */
+    // The domain icon goes beside the settlement's own icon at the head of the line.
     const icon = makeElement('div', `${CLASS}__icon`, {
         'data-tooltip-content': Locale.compose(
             route.isLand ? 'LOC_NAJANE_COMMERCE_ROUTE_LAND' : 'LOC_NAJANE_COMMERCE_ROUTE_SEA',
@@ -601,27 +528,10 @@ function scheduleRemeasure() {
 }
 
 /**
- * The one number that cannot be written as a stylesheet constant: how much room the title
- * row has before it reaches the leader's portrait.
- *
- * ⚠️ Both looked up from the CARD, not from the row's parent. The title row is wrapped in
- * an Activatable, so its parent holds nothing but the row itself - searching there for the
- * portrait found nothing and no width was ever written.
- *
- * ⚠️ Writes to a stylesheet in <head>, never to the cards, so it cannot feed the
- * MutationObserver watching them. And only when a figure actually changes, so a resize
- * settles instead of oscillating.
+ * The one number that cannot be a stylesheet constant: how much room the title has once the
+ * button stack is in the row. It depends on which stack the card got, so it is measured.
  */
-/**
- * Finds the element the sections wrap inside and marks it.
- *
- * ⚠️ Found by walking up until an ancestor carries BOTH flex-wrap and flex-auto, rather
- * than by counting levels. Two earlier attempts marked a parent one or two steps short -
- * a ".trade-route-cards-row" is the body of ONE section, and between it and the container
- * sit the CollapsibleContainer's own wrappers, which are not the same depth for every
- * section. The distinctive pair of classes is; see the ScrollArea in
- * commerce-screen-trade-tab.js.
- */
+/** Finds the element the sections wrap inside and marks it. */
 function markSectionsContainer(row) {
     let node = row?.parentElement;
     let sections = null;
@@ -630,12 +540,7 @@ function markSectionsContainer(row) {
             node.classList.add(ROWS_CLASS);
             sections = node;
         } else if (sections && node.classList?.contains('overflow-auto')) {
-            /*
-             * The ScrollArea's viewport - the element that actually scrolls, "flex flex-col
-             * flex-auto overflow-auto w-full" in core/ui-next/components/scroll-area.js. Found
-             * by walking up from OUR sections container rather than by selector, so this only
-             * ever marks the Trade Routes tab's own scroll area and never another tab's.
-             */
+/** The ScrollArea's viewport - the element that actually scrolls. */
             node.classList.add(SCROLL_CLASS);
             return sections;
         }
@@ -644,22 +549,10 @@ function markSectionsContainer(row) {
     return sections;
 }
 
-/**
- * A card with the buttons in its corner, or any card if none has them.
- *
- * ⚠️ Written as a loop rather than as `:has(...)`. This renderer is not a browser - it has no
- * `replaceChildren` and no CSS grid - and a selector it does not implement would silently
- * match nothing, which here means the measurement quietly going back to being wrong.
- */
+/** A card with buttons in its corner, or any card if none has them. */
 function widestCornerCard() {
-    /*
-     * ⚠️ The "improve" stack (propose-and-buy, two prices) is wider than the plain "available"
-     * one (one price) - so a card carrying THAT is preferred when one exists, not just any
-     * card that happens to carry a stack. Picking the first stack found regardless of kind
-     * would under-measure the row on a screen with both a startable and a limit-blocked card,
-     * and the title on the limit-blocked one would run back under its own wider button - the
-     * exact overlap this measurement exists to prevent.
-     */
+    // ⚠️ The "improve" stack carries two prices and is wider than the plain one, so measuring a
+    // card that has it gives the width the title has to survive.
     let anyStack = null;
     for (const card of document.querySelectorAll(CARD_SELECTOR)) {
         const stack = card.querySelector(`.${BUY_STACK_CLASS}`);
@@ -681,14 +574,8 @@ function updateMeasuredLayout() {
     }
     markSectionsContainer(container);
 
-    /*
-     * ⚠️ What is measured is the room between the title row and the PORTRAIT, and since the
-     * buttons moved into the title row itself that is now the same distance on every card -
-     * the corner holds nothing but the portrait. The sample below therefore no longer has to
-     * be a card that carries buttons; it is kept because picking a card that HAS them is
-     * still the safest sample, and because the buttons sitting inside the measured width is
-     * exactly what makes the name truncate rather than run under them.
-     */
+    // ⚠️ Measured between the title row and the PORTRAIT, which owns the corner - not to the edge
+    // of the card.
     const sampleCard = widestCornerCard();
     const sample = sampleCard?.querySelector(`.${HEAD_CLASS}`);
     const portrait = sampleCard?.querySelector(LEADER_CORNER_SELECTOR);
@@ -723,21 +610,11 @@ let decorateFrame = null;
 /**
  * Every pass through this mod's DOM work waits for the next FRAME.
  *
- * ⚠️ THIS IS NOT A DEBOUNCE, IT IS THE FIX FOR A CRASH. A `MutationObserver` callback runs as a
- * MICROTASK, and so does Solid's own effect queue - the two interleave. Decorating straight
- * from the observer therefore inserted and moved nodes IN THE MIDDLE of a render Solid had
- * begun and not yet finished, and its next `reconcileArrays` found the DOM in a state its own
- * bookkeeping did not describe:
- *
- *     Error: NotFoundError: Failed to execute 'insertBefore' on 'Node':
- *     The node before which the new node is to be inserted is not a child of this node.
- *
- * On screen that read as a first visit to the tab with no leader portraits and none of this
- * mod's buttons, both of them back on the second visit - the render had died halfway and the
- * next one started from a clean DOM. `requestAnimationFrame` runs after the microtask queue
- * has drained, so by the time any of this touches the DOM, Solid has finished with it.
- *
- * The screen is not reactive to our work either way, so a frame of delay costs nothing.
+ * ⚠️ NOT A DEBOUNCE - THE FIX FOR A CRASH. A MutationObserver callback runs as a MICROTASK and so
+ * does Solid's effect queue; decorating straight from the observer inserted nodes mid-render and
+ * Solid's next `reconcileArrays` threw `NotFoundError: Failed to execute 'insertBefore'`. On
+ * screen: a first visit with no portraits and none of this mod's buttons, both back on the
+ * second. rAF runs after the microtask queue has drained.
  */
 function scheduleDecorate() {
     if (decorateFrame !== null) {
@@ -749,25 +626,9 @@ function scheduleDecorate() {
     });
 }
 
-/**
- * ⚠️ Re-entrancy guard. Everything in here can touch the DOM, and the observer that calls
- * it watches the DOM - without this, one careless mutation is an infinite loop rather than
- * a wasted pass. The individual steps are written not to mutate when there is nothing to
- * do; this is the backstop for when one of them stops being.
- */
-/**
- * Splits the unavailable routes into the two reasons worth telling apart.
- *
- * "Unavailable" lumps together routes that need a different empire and routes that need
- * nothing but one more trade capacity - which are very different pieces of news. The first
- * group is the one to act on.
- *
- * ⚠️ The status names do not read the way they mean. The model treats
- * `TradeRouteStatus.NEED_MORE_FRIENDSHIP` as "trade capacity with this player is used up"
- * (see the LOC_COMMERCE_TRADE_STATUS_CAPACITY block in commerce-screen-model.js) and
- * `DISTANCE` as out of range. Taken at face value the first would have been sorted as a
- * diplomacy problem.
- */
+    // ⚠️ Re-entrancy guard: everything here touches the DOM, and the observer that calls it is
+    // watching that DOM.
+/** Splits the unavailable routes into the two reasons worth telling apart. */
 function unavailableGroupFor(route) {
     const status = route.status ?? [];
     const blockedByRange = status.includes(TradeRouteStatus.DISTANCE);
@@ -785,22 +646,8 @@ function unavailableGroupFor(route) {
 }
 
 /**
- * Why a route cannot be started, in the game's OWN words.
- *
- * Not written here - read out of `CommerceScreenText.xml`, the same three explanations the
- * game's own card overlay shows on hover (`CommerceCriteriaDisplay`, fed by
- * `getTradeRouteDataFromTradeRoute` in commerce-screen-model.js): capacity, range, at war.
- * `route.status` only ever carries a flag when the criterion is a REAL block - a civ trait
- * that waives one keeps its status flag out of the array rather than adding it and marking it
- * inapplicable - so there is no "inapplicable" case to account for here.
- *
- * ⚠️ Composed, never stylized. This is set on the plain `data-tooltip-content` attribute,
- * whose own renderer stylizes it - see the note on `TOOLTIP_TEXT_SELECTOR` in
- * trade-summary.js, which also supplies the `white-space: pre-wrap` this needs for the line
- * breaks between reasons to actually break. Stylizing it here too would double-process the
- * `[STYLE:...]` markup the "at war" reason carries.
- *
- * Ordered the same way the game orders its own overlay: capacity, then range, then war.
+ * Why a route cannot be started, in the game's OWN words - the FailureReasons `canStart` returns
+ * are localisation keys the game shows elsewhere. Nothing here invents a reason.
  */
 function blockedReasons(route) {
     const status = route.status ?? [];
@@ -817,28 +664,13 @@ function blockedReasons(route) {
     return reasons;
 }
 
-/**
- * The two groups, in a fixed order: what only the limit blocks first, out of range after.
- *
- * Both are created the first time either is needed, so the order on screen is this one
- * rather than whichever kind of card happened to come first in the list.
- */
+/** Fixed order: what only the limit blocks first, out of range after. */
 const GROUPS = [
     { kind: 'limit', labelKey: 'LOC_NAJANE_COMMERCE_BLOCKED_LIMIT' },
     { kind: 'range', labelKey: 'LOC_NAJANE_COMMERCE_BLOCKED_RANGE' },
 ];
 
-/**
- * The header that names a group, positioned in front of that group's first card.
- *
- * ⚠️ IT IS THE HEADER THAT MOVES, NEVER A CARD. The cards belong to Solid's `For` over the
- * model's array; taking one out of that row - which is what this code used to do, into a
- * container of its own per group - makes Solid's record of where its nodes are a lie, and the
- * next reconcile dies on "insertBefore ... is not a child of this node" and takes the rest of
- * the screen's rendering down with it. That crash is in UI.log, twice. The grouping is now
- * done by ORDERING the model's array (see applyFilterAndOrder) and dropping a header in front
- * of each run; the only node this mod moves is its own.
- */
+/** The header that names a group, positioned in front of that group's first card. */
 function positionGroupHeader(row, group, firstCard, order, collapsed) {
     let header = row.querySelector(`.${GROUP_CLASS}--${group.kind}`);
     if (!header) {
@@ -894,35 +726,22 @@ function sectionKindOf(entries) {
     return entries.some((entry) => entry.startable) ? 'available' : 'unavailable';
 }
 
-/**
- * The place in the ordering each group's cards start at.
- *
- * Plain numbers with room between them: the header of a group takes the value below its
- * cards, and the run has a thousand places to itself, which is more routes than a game has
- * leaders.
- */
+/** The place in the ordering each group's cards start at. */
 const GROUP_ORDER = { all: 100, limit: 100, range: 1100, other: 2100 };
 
 /**
  * Hides what the tab is not asking to see, orders what is left, and names each group.
  *
- * ⚠️ ORDERED WITH `order`, THE FLEX PROPERTY - not by moving the cards and NOT by sorting the
- * model's array either. Both were tried and both are traps:
+ * ⚠️ ORDERED WITH `order`, THE FLEX PROPERTY. Both alternatives are traps:
+ *   moving a card    breaks Solid's record of where its nodes are; the next reconcile throws
+ *                    `insertBefore ... is not a child of this node`.
+ *   sorting the array  the tab has its own `createEffect` that READS and re-sorts those arrays,
+ *                    so writing wakes it, it sorts back, the observer fires again - and the game
+ *                    hangs on opening the screen.
  *
- *   moving a card       breaks Solid's record of where its nodes are; the next reconcile
- *                       throws `insertBefore ... is not a child of this node` and takes the
- *                       screen's rendering down with it. See the ⚠️ above.
- *   sorting the array   the tab has a `createEffect` of its own that READS and re-sorts those
- *                       arrays (`tradeRouteSection.tradeRoutes.sort(sortFunction())`). Writing
- *                       to them wakes it, it sorts them back, that is a DOM change, the
- *                       observer calls this again - and the game hangs on opening the screen.
- *
- * `order` touches neither. It is a style on a flex item, so Solid's DOM is left exactly as
- * Solid built it and the game's effect has nothing to react to. If this renderer turned out
- * not to implement it the cards would simply stay in the game's own order - the filter would
- * still work - which is the failure this feature can afford.
- *
- * Filtering is a class that hides the card, for the same reason.
+ * `order` is a style on a flex item, so Solid's DOM is untouched and its effect has nothing to
+ * react to. If the renderer ignores it the cards stay in the game's order - a failure this
+ * feature can afford. Filtering is a class that hides the card, for the same reason.
  */
 function applyFilterAndHeaders() {
     for (const row of document.querySelectorAll(CARD_ROW_SELECTOR)) {
@@ -944,11 +763,8 @@ function applyFilterAndHeaders() {
                 && (!matchesFilter(route, kind) || (group !== null && collapsedGroups.has(group)));
             card.classList.toggle(HIDDEN_CARD_CLASS, hidden);
 
-            /*
-             * ⚠️ The available section's one bucket is called `all`, not `limit`. Named `limit`
-             * it collided with the group of that name below, and the "blocked only by the
-             * trade limit" header was planted in the middle of the AVAILABLE section.
-             */
+    // ⚠️ The available section's bucket is `all`, not `limit` - naming it `limit` would hide every
+    // available card whenever the limit filter was on.
             const bucket = group ?? (kind === 'unavailable' ? 'other' : 'all');
             if (!buckets.has(bucket)) {
                 buckets.set(bucket, []);
@@ -997,10 +813,7 @@ function applyFilterAndHeaders() {
                 row.querySelector(`.${GROUP_CLASS}--${group.kind}`)?.remove();
                 continue;
             }
-            /*
-             * A collapsed group keeps its header - it is the only way back - and so does a
-             * group the filter has emptied, so the player can see that it is there and why.
-             */
+    // A collapsed group keeps its header - it is the only way back.
             positionGroupHeader(row, group, items[0].card, GROUP_ORDER[group.kind] - 1, collapsed);
         }
     }
@@ -1009,21 +822,12 @@ function applyFilterAndHeaders() {
 /**
  * Puts the cards in `wanted` order inside their own row.
  *
- * ⚠️ WITHIN THE ROW ONLY, and that distinction is the whole safety argument. The crash this
- * tab caused once - `insertBefore ... is not a child of this node`, thrown by Solid's
- * `reconcileArrays` - happens when a node Solid is tracking has left the parent it was
- * rendered into. Read that algorithm: every reference it takes is one of its own nodes or that
- * node's `nextSibling`, so as long as each card is still A CHILD OF THE SAME ROW, every
- * `insertBefore` and `replaceChild` it makes still finds its target. Moving a card into a
- * container of this mod's own is what broke it, and nothing does that any more.
+ * ⚠️ WITHIN THE ROW ONLY, and that is the whole safety argument. `reconcileArrays` only ever
+ * references its own nodes or their `nextSibling`, so as long as each card is still A CHILD OF
+ * THE SAME ROW every `insertBefore` it makes still finds its target. Moving a card into a
+ * container of this mod's own is what threw `insertBefore ... is not a child of this node`.
  *
- * ⚠️ The caller also writes `order` on each card, and this is the belt to that pair of braces:
- * `order` appears nowhere in the shipped game, and the routes did not visibly reorder while it
- * was the only mechanism - so this renderer very likely ignores it. The style stays because it
- * costs nothing and is the right answer if it is ever honoured.
- *
- * Written back from the END, before whatever followed the last card, so the run keeps its place
- * among the row's other children - the sort strip and the group headers.
+ * Written back from the END, so the run keeps its place among the row's other children.
  */
 function reorderCards(row, current, wanted) {
     if (wanted.length < 2 || wanted.every((card, index) => card === current[index])) {
@@ -1082,33 +886,18 @@ ${SORT_STYLE}`);
     if (unwatch) {
         return;
     }
-    // Cards are Solid's and are rebuilt whenever the tab's data changes, so this stays
-    // attached and puts the destination back - the pattern settlement-controls.js uses.
-    // ⚠️ Scheduled, not called: this runs from a component's onMount, which is Solid still
-    // rendering. See scheduleDecorate.
+    // Cards are Solid's and are rebuilt whenever the tab's data changes, so this stays watching.
     scheduleDecorate();
     // The title row cannot be measured until the cards have been laid out; ask for a pass
     // on the next frame rather than waiting for something to disturb the DOM.
     scheduleRemeasure();
-    /*
-     * ⚠️ `decorateAll` directly, not `scheduleDecorate`. The shared watcher already runs its
-     * subscribers from a `requestAnimationFrame` - which is the whole reason the crash
-     * described above cannot happen - so going through this module's own frame as well would
-     * only add a second frame of delay to every redraw.
-     */
+    // ⚠️ `decorateAll` directly: the shared watcher already runs its subscribers from a rAF, so
+    // going through this module's own frame as well would add a second frame to every redraw.
     unwatch = watchCommerceScreen(decorateAll);
-    /*
-     * ⚠️ The buttons cannot wait for a DOM mutation for this one. A merchant lost at sea
-     * changes what a card should say and disturbs nothing on screen, so the observer never
-     * fires and the card would keep offering to wait for a merchant that has drowned.
-     */
+    // ⚠️ Not a DOM mutation: a merchant lost at sea changes what a card should say and disturbs
+    // nothing on screen.
     window.addEventListener(MerchantOrdersChangedEventName, onOrdersChanged);
-    /*
-     * ⚠️ Same reason, one layer up: a trade limit raised by this mod's own button disturbs
-     * nothing on screen either - the cards are the game's and it has no idea anything
-     * happened - so the observer never fires and every warning drawn from that limit would
-     * keep saying the old number.
-     */
+    // ⚠️ Same, one layer up: a trade limit raised by this mod's own button.
     window.addEventListener(TradeCapacityChangedEventName, onCapacityChanged);
     log('trade route cards decorated');
 }
@@ -1118,17 +907,7 @@ function onOrdersChanged() {
     scheduleDecorate();
 }
 
-/**
- * Everything read from the projection is stale; read it again and redraw.
- *
- * ⚠️ The redraw is the half that was missing. `forgetTradeRoutes` alone only empties the
- * caches, which fixes the NEXT pass - and on a screen whose cards are all the game's, there
- * may not be a next pass for a long time. Nothing else was going to disturb the DOM.
- *
- * ⚠️ Guarded on the tab being open. These listeners outlive one visit (see
- * `listenForRouteChanges`), and `refreshSummary` would otherwise try to plant a total above
- * tabs that are no longer on screen.
- */
+/** Everything read from the projection is stale; read it again and redraw. */
 function onRoutesChanged() {
     forgetTradeRoutes();
     if (liveCards > 0) {
@@ -1137,23 +916,11 @@ function onRoutesChanged() {
 }
 
 /**
- * ⚠️ TWO passes, not one, and the second is the one that matters.
- *
- * `Game.PlayerOperations.sendRequest` QUEUES the request. Everything the engine can be asked
- * straight afterwards - the trade capacity with that leader, what the next proposal costs,
- * whether one may be made at all - still describes the game state from BEFORE it, and stays
- * that way until the game core has played the operation back. A redraw on the next frame is
- * inside that window, so it faithfully redraws the old numbers: which is exactly what "I
- * clicked and nothing changed" looked like.
- *
- * The first pass is still worth doing - what this mod knows on its own side (that a proposal
- * is now in flight, so the button must go dark) is true immediately; see `proposedThisTurn`
- * in ui/engine/diplomacy.js. The second lands when the core catches up and brings the engine's
- * own answers with it.
- *
- * ⚠️ `GameCoreEventPlaybackComplete` is the game's OWN signal for this. `panel-diplomacy-actions.js`
- * does not refresh when a diplomacy event fires either - it sets a flag and refreshes on this
- * event, for the same reason.
+ * ⚠️ TWO passes, and the second is the one that matters. `sendRequest` QUEUES, so everything the
+ * engine can be asked straight afterwards still describes the state from BEFORE it - a redraw on
+ * the next frame faithfully redraws the old numbers, which is what "I clicked and nothing
+ * changed" looked like. The first pass is still worth doing for what this mod knows on its own
+ * side. `GameCoreEventPlaybackComplete` is the game's own signal for the second.
  */
 let awaitingCore = false;
 
@@ -1181,12 +948,7 @@ export function stopTradeRoutes() {
     }
     window.removeEventListener(MerchantOrdersChangedEventName, onOrdersChanged);
     window.removeEventListener(TradeCapacityChangedEventName, onCapacityChanged);
-    /*
-     * ⚠️ Only the elements this mod created. The group containers under the unavailable
-     * routes are deliberately left alone: they hold the GAME's cards, and removing a
-     * container would take those with it. Solid rebuilds that section on the next visit,
-     * groups and all.
-     */
+    // ⚠️ Only the elements this mod created - the game owns the rest of what is on screen.
     document.querySelectorAll(`.${CLASS}`).forEach((element) => element.remove());
     document.querySelectorAll(`.${BUY_STACK_CLASS}`).forEach((element) => element.remove());
     document.querySelectorAll(`.${LEADER_LINK_CLASS}`)
@@ -1197,10 +959,8 @@ export function stopTradeRoutes() {
         card.classList.remove(HIDDEN_CARD_CLASS);
         card.style.order = '';
     });
-    // The buttons and the sort tabs both hang the game's framed tooltip off elements outside
-    // Solid's tree, and those reactive roots have to be disposed by hand. ⚠️ By SCOPE: the
-    // unscoped call takes down every tooltip on the screen, including the ones the Resources
-    // tab has just built.
+    // ⚠️ By SCOPE: the unscoped call takes down every tooltip on the screen, including the ones
+    // the Resources tab has just built.
     disposeFramedTooltips('trade-routes');
     hideTradeSummary();
     styleElement?.remove();
@@ -1212,33 +972,18 @@ export function stopTradeRoutes() {
 }
 
 /**
- * Hooking in: the tab container itself is a plain exported function, but the CARD is
- * registered - so wrapping the card is the only mount signal this tab offers.
- *
- * The count is what tells us the tab has gone. It is checked a frame later because a
- * rebuild unmounts the old cards around the same time it mounts the new ones, and the
- * order between the two is not ours to rely on - deciding at the moment the count hits
- * zero would tear the decoration down in the middle of a redraw.
+ * Hooking in: the tab container is a plain exported function, so wrapping the CARD is the only
+ * mount signal this tab offers. The count is checked a frame later because a rebuild unmounts the
+ * old cards around the same time it mounts the new ones.
  */
 /*
- * ⚠️ `DiplomacyEventEnded` and `DiplomacyQueueChanged` are here for ONE reason: a proposed
- * "Improve Trade Relations" treaty resolving. Listened for the same way
- * `panel-diplomacy-actions.js` itself does (`onDiplomacyEventEnded`/`onDiplomacyQueueChanged`
- * both just set a refresh flag), because nothing narrower exists to ask "did MY trade
- * capacity with THAT leader just change" - only "something about a diplomatic pairing did".
+ * ⚠️ The two diplomacy events are here for ONE reason: a proposed "Improve Trade Relations"
+ * resolving. Nothing narrower exists - only "something about a diplomatic pairing changed".
  *
- * ⚠️ THIS DOES NOT MOVE A ROUTE BETWEEN SECTIONS. `onRoutesChanged` clears THIS MOD's own
- * `routesByCityName` cache AND redraws everything this mod put on the tab, so `route.status`
- * - read live from `Trade.projectPossibleTradeRoutes` - is correct again, and this mod's OWN
- * buttons, group headers and total all say the new thing straight away. The CARD ITSELF stays
- * wherever the game drew it: `commerce-screen-model.js` builds `tradeRouteTabData` exactly
- * ONCE, when the screen's model is created, and nothing in the base game ever rebuilds it
- * again for the life of that one screen-open - not on any event, not on a timer. Moving the
- * card to reflect the new capacity would mean moving it between two different `<For>`s over
- * two different arrays, which is the one thing `reconcileArrays` cannot survive being done
- * to it from outside Solid; see the ⚠️ on `reorderCards`. The only way the CARD'S OWN section
- * updates is the same one the player already found: close the screen and open it again - and
- * that is the player's decision, not something to do to them on a click.
+ * ⚠️ THIS DOES NOT MOVE A CARD BETWEEN SECTIONS. `commerce-screen-model.js` builds
+ * `tradeRouteTabData` exactly ONCE per screen-open and never rebuilds it. Moving a card would
+ * mean moving it between two different `<For>`s over two different arrays, which is the one thing
+ * `reconcileArrays` cannot survive. Only reopening the screen re-sections them.
  */
 const ROUTE_EVENTS = [
     'TradeRouteAddedToMap',
@@ -1259,26 +1004,18 @@ function listenForRouteChanges() {
         return;
     }
     listening = true;
+    // Through the shared dispatcher; `LocalPlayerTurnBegin` alone has five subscribers across
+    // this mod and used to be five separate `engine.on` calls. See engine/events.js.
     for (const name of ROUTE_EVENTS) {
-        try {
-            engine.on(name, onRoutesChanged);
-        } catch (error) {
-            warn(`could not listen for ${name}: ${error}`);
-        }
+        onEngineEvent(name, onRoutesChanged);
     }
 }
 
 /**
- * ⚠️ Subscribed only while something is actually waiting for it, and taken off again the
- * moment that ends.
- *
- * `GameCoreEventPlaybackComplete` does not mean "something about the routes changed" - it
- * means "the game core has finished playing back what it was given", which fires constantly
- * and about everything. It was subscribed once and left, with a flag inside the handler to
- * make it cheap; cheap is not free when the callback runs several times a second for the
- * whole game, and these listeners outlive the screen (see `listenForRouteChanges`). The
- * window it exists for is the few hundred milliseconds after this mod's own button raises a
- * trade limit - see `onCapacityChanged` - so it is opened then and closed on the first event.
+ * ⚠️ Subscribed only while something is waiting for it. `GameCoreEventPlaybackComplete` means
+ * "the core finished playing back what it was given" and fires constantly; it was subscribed once
+ * and left, with a flag inside the handler to make it cheap - and cheap is not free when the
+ * callback runs several times a second all game. The window it exists for is a few hundred ms.
  */
 let corePlaybackSubscription = null;
 

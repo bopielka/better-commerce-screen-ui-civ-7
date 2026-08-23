@@ -1,25 +1,15 @@
 /**
- * The Empire Resources tab, rebuilt.
- *
- * The game's version gives each resource a card the size of a poster: the rule in full
- * prose, a "SOURCE" divider, and a row of leader portraits. Five resources fill the screen
- * and none of them answers the question actually being asked - what is this worth to me?
- *
- * This one is a three-column list. Each card is a title line and a total:
+ * The Empire Resources tab, rebuilt as a three-column list. Each card is a title line and a
+ * total; the prose and the origins move into the tooltip on the icon:
  *
  *     [icon] SALTPETER [10]
  *     +6 (combat)
  *
- * The prose and the origins move into the tooltip on the icon, where they are available
- * without being in the way. What the totals mean, and why they are not simply the number
- * in the description multiplied by the count, is in planner/empire-effects.js.
+ * The game's version gives each resource a poster-sized card that answers everything except the
+ * question being asked - what is this worth to me? The arithmetic is planner/empire-effects.js.
  *
- * Worked out when the tab is opened, once. These figures move only when settlements or
- * resources do, and both of those close this screen to happen.
- *
- * ⚠️ Rendered imperatively rather than reactively, and deliberately: nothing here changes
- * while the tab is open, so a Solid render tree would be machinery guarding a value that
- * cannot move. The one-shot build below is the whole of it.
+ * ⚠️ Rendered imperatively rather than reactively, and worked out once when the tab opens: these
+ * figures move only when settlements or resources do, and both of those close this screen.
  */
 import { createComponent, onCleanup, onMount } from '/core/vendor/solid-js/dist/solid.js';
 import { hideTabSummary, showTabSummary } from './screen-parts.js';
@@ -31,20 +21,13 @@ import { useCommerceScreenContext } from '/base-standard/ui-next/screens/commerc
 import { empireEffectTotals, forgetEmpireEffects } from '../planner/empire-effects.js';
 import { buildSettlements } from '../model/headless-model.js';
 import { appendWithResourceTooltip, resourceTooltipProps } from './resource-tooltip.js';
-import { appendAll, clearChildren, ensureStyle, makeElement } from '../support/dom.js';
+import { appendAll, clearChildren, ensureStyle, makeElement, setTooltip } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const CLASS = 'najane-empire';
 const PRODUCTION_YIELD = 'YIELD_PRODUCTION';
 
-/**
- * Where the tooltip controller puts plain text.
- *
- * ⚠️ `#tooltip-root-content`, by id - NOT `.tooltip__content`, which was the first guess
- * and matched nothing. The manager is handed two elements from root-game.html,
- * `tooltipRootElement: #tooltip-root` and `tooltipContentElement: #tooltip-root-content`,
- * and the text goes into a bare div appended to the second one.
- */
+/** Where the tooltip controller puts plain text. */
 const TOOLTIP_TEXT_SELECTOR = '#tooltip-root-content > div';
 const STYLE_ID = 'najane-empire-tab-style';
 
@@ -350,14 +333,7 @@ const STYLE = `
 ${TOOLTIP_TEXT_SELECTOR} { white-space: pre-wrap; }
 `;
 
-/**
- * The class badge for a resource, or null if the game has no icon for its class.
- *
- * The class is read from the resource itself rather than from the tab's `isTreasure` flag,
- * because the two are not the same question: the same resource is an empire resource in one
- * age and a treasure one in the next, and the game keeps a third class for treasure coming
- * from distant lands.
- */
+/** The class badge for a resource, or null if the game has no icon for its class. */
 function classBadge(resource) {
     const background = resourceClassBackground(resource?.type);
     if (!background) {
@@ -368,32 +344,12 @@ function classBadge(resource) {
     return badge;
 }
 
-/**
- * The card's tooltip: the game's own wording, then where the resource comes from.
- *
- * ⚠️ Line breaks need BOTH a newline character and `white-space: pre-wrap` on the tooltip
- * - see TOOLTIP_TEXT_SELECTOR. Two attempts failed for the same underlying reason: the
- * renderer does `element.innerHTML = Locale.stylize(content)` into a bare div, so a newline
- * collapses to a space the way any whitespace does in HTML, and the game's own `[N]` marker
- * resolves to that same newline rather than to a <br>. Nothing about the text can force the
- * break; the CSS has to allow it.
- *
- * The origins are rebuilt from `resourceOriginData` rather than taken from the model's
- * ready-made `tooltips`, because those were already stylised into one blob per leader -
- * fine where the game puts them, unusable once they have to be laid out differently.
- */
+/** The card's tooltip: the game's own wording, then where the copies come from. */
 function descriptionFor(resource) {
     return (resource.description ?? []).map((key) => Locale.compose(key));
 }
 
-/**
- * Where the copies came from: a leader per line, that leader's settlements indented
- * beneath - a run of names separated by commas stops being readable at about three.
- *
- * Returned as lines rather than a string because the two tooltips need different
- * separators: the game's component stylises its text, so it wants the game's own `[N]`,
- * while the plain-text fallback needs a real newline. See TOOLTIP_TEXT_SELECTOR.
- */
+/** Where the copies came from: a leader per line, that leader's settlements indented. */
 function originLines(resource) {
     const origins = [];
     for (const originData of resource.resourceOriginData ?? []) {
@@ -415,13 +371,7 @@ function originLines(resource) {
     return origins;
 }
 
-/**
- * One card per leader for the tooltip: their face, their total, and their settlements.
- *
- * The same data `originLines` lays out as text, shaped for the framed tooltip instead - the
- * leader's own total in the heading, because with eight settlements listed "how many come
- * from this one leader" is arithmetic the reader should not have to do.
- */
+/** One card per leader: their face, their total, and their settlements. */
 function originGroups(resource) {
     const groups = [];
     for (const originData of resource.resourceOriginData ?? []) {
@@ -482,13 +432,13 @@ function totalElement(total, useOneCopy) {
 
     if (total.active === false) {
         element.classList.add(`${CLASS}-total--inactive`);
-        element.setAttribute('data-tooltip-content', Locale.compose(CELEBRATION_TOOLTIP));
+        setTooltip(element, Locale.compose(CELEBRATION_TOOLTIP));
     }
 
     if (total.capped && !useOneCopy) {
         element.classList.add(`${CLASS}-total--capped`);
         // The description says so too; this is the same fact where the number is.
-        element.setAttribute('data-tooltip-content', Locale.compose(CAPPED_TOOLTIP));
+        setTooltip(element, Locale.compose(CAPPED_TOOLTIP));
     }
     return element;
 }
@@ -497,18 +447,8 @@ function totalElement(total, useOneCopy) {
 /**
  * The figures, built as COLUMNS rather than as two rows.
  *
- * ⚠️ This is the whole trick, and it is not decoration: laid out as rows, the second
- * figure starts wherever the first one happened to end, so "+18" above "+144" pushed
- * everything after it out of line and no two plus signs sat under each other.
- *
- * A column per figure fixes it by construction. Each column is as wide as its widest
- * cell, both cells start at the column's left edge, and the plus signs line up whatever
- * the numbers are - no measuring, no guessed widths, nothing to re-tune when a bonus
- * reaches four digits.
- *
- * CSS grid would express this directly. Deliberately not used: `display: grid` appears
- * nowhere in the entire shipped game, so nothing says this renderer implements it, and
- * this layout is not the place to find out.
+ * ⚠️ A column per figure is what keeps "one copy" and "all copies" aligned under each other when
+ * the two numbers are different widths. Two rows drifted apart as soon as one wrapped.
  */
 function figuresBlock(computed, scales) {
     const block = makeElement('div', `${CLASS}-card__figures`);
@@ -547,15 +487,7 @@ function figuresBlock(computed, scales) {
     return block;
 }
 
-/**
- * One line per bonus that needs words, keyed by the icon beside its number.
- *
- * ⚠️ The icon alone is only a key while the icons DIFFER. Two production percentages in
- * one card would both show the production icon and the reader could not tell which line
- * belonged to which number, so in that case the figure goes into the line as well. Coal
- * and Oil - a percentage plus a combat bonus - do not hit this, but nothing in the data
- * promises that.
- */
+/** One line per bonus that needs words, keyed by the icon beside its number. */
 function legendFor(computed) {
     const labelled = computed.filter((total) => labelFor(total));
     if (!labelled.length) {
@@ -592,12 +524,7 @@ function cardFor(resource, settlements, computed) {
     if (resource.iconSrc) {
         icon.style.backgroundImage = resource.iconSrc;
     }
-    /*
-     * The little badge that says whether this is an empire resource or a treasure one -
-     * the same mark the unassigned pool puts on its slots. The game builds it as
-     * `url(blp:${UI.getIconBLP(classType)})` from the resource's class; see
-     * getResourcePropsFromDefinition in commerce-screen-model.js.
-     */
+/** The badge saying whether this is an empire resource or a treasure one. */
     const badge = classBadge(resource);
     if (badge) {
         icon.appendChild(badge);
@@ -607,12 +534,7 @@ function cardFor(resource, settlements, computed) {
     // whatever a second element happened to inherit.
     const title = makeElement('div', `${CLASS}-card__title font-title`);
     title.textContent = `${Locale.compose(resource.title)} [${resource.amount}]`;
-    /*
-     * The game's own framed tooltip, so a resource looks the same object here as it does in
-     * the unassigned pool. The origins go into its "Origin:" line, which is the one free
-     * text slot it has - the game puts a single city name there, and there is more to say
-     * about a pile gathered from several leaders.
-     */
+/** The game's own framed tooltip, so a resource is the same object here as in the pool. */
     appendWithResourceTooltip(
         head,
         icon,
@@ -622,16 +544,7 @@ function cardFor(resource, settlements, computed) {
     );
     head.appendChild(title);
 
-    /*
-     * Both readings whenever the bonus grows with copies - including at one copy, where
-     * they read the same. The rows were hidden in that case at first, on the grounds that
-     * an identical pair says nothing; shown, they say something else, which is that this
-     * resource is worth stockpiling and what the next copy would be worth. The cards also
-     * stop changing shape as the empire grows.
-     *
-     * A bonus that does NOT grow with copies still gets a single line, with the note under
-     * it saying so - there the two rows would claim a distinction the game does not make.
-     */
+/** Both readings whenever the bonus grows with copies - including at one copy, where they agree. */
     const scales = computed.some((total) => total.scales);
     appendAll(inner, head);
     if (computed.length) {
@@ -651,22 +564,10 @@ function cardFor(resource, settlements, computed) {
         inner.appendChild(legend);
     }
     if (computed.length === 0) {
-        /*
-         * Nothing this module knows how to add up - say what the game says instead.
-         *
-         * ⚠️ `Locale.stylize`, set as `innerHTML` - NOT `Locale.compose` into `textContent`.
-         * A resource's own description carries the game's markup (`[icon:...]`,
-         * `[TIP:...]...[/tip]`), and `compose` only resolves the localisation key; it does
-         * not touch that markup at all. Read into `textContent` it printed as literal
-         * bracketed text instead of an icon and a tooltip - reported as "missing labels on
-         * Hardwood", back when this effect had no branch in empire-effects.js and fell all
-         * the way through to here. `innerHTML = Locale.stylize(...)` is the same call the
-         * game's own tooltip renderer makes for exactly this kind of text; see the note on
-         * `descriptionFor` for why the CSS also needs `white-space: pre-wrap`.
-         *
-         * The strings come from GameInfo.Types/LOC_* keys the game ships, never from a
-         * player, so there is nothing here for that HTML to inject.
-         */
+/**
+ * Nothing this module knows how to add up - say what the game says instead.
+ * ⚠️ Left out rather than guessed at; the tooltip still carries the full description.
+ */
         const fallback = makeElement('div', `${CLASS}-card__fallback`);
         fallback.innerHTML = Locale.stylize(descriptionFor(resource).join('[N]'));
         inner.appendChild(fallback);
@@ -675,13 +576,7 @@ function cardFor(resource, settlements, computed) {
     return card;
 }
 
-/**
- * What every empire resource adds up to, by yield.
- *
- * Only yields. Combat strength is left out because it is not income and does not add up -
- * "+6 to siege units" and "+3 to cavalry" are not +9 of anything. Percentages towards
- * buildings are left out for the same reason.
- */
+/** What every empire resource adds up to, by yield. */
 function summariseYields(perResource) {
     const byYield = new Map();
     for (const totals of perResource) {
@@ -724,13 +619,7 @@ function buildSummary(byYield) {
     return bar;
 }
 
-/**
- * Puts the summary in the tab row, to the left of the tabs.
- *
- * That row belongs to the screen rather than to this tab, so it is emptied of ours first:
- * a tab can be left and re-entered, and the row would otherwise collect a summary per
- * visit. Removed again on cleanup - see the container below.
- */
+/** Puts the summary in the tab row, to the left of the tabs. */
 function showSummary(byYield) {
     showTabSummary(SUMMARY_CLASS, () => buildSummary(byYield));
 }
@@ -747,12 +636,8 @@ function render(host, model) {
     // Read once for the whole tab: the totals all measure against the same empire.
     const settlements = buildSettlements();
 
-    /*
-     * Two containers, not one flowing list: everything with a combat bonus goes down the
-     * first column and the rest fill the other three. A single wrapping list cannot do
-     * that - it places cards in the order they come and the combat ones land wherever
-     * they happen to fall.
-     */
+    // Two containers, not one flowing list: everything with a combat bonus goes below, since
+    // those cards are the tall ones.
     const combatColumn = makeElement('div', `${CLASS}-combat`);
     const restColumns = makeElement('div', `${CLASS}-rest`);
     appendAll(host, combatColumn, restColumns);

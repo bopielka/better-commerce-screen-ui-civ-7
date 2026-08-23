@@ -13,6 +13,34 @@ them in the save file.
 | "Imports first" | `ui/planner/imports-first-setting.js` | `better-commerce-screen-ui.importsFirstChoice` |
 | "Factories first" | `ui/planner/factory-first-setting.js` | `better-commerce-screen-ui.factoryFirstChoice` |
 | Per-settlement priority | `ui/planner/priority-store.js` | `better-commerce-screen-ui.priority.<gameSeed>.<cityKey>` |
+| Resource locks allowed | `ui/engine/resource-locks.js` | `better-commerce-screen-ui.allowResourceLocks` |
+| Hide this mod's tooltips | `ui/engine/tooltip-setting.js` | `better-commerce-screen-ui.hideTooltips` |
+
+### ⚠️ "Don't show tooltips on the Commerce screen"
+
+Off by default, and it covers **only what this mod draws** — the game's own tooltips are not
+this mod's to take away. Three mechanisms, one switch, three choke points:
+
+| What | Where it is declined |
+|---|---|
+| Framed tooltips on the mod's buttons, switches, settlement controls | `appendWithFramedTooltip` returns after appending the trigger alone |
+| Plain `data-tooltip-content` on bars, totals, padlocks, trade-route titles | `setTooltip` in `support/dom.js` — the one door for that attribute |
+| The extended resource tooltip on Empire / Factory / Treasure cards | `appendWithResourceTooltip` returns after appending the tile alone |
+
+The round "?" marks go with them: `makeHelpMark` answers **null**, and every caller appends
+through `appendAll`, which skips what is not there. A mark exists only to carry a tooltip, so
+one drawn with the explanations off would be a button that does nothing.
+
+⚠️ **`setTooltip` also marks what it sets** (`data-najane-tooltip`). That mark is what makes
+`removeModTooltips` safe: some of these hang on the GAME's own elements — the trade-route card
+title is the clear case — so "strip every `data-tooltip-content` on this screen" would take the
+game's own with them.
+
+⚠️ **Throwing the switch is not fully retroactive, and cannot be.** The plain tooltips are an
+attribute and are stripped where they stand, from the entry point's listener on
+`TooltipSettingChangedEventName`. A framed tooltip mounts its trigger *inside* the Solid root
+it creates, so disposing one to undo it would remove the button with it — those wait for the
+screen to be reopened. The option's description says so.
 
 ## The storage channel
 

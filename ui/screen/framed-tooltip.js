@@ -1,27 +1,13 @@
 /**
- * The game's framed tooltip, for this mod's own buttons and controls.
+ * The game's framed tooltip - a bordered frame with a title over inset cards - for this mod's own
+ * buttons and controls, which otherwise drew a bare box beside controls that drew a frame.
  *
- * The game draws its tooltips as a bordered frame with a title over one or more inset
- * cards. Everything this mod added drew a bare box of text instead, so the screen had two
- * visual languages on it at once - the game's for its own controls, ours for the buttons
- * sitting right beside them.
+ * Multi-paragraph text becomes one CARD PER PARAGRAPH. ⚠️ Paragraphs are found by splitting the
+ * COMPOSED text on a blank line, so nothing new is needed in the localisation files.
  *
- * Multi-paragraph text becomes one CARD PER PARAGRAPH, which is what the frame is for: the
- * shortcut list, the switches and the settlement controls all had two or three thoughts
- * separated by a blank line, and in a bare box those ran together.
- *
- * ⚠️ Paragraphs are found by splitting the COMPOSED text on a blank line, so nothing new is
- * needed in the localisation files - `[N][N]` already resolves to one. Existing keys become
- * cards on their own.
- *
- * ⚠️ These triggers live OUTSIDE Solid's tree. `assign-all-buttons.js`, `assign-switches.js`
- * and `settlement-controls.js` inject into elements the game owns, from a MutationObserver -
- * there is no component and therefore no owner. Every tooltip is created inside its own
- * `createRoot` so the reactive scope has somewhere to live and something to dispose it, and
- * `disposeFramedTooltips()` tears them all down when the screen goes.
- *
- * See resource-tooltip.js for the same job on the Empire and Factory cards, and for the
- * traps in writing Solid without JSX - they apply here too.
+ * ⚠️ These triggers live OUTSIDE Solid's tree - injected into elements the game owns, from an
+ * observer, so there is no component and no owner. Each tooltip is created in its own `createRoot`
+ * so the reactive scope has somewhere to live and something to dispose it.
  */
 import { createComponent, createRoot } from '/core/vendor/solid-js/dist/solid.js';
 import { insert } from '/core/vendor/solid-js/web/dist/web.js';
@@ -29,36 +15,27 @@ import { CardFrame } from '/core/ui-next/components/card-frame.js';
 import { L10n } from '/core/ui-next/components/l10n.js';
 import { Tooltip } from '/core/ui-next/components/tooltip.js';
 
-import { makeElement } from '../support/dom.js';
+import { areModTooltipsHidden } from '../engine/tooltip-setting.js';
+import { makeElement, setTooltip } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
 
 /** How far the frame floats off the control it belongs to. The game's default is 0. */
 const TOOLTIP_OFFSET = 12;
 
 /**
- * The disposers, kept per SCOPE.
- *
- * ⚠️ Per scope, not in one list. A tab tearing its own tooltips down used to dispose every
- * tooltip on the screen, including ones another tab had just built - so a visit to the Trade
- * Routes tab left the Resources tab's buttons with dead tooltips for the rest of the session.
- * A caller disposes what it made and nothing else.
+ * ⚠️ Per SCOPE, not one list: a tab tearing its own tooltips down used to dispose every tooltip on
+ * the screen, so a visit to Trade Routes left the Resources tab's buttons with dead ones.
  */
 const disposers = new Map();
 
 const DEFAULT_SCOPE = 'screen';
 
 /**
- * Disposes a scope and everything filed underneath it.
+ * Disposes a scope and everything filed under it - "trade-routes" takes "trade-routes:1234" too.
  *
- * ⚠️ Prefixes matter here. A caller that rebuilds one control at a time gives each its own
- * scope - "trade-routes:1234" - and disposes just that one before throwing the old element
- * away; the tab's teardown then passes "trade-routes" and takes the lot. Without the prefix
- * rule the teardown would leave every per-control scope mounted.
- *
- * ⚠️ Disposing before discarding a trigger is not optional. A framed tooltip is anchored to
- * the element it was built around; remove that element while the frame is open and the frame
- * stays on screen with nothing to measure against, which the game draws in the top-left corner
- * of the screen. That is what a click on the buy button used to do.
+ * ⚠️ Disposing before discarding a trigger is NOT optional: a framed tooltip is anchored to the
+ * element it was built around, and removing that element while the frame is open leaves the frame
+ * on screen with nothing to measure against, drawn in the top-left corner.
  */
 export function disposeFramedTooltips(scope = DEFAULT_SCOPE) {
     const prefix = `${scope}:`;
@@ -80,11 +57,8 @@ export function disposeFramedTooltips(scope = DEFAULT_SCOPE) {
 
 /**
  * A blank line separates thoughts; each becomes its own card.
- *
- * ⚠️ Split on the MARKER as well as on a real blank line. `Locale.compose` does not turn
- * `[N]` into a newline - `Locale.stylize` does, and that runs later, inside `L10n.Stylize`.
- * Looking only for `\n\n` therefore found nothing in a composed string and every tooltip
- * came out as a single card, which is the whole feature not working.
+ * ⚠️ Split on the MARKER as well as on a real blank line: `Locale.compose` does not turn `[N]` into
+ * a newline - `Locale.stylize` does, later - so looking only for a real blank line found nothing.
  */
 function paragraphsOf(text) {
     return String(text ?? '')
@@ -106,16 +80,25 @@ function textCard(paragraph, isFirst) {
 
 /**
  * Puts `trigger` inside a framed tooltip and appends the result to `parent`.
- *
- * @param title  a localisation key for the heading, or null for no heading.
- * @param text   already composed; blank lines split it into cards.
- * @param scope  which teardown owns it; see `disposeFramedTooltips`.
+ * @param title a localisation key for the heading, or null. @param text already composed.
  */
 export function appendWithFramedTooltip(
     parent,
     trigger,
     { title = null, text = '', scope = DEFAULT_SCOPE } = {},
 ) {
+    /*
+     * ⚠️ The trigger still goes in - every caller is putting a BUTTON on screen and describing it
+     * in the same breath, so returning early would take the button away with its explanation.
+     *
+     * ⚠️ Decided when the control is BUILT, which is why throwing the switch takes full effect on
+     * the next visit: a framed tooltip mounts its trigger INSIDE the Solid root it creates, so
+     * disposing one to undo it would remove the button too.
+     */
+    if (areModTooltipsHidden()) {
+        parent.appendChild(trigger);
+        return;
+    }
     const paragraphs = paragraphsOf(text);
     if (paragraphs.length) {
         try {
@@ -126,9 +109,7 @@ export function appendWithFramedTooltip(
                 // way JSX does it - hoisting one into a variable mounts it twice.
                 return createComponent(Tooltip, {
                     showFiligrees: false,
-                    // ⚠️ The component's own `offset`, default 0 - which puts the frame
-                    // flush against the control and reads as part of it. A little air
-                    // makes it read as a separate thing floating over the screen.
+                    // The component default is 0, which puts the frame flush against the control.
                     offset: TOOLTIP_OFFSET,
                     get children() {
                         return [
@@ -148,16 +129,12 @@ export function appendWithFramedTooltip(
                                                     'div',
                                                     'font-title text-secondary uppercase mb-2',
                                                 );
-                                                /*
-                                                 * ⚠️ Stylize, not Compose. `Compose` resolves
-                                                 * the key and stops there, so a name carrying
-                                                 * the game's own markup - every yield name is
-                                                 * "[icon:YIELD_FOOD] Food" in several
-                                                 * languages - printed the tag as literal text
-                                                 * in the heading. Stylize composes AND turns
-                                                 * the markup into what it stands for, which is
-                                                 * what the cards below already did.
-                                                 */
+                                /*
+                                 * ⚠️ Stylize, not Compose. Compose resolves the key and stops, so a
+                                 * name carrying the game's own markup - every yield name is
+                                 * "[icon:YIELD_FOOD] Food" in several languages - printed the tag
+                                 * as literal text.
+                                 */
                                                 insert(heading, createComponent(L10n.Stylize, { text: title }));
                                                 parts.push(heading);
                                             }
@@ -189,8 +166,6 @@ export function appendWithFramedTooltip(
             warn(`the framed tooltip would not mount, using plain text: ${error}`);
         }
     }
-    if (text) {
-        trigger.setAttribute('data-tooltip-content', text);
-    }
+    setTooltip(trigger, text);
     parent.appendChild(trigger);
 }

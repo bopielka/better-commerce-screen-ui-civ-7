@@ -1,26 +1,10 @@
 /**
- * How many trade routes you are running, and how many more you could.
+ * How many trade routes you are running and how many more you could, above the tabs.
  *
- * The Trade Routes tab lists routes but never totals them: the one number that decides
- * whether it is worth reading the "unavailable" section at all - have I any room left? -
- * is spread across every card as "2 of 3 with this leader" and nowhere else.
- *
- * This puts the total where the Empire tab puts its income, to the left of the tabs. Only
- * one tab is ever open, so the two never share the row.
- *
- * Where the numbers come from
- * ---------------------------
- * Capacity is per LEADER, not per empire - `getTradeCapacityFromPlayer` is asked once per
- * player we have met, and the totals are the sums. Deliberately not
- * `countPlayerTradeRoutes()`, which counts every route including ones to players outside
- * this sum: the headline and the tooltip breakdown would then disagree, and the breakdown
- * is the part that can be checked by eye.
- *
- * ⚠️ Spare capacity is not the same as a route you can start. Range and war block routes
- * the limit would allow, so the tooltip splits the leaders in two rather than implying
- * every free slot is usable - which is exactly the mistake the headline number invites.
+ * ⚠️ Counted per LEADER, because that is how the game counts it: the limit is a property of the
+ * pairing, not of your empire, so one number for the whole screen would be a different fact.
  */
-import { makeElement } from '../support/dom.js';
+import { makeElement, setTooltip } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
 import { hideTabSummary, showTabSummary } from './screen-parts.js';
 
@@ -64,12 +48,7 @@ export const STYLE = `
 ${TOOLTIP_TEXT_SELECTOR} { white-space: pre-wrap; }
 `;
 
-/**
- * Every leader we could trade with, and how much room is left with each.
- *
- * Majors only, and only the ones we have met: capacity towards a player we have never
- * seen is not room we can use, and counting it would overstate the headline.
- */
+/** Every leader we could trade with, and how much room is left with each. */
 function partners() {
     const localID = GameContext.localPlayerID;
     const local = Players.get(localID);
@@ -137,7 +116,7 @@ function build(list, startable) {
     const free = Math.max(0, capacity - used);
 
     const bar = makeElement('div', `${CLASS}${free === 0 ? ` ${CLASS}--full` : ''}`);
-    bar.setAttribute('data-tooltip-content', tooltipFor(list, startable));
+    setTooltip(bar, tooltipFor(list, startable));
 
     const label = makeElement('div', `${CLASS}__label font-title`);
     label.textContent = `${Locale.compose('LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL')}:`;
@@ -155,13 +134,7 @@ function build(list, startable) {
     return bar;
 }
 
-/**
- * Puts the summary in the tab row, to the left of the tabs.
- *
- * @param startable ids of the leaders we could open a route with right now, worked out
- *                  from the projection the tab already runs - passed in rather than read
- *                  here so this module never runs that projection a second time.
- */
+/** Puts the summary in the tab row, to the left of the tabs. */
 export function showTradeSummary(startable = new Set()) {
     try {
         // Replaces rather than adds: the row belongs to the screen, not to this tab, so a

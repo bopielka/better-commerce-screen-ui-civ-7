@@ -106,6 +106,13 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="pt_BR">
             <Text>O mesmo para o Ouro: jade, búzios, rubis, prata, cravo e os demais são reunidos na cidade que já produz mais Ouro — e propositalmente não na de Cultura, para que os dois montes não disputem as mesmas vagas. Assentamentos com prioridade própria são atendidos primeiro.</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS" Language="pt_BR">
+            <Text>Não mostrar dicas na tela de Comércio</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION" Language="pt_BR">
+            <Text>Com isto ativado, nenhuma das explicações que este mod adiciona à tela de Comércio é desenhada: nem as dicas emolduradas nos seus próprios botões, interruptores e controles de assentamento, nem as simples em barras, totais, cadeados e títulos de rotas comerciais, nem a dica de recurso estendida nos cartões de Império, Fábrica e Tesouro. As marcas redondas "?" vão junto, pois existem apenas para carregar uma dica.[N][N]As dicas PRÓPRIAS do jogo ficam intactas.[N][N]Desativado por padrão. Tem efeito pleno na próxima vez que a tela de Comércio for aberta.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="pt_BR">
             <Text>Atalhos do mouse</Text>
         </Row>

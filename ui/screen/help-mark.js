@@ -1,15 +1,10 @@
 /**
- * The small round "?" that carries an explanation in its tooltip.
- *
- * Used wherever this screen does something a player cannot discover by looking: the Shift
- * shortcuts on the Resources tab, and what a click on a treasure card actually does. Both
- * are cases where a sentence on screen would be read once and then be in the way forever,
- * so it goes behind a mark instead.
- *
- * Shared rather than copied because a second one that looked slightly different would read
- * as a different kind of control.
+ * The small round "?" that carries an explanation in its tooltip, used where this screen does
+ * something a player cannot discover by looking. Shared so a second one cannot look slightly
+ * different and read as a different kind of control.
  */
 import { appendWithFramedTooltip } from './framed-tooltip.js';
+import { areModTooltipsHidden } from '../engine/tooltip-setting.js';
 import { makeElement } from '../support/dom.js';
 
 export const HELP_CLASS = 'najane-assign-help';
@@ -44,18 +39,22 @@ export const HELP_STYLE = `
 
 /**
  * Not clickable - just a label with a tooltip.
- *
- * ⚠️ Returns a WRAPPER, not the mark: the framed tooltip has to enclose its trigger. The
- * shortcut list this carries is four thoughts separated by blank lines, which is exactly
- * what the framed form is for - each becomes its own card instead of one wall of text.
- *
- * ⚠️ Pass a `scope` wherever the mark is torn down before the screen is - a tab that comes
- * and goes. Left on the default, its tooltip is only disposed by the screen's own teardown,
- * and a caller that removes the element sooner strands the frame; disposing the DEFAULT scope
- * to work around that would take every other tab's tooltips with it. See the note on
- * `disposeFramedTooltips`.
+ * ⚠️ Returns a WRAPPER, not the mark: the framed tooltip has to enclose its trigger.
+ * ⚠️ Pass a `scope` wherever the mark is torn down before the screen is, or its tooltip is only
+ * disposed by the screen's own teardown and a caller removing the element sooner strands the frame.
  */
 export function makeHelpMark(tooltipKey, labelKey, scope = undefined) {
+    /*
+     * ⚠️ NOTHING AT ALL, not a mark without a tooltip.
+     *
+     * This control is a tooltip and nothing else - it is not clickable, and the "?" is only
+     * the handle you hover. Drawn with the explanations switched off it would be a button
+     * that does nothing, which is worse than the blank space it leaves. Callers append it
+     * through `appendAll`, which skips what is not there.
+     */
+    if (areModTooltipsHidden()) {
+        return null;
+    }
     const mark = makeElement('div', HELP_CLASS, { 'aria-label': Locale.compose(labelKey) });
     mark.textContent = '?';
 

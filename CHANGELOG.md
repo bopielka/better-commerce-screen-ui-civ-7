@@ -4,13 +4,50 @@ Notable changes to **Better Commerce Screen UI**. Newest first.
 
 ## 1.9
 
-Nothing on screen changes in this release. Every feature behaves exactly as it did in 1.8;
-what changed is what the mod costs the game while you are playing it.
+One new option; otherwise nothing on screen changes. Every feature behaves exactly as it did
+in 1.8. What changed is what the mod costs the game while you are playing it.
+
+### New
+
+- **"Don't show tooltips on the Commerce screen"** (Options → Mods, off by default). With it
+  on, none of the explanations this mod adds are drawn: the framed tooltips on its own buttons,
+  switches and settlement controls, the plain ones on its bars, totals, padlocks and
+  trade-route titles, and the extended resource tooltip on the Empire, Factory and Treasure
+  cards. The round "?" marks go with them — a mark exists only to carry a tooltip, and one that
+  hovers to nothing is worse than no mark at all. The game's **own** tooltips are untouched;
+  they are not this mod's to take away.
+  - Switching it on strips the plain tooltips where they stand. The framed ones mount their
+    trigger inside the Solid root that draws them, so undoing one would take the button with
+    it — those clear when the screen is next opened, which the option's description says.
+
+### Turn time
+
+- **A merchant under a standing order no longer pathfinds to every plot of its target.**
+  `Units.getPathTo` is a full pathfinder query, and the mod ran one for *every plot the target
+  settlement owns* — thirty to fifty for a developed Exploration-age city — then put every plot
+  that came back through `canStart`, which pathfinds again. Eighty searches per merchant per
+  attempt, three attempts a turn, for every merchant under an order, all at the moment the turn
+  begins. And the failing case is the expensive one: a search that succeeds stops at the target,
+  a search that fails must exhaust everything the unit can reach first — so a merchant that
+  *cannot* get there (unexplored ocean, a war in the way) paid the worst possible query forty
+  times over. That is tens of seconds on a big map, and a fast computer does not help, because
+  it is one thread waiting on the engine. It now probes the ten nearest plots and stops at
+  three reachable ones. Behaviour is unchanged: same order, same refusals, same attempt cap.
+- **Timeouts are wall-clock again instead of counted in frames.** Every wait for a queued
+  operation to land had a thirty-*frame* ceiling — half a second at sixty fps, three seconds at
+  ten, and never if the frame loop is not running, which is exactly the case these are chained
+  through: emptying the empire awaits one per settlement, from the automatic pass at the turn
+  boundary. A timeout that stretches as the game slows is a timeout that grows precisely when
+  it is being relied on.
+- **A pass that takes more than five seconds now says so in the log**, with diagnostics off.
+  A long automatic pass is indistinguishable from the game having hung, and it runs from
+  `LocalPlayerTurnBegin` — so what a player saw was "the turn takes a minute to load", with
+  nothing anywhere naming the cause.
 
 ### Performance
 
-- **The mod no longer listens to other empires' turns.** This is the whole story of the
-  release, and everything below is a variation on it. `UnitMoved`, `UnitMovementPointsChanged`,
+- **The mod no longer listens to other empires' turns.** This is the largest single item in the
+  release, and most of what follows is a variation on it. `UnitMoved`, `UnitMovementPointsChanged`,
   `ResourceAssigned`, `ConstructibleChanged` and a dozen more are raised by the engine for
   **every player in the game**, not for you. In a late game an AI turn raises thousands of
   them, and this mod woke up on all of them — walking your unit list, your settlements and
@@ -61,6 +98,43 @@ what changed is what the mod costs the game while you are playing it.
 - **Settlement names are composed once per assignment run instead of once per placement.**
   They are read for diagnostics only, and a full empire rebuild was composing several hundred
   localised strings for a log that ships switched off.
+- **One engine subscription per event name, however many features want it.** Six modules here
+  ask for the same handful of names — `LocalPlayerTurnBegin` had six separate subscriptions,
+  `ResourceUnassigned` and `ResourceCapChanged` four each, `ResourceAssigned` and
+  `TradeRouteChanged` three, `UnitMoved` and `UnitMoveComplete` two. That was **53
+  subscriptions over 27 distinct names**: one thing happening in the game crossed into this
+  mod's JavaScript up to six times, and the same payload was then asked "was that mine?" up to
+  six times over. They now share one dispatcher, and the owner is worked out at most once per
+  event — which matters most for the payloads that carry only a `location`, where that question
+  is a map query.
+- **The placeability answer is no longer thrown away several times a second.**
+  `anythingCanBePlaced` is the most expensive call in this mod — in the worst case one
+  `canStart` per unassigned resource per settlement with room — and `NotificationAdded` was
+  invalidating its cache. A notification appearing cannot change whether a resource you hold
+  would be accepted somewhere; it now asks for a re-check without discarding the answer, and
+  the cache's own timer went from 250 ms to 3 s, because what invalidates it properly are the
+  resource and settlement events it already listens for.
+- **Two refusals the data already knows are no longer put to the engine.** A factory resource
+  is not offered to a settlement without a factory (it already was not), and a **City** resource
+  is no longer offered to a **Town** — which cannot take one at all. Both remove whole rows of
+  `canStart` calls from the expensive case.
+- **The Commerce screen is not re-decorated while a bulk assignment is running.** `Assign All`
+  waits one frame per resource so the screen's event pump can keep up, so a full empire is a
+  hundred-odd frames — and a full re-decoration of every settlement card was landing in each of
+  them, in front of the very frame the loop was waiting on. The passes are held back for the
+  duration and one runs when it finishes; nothing is lost, because the mutations stay queued.
+- **Three answers that cannot change were still being worked out repeatedly**: the
+  notification's hash (asked inside `refreshActionButton`, one of the busiest things on
+  screen), which age this is for the Exploration check, and what a resource pays when the
+  answer is "nothing" — that last one re-scanned `GameInfo.Resource_YieldChanges` from the top
+  every time, because an empty list failed the fast path.
+
+### Diagnostics
+
+- **`logEventStats()`** — with diagnostics on, one line a turn saying how many of each engine
+  event this mod heard and how many milliseconds it spent hearing them, worst first. Every
+  event the mod hears goes through one dispatcher now, so this measures the whole mod. It is
+  the first thing to look at when the report is "the game runs slowly".
 
 ### Internal — sharing what had been copied
 

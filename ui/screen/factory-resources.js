@@ -1,24 +1,14 @@
 /**
- * The Factory Resources tab.
+ * The Factory Resources tab, built on the Empire tab's shape with two differences the mechanic
+ * forces: four equal columns (nothing here lists unit classes, so the cards are narrower), and no
+ * "one copy / all copies" pair - a factory resource pays nothing for being held, so one copy is
+ * not a number the player can act on.
  *
- * Built on the Empire tab's shape - the same cards, the same tooltips, the same idea that
- * a resource's rule matters far less than what it is worth to you right now - with two
- * differences the mechanic forces:
+ * Hence two sections. The second is the whole reason to open the tab: the game will let a Modern
+ * empire sit on six unslotted Coffee without ever saying what that costs.
  *
- *   1. Four equal columns. The Empire tab sizes its first column to its widest card,
- *      because combat bonuses list unit classes and need the room; nothing here does, so
- *      the cards are narrower and one more fits across.
- *   2. No "one copy / all copies" pair. A factory resource pays nothing for being held, so
- *      one copy's worth is not a number the player can act on. What matters is the total
- *      from the copies IN factories, and - separately - what the ones in the pool would
- *      add if they were moved.
- *
- * Hence two sections rather than one list. The second is the whole reason this tab is
- * worth opening: the game will happily let a Modern empire sit on six unslotted Coffee
- * without ever saying what that is costing.
- *
- * The arithmetic is in planner/factory-effects.js, including why these totals do NOT
- * multiply by the number of settlements.
+ * The arithmetic is planner/factory-effects.js, including why these totals do NOT multiply by the
+ * number of settlements.
  */
 import { createComponent, onCleanup, onMount } from '/core/vendor/solid-js/dist/solid.js';
 import { hideTabSummary, showTabSummary } from './screen-parts.js';
@@ -287,13 +277,7 @@ ${TOOLTIP_TEXT_SELECTOR} { white-space: pre-wrap; }
 
 `;
 
-/**
- * What the slotted resources are earning towards the economic legacy path, above the tabs.
- *
- * It belongs there rather than in a card because it is the one figure that is about the
- * whole tab: every slotted copy pays the same rate whatever it is, so per resource it
- * would just be the count again.
- */
+/** What the slotted resources earn towards the economic legacy path, above the tabs. */
 function buildSummary(slotted) {
     const rate = gdpPerSlottedResource();
     const bar = makeElement('div', SUMMARY_CLASS, {
@@ -314,12 +298,7 @@ function buildSummary(slotted) {
     return bar;
 }
 
-/**
- * Puts the GDP line in the tab row.
- *
- * That row belongs to the screen rather than to this tab, so it is emptied of ours first:
- * a tab can be left and re-entered, and the row would otherwise collect one per visit.
- */
+/** Puts the GDP line in the tab row. */
 function showSummary(slotted) {
     showTabSummary(SUMMARY_CLASS, () => buildSummary(slotted));
 }
@@ -328,10 +307,7 @@ function hideSummary() {
     hideTabSummary(SUMMARY_CLASS);
 }
 
-/**
- * The little mark that says this is a factory resource - the same one the unassigned pool
- * puts on its slots, built the way the game builds it from the resource's class.
- */
+/** The mark saying this is a factory resource - the same one the unassigned pool draws. */
 function classBadge(resourceType) {
     const background = resourceClassBackground(resourceType);
     if (!background) {
@@ -342,13 +318,7 @@ function classBadge(resourceType) {
     return badge;
 }
 
-/**
- * The icon for one total.
- *
- * Everything that is a percentage of production - units, buildings, wonders - carries the
- * production icon, because that is what it multiplies. Growth and healing have font icons
- * of their own, and the label beside the number says which is which.
- */
+/** The icon for one total. */
 function iconFor(total) {
     switch (total.kind) {
         case 'yieldPercent':
@@ -378,15 +348,9 @@ function labelFor(total) {
 }
 
 /**
- * The percentage, turned into the number the player would have worked out by hand.
- *
- * Only the three that multiply a yield you can read off the top panel - Tea, Kaolin,
- * Cocoa. The rest multiply production towards one particular thing, or a growth rate, and
- * there is no single figure to take a percentage OF; guessing one would be worse than
- * leaving it as a percentage.
- *
- * @param applied the factory percentage for this yield already in the net figure - see
- *                absoluteWorth for why the estimate needs it
+ * The percentage turned into the number the player would have worked out by hand.
+ * ⚠️ The percentage alone says nothing about what it is a percentage OF, which on this
+ * tab is the whole point.
  */
 function estimateElement(total, applied, isIdle) {
     if (total.kind !== 'yieldPercent' || !total.yieldType) {
@@ -421,12 +385,6 @@ function totalElement(total, applied = 0, isIdle = false, { withLabel = true, wi
         element.appendChild(icon);
     }
 
-    /*
-     * A bare "+20%" says nothing about what it is 20% of, which on this tab is the whole
-     * question - Coffee's and Cotton's numbers look identical and buy completely different
-     * things. Truncated rather than wrapped, with the tooltip carrying whatever gets cut:
-     * whether it fits depends on the column width and the language, neither knowable here.
-     */
     const estimate = withEstimate ? estimateElement(total, applied, isIdle) : null;
     if (estimate) {
         element.appendChild(estimate);
@@ -441,13 +399,7 @@ function totalElement(total, applied = 0, isIdle = false, { withLabel = true, wi
     return element;
 }
 
-/**
- * One line per bonus that needs words, keyed by the icon beside its number.
- *
- * ⚠️ The icon is only a key while the icons DIFFER, and on this tab they routinely do not:
- * Coffee, Citrus and Cotton all multiply production and all carry the production icon. So
- * whenever a card holds two of those, the figure goes into the line as well.
- */
+/** One line per bonus that needs words, keyed by the icon beside its number. */
 function legendFor(totals) {
     const labelled = totals.filter((total) => labelFor(total));
     if (!labelled.length) {
@@ -473,14 +425,7 @@ function legendFor(totals) {
     return legend;
 }
 
-/**
- * The card's tooltip: the game's own wording, where the copies are, and where they came
- * from.
- *
- * ⚠️ Line breaks need BOTH a newline character and `white-space: pre-wrap` - see
- * TOOLTIP_TEXT_SELECTOR. The renderer assigns into `innerHTML`, so a newline collapses the
- * way any whitespace does in HTML and nothing about the text can force the break.
- */
+/** The card's tooltip: the game's wording, where the copies are, and where they came from. */
 function whereLines(holding) {
     const lines = [];
     if (holding.cities?.length) {
@@ -490,25 +435,14 @@ function whereLines(holding) {
         }
     }
 
-    /*
-     * A leader per block: their name and total, then their settlements indented beneath.
-     *
-     * ⚠️ TEXT, not HTML. `Locale.stylize` STRIPS elements - it is a markup translator, not
-     * a pass-through - so a `<div>` per leader vanished and took its line breaks with it,
-     * running the whole list into one paragraph. What it does understand is the game's own
-     * markup, so the emphasis comes from [B] and the separation from a blank line.
-     */
+/** A leader per block: their name and total, then their settlements indented beneath. */
     const origins = [];
     for (const [leaderId, byCity] of holding.origins ?? new Map()) {
         const leader = Players.get(leaderId);
         if (!leader) {
             continue;
         }
-        /*
-         * The leader's own total, so the heading answers the question the list under it
-         * only implies. With eight settlements listed, "how many do I get from this one
-         * leader" is arithmetic the reader should not have to do.
-         */
+/** The leader's own total, so the heading answers the question the list under it raises. */
         const cities = [...byCity.values()];
         const fromLeader = cities.reduce((sum, city) => sum + city.count, 0);
         if (origins.length) {
@@ -530,12 +464,7 @@ function whereLines(holding) {
     return lines;
 }
 
-/**
- * The cards below the resource: where the copies sit, then one per leader they came from.
- *
- * ⚠️ The first has no `leaderId` on purpose - "in these settlements" is about us, so it gets
- * no portrait. Everything after it is somebody else's face.
- */
+/** Where the copies sit, then one card per leader they came from. */
 function originGroups(holding) {
     const groups = [];
     if (holding.cities?.length) {
@@ -587,11 +516,7 @@ function cardFor(holding, isIdle, applied) {
     // name of the thing here, not an annotation on it.
     title.textContent = `${Locale.compose(holding.definition?.Name ?? holding.type)} [${holding.count}]`;
 
-    /*
-     * The game's own framed tooltip, so a factory resource looks the same object here as it
-     * does in the unassigned pool. Where the copies sit and who they came from go into its
-     * "Origin:" line, which is the one free text slot it has.
-     */
+/** The game's own framed tooltip, as on the Empire tab. */
     appendWithResourceTooltip(
         head,
         icon,
@@ -602,14 +527,7 @@ function cardFor(holding, isIdle, applied) {
     head.appendChild(title);
     inner.appendChild(head);
 
-    /*
-     * Almost every factory resource has exactly ONE bonus, and then its words fit on the
-     * line beside the number - no second line, so every card in a row is the same height.
-     *
-     * The legend is only for the rare card with two, where inline would leave two numbers
-     * and two sets of words on one line with no way to tell which belongs to which. That
-     * is the case empire-tab.js has in every card; here it is the exception.
-     */
+    // Almost every factory resource has exactly ONE bonus, so its words fit on the same line.
     const inline = holding.totals.length === 1;
     const totals = makeElement('div', `${CLASS}-card__totals`);
     for (const total of holding.totals) {
@@ -630,14 +548,7 @@ function cardFor(holding, isIdle, applied) {
     return card;
 }
 
-/**
- * The section's own line of totals.
- *
- * No estimates here: a worked-out number belongs beside the resource that earns it, where
- * it can be checked against that resource's percentage. In a heading it is a figure with
- * nothing to compare it to, and it crowds out the words that say what the percentages are
- * for - which is what the heading is actually good at, having the whole tab width.
- */
+/** The section's own line of totals. */
 function totalsRow(totals, isWould) {
     const row = makeElement('div', `${CLASS}-section__totals${isWould ? ` ${CLASS}-section__totals--would` : ''}`);
     for (const total of totals) {
@@ -688,12 +599,7 @@ function render(host) {
 
     const { working, idle } = factoryHoldings();
 
-    /*
-     * The percentage per yield that is ALREADY in the empire's figures - every slotted
-     * copy, across every resource. Worked out once here because it is a fact about the
-     * empire rather than about a card, and both sections need the same one: the idle
-     * estimates measure what would be ADDED on top of exactly this.
-     */
+/** The percentage per yield ALREADY in the empire's figures - every slotted copy counted. */
     const applied = new Map();
     for (const total of sumFactoryTotals(working.map((holding) => holding.totals))) {
         if (total.kind === 'yieldPercent' && total.yieldType) {
@@ -731,11 +637,8 @@ export const FactoryResourcesContainer = () =>
         description: 'LOC_NAJANE_COMMERCE_FACTORY_DESCRIPTION',
         get children() {
             const host = listTemplate();
-            /*
-             * Left in place on cleanup, as on the Empire tab: every selector is prefixed
-             * with this mod's own class, so nothing outside this tab can be affected by
-             * it, and re-adding it on every visit buys nothing.
-             */
+    // Left in place on cleanup, as on the Empire tab: every selector is prefixed, so nothing of
+    // the game's is touched.
             ensureStyle(STYLE_ID, STYLE);
             onCleanup(hideSummary);
             onMount(() => {

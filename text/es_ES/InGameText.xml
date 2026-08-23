@@ -106,6 +106,13 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="es_ES">
             <Text>Lo mismo para el Oro: jade, cauri, rubíes, plata, clavo y demás se reúnen en la ciudad que ya produce más Oro, y a propósito no en la de Cultura, para que los dos montones no compitan por las mismas ranuras. Los asentamientos con prioridad propia se atienden primero.</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS" Language="es_ES">
+            <Text>No mostrar información sobre herramientas en la pantalla de Comercio</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION" Language="es_ES">
+            <Text>Con esta opción activada no se dibuja ninguna de las explicaciones que este mod añade a la pantalla de Comercio: ni las enmarcadas en sus propios botones, interruptores y controles de asentamiento, ni las simples en barras, totales, candados y títulos de rutas comerciales, ni la información ampliada de recurso en las tarjetas de Imperio, Fábrica y Tesoro. Las marcas redondas «?» desaparecen con ellas, porque solo existen para llevar un texto.[N][N]La información PROPIA del juego queda intacta.[N][N]Desactivada por defecto. Surte pleno efecto la próxima vez que se abra la pantalla de Comercio.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="es_ES">
             <Text>Atajos de ratón</Text>
         </Row>

@@ -1,58 +1,36 @@
 /**
- * Resources pinned where they are, so a bulk rearrangement leaves them alone.
+ * Resources pinned where they are, so a bulk rearrangement leaves them alone. A lock says: this
+ * resource, in this settlement, stays.
  *
- * "Unassign all" and "Reassign all" empty the whole empire before doing anything else, which
- * is what makes them useful and is also the one thing you cannot ask them to do halfway.
- * There is usually a handful of placements that were not the planner's idea and are not up
- * for debate - the Camels holding a settlement's slots open, the resource put somewhere for
- * an adjacency the planner cannot see - and without a way to say so the choice is between
- * rebuilding those by hand every time and never using the buttons at all.
+ * The mechanism is the one **Resource+** arrived at (`br4d-resource-lock`), deliberately - same
+ * unit of locking, same padlock, same rule that the bulk clear may only be used on a settlement
+ * holding nothing locked.
  *
- * A lock says: this resource, in this settlement, stays. Everything else is fair game.
+ * ⚠️ THESE SURVIVE A RELOAD, which is where this parts company with Resource+: a lock that
+ * evaporated on load would be worse than none, because the button it guards is the one you press
+ * without looking.
  *
- * The mechanism is the one **Resource+** arrived at (`br4d-resource-lock`), deliberately - a
- * player who has used one mod should not have to learn a second idea. Same unit of locking
- * (a resource in a settlement, not a resource type and not a settlement), same padlock in the
- * corner of the tile, same rule that the bulk clear may only be used on a settlement holding
- * nothing locked.
+ * ⚠️ And it needs NO key list to do it. Nothing here ever asks "which pairs are locked" - every
+ * question is about a pair already in hand - so each is a direct lookup and the `localStorage`
+ * mirror merchant-orders.js needs is not needed here.
  *
- * ⚠️ THESE SURVIVE A RELOAD, which is where this parts company with Resource+ - a lock that
- * quietly evaporated when the save was loaded again would be worse than no lock, because the
- * button it guards against is the one you press without looking.
+ * ⚠️ Keyed by the game seed, like every per-game thing this mod stores. Both halves survive a
+ * save: `resourceValue` is the resource's PLOT INDEX and a settlement's component id is game state.
  *
- * ⚠️ And it needs NO key list to do it, which is the whole reason this is short.
- * `UI.setOption` takes a number and cannot be enumerated, so merchant-orders.js carries a
- * `localStorage` mirror purely to be able to list its keys again - it has to find orders
- * belonging to units that no longer exist. Nothing here ever asks "which pairs are locked":
- * every question is about a pair already in hand, so each is a direct lookup by name and the
- * mirror is not needed. See `isResourceLocked`.
- *
- * ⚠️ Keyed by the game's seed, like every other per-game thing this mod stores: a settlement
- * id means a different settlement in the next campaign. Both halves of the key survive a
- * save - `resourceValue` is the resource's PLOT INDEX (see `assignArgs` in operations.js) and
- * a settlement's component id is part of the game state.
- *
- * ⚠️ In `engine/`, not `screen/`, because `engine/unassign.js` is what has to obey it and
- * engine may only import `support` (see 02-architecture.md). The padlock itself lives in
- * screen/resource-locks-ui.js.
+ * ⚠️ In engine/, not screen/, because engine/unassign.js has to obey it and engine may only import
+ * support. The padlock itself is screen/resource-locks-ui.js.
  */
+import { onLocalPlayerEvent } from './events.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
 
-/**
- * ⚠️ Three states, not two - the same reasoning as factory-first-setting.js. The default is
- * ON, so "never touched" and "switched off" have to be told apart, and an option that was
- * never set reads back as 0.
- */
+// ⚠️ Three states, not two - same zero trap as factory-first-setting.js. The default is on.
 const ALLOWED_OPTION = `${MOD_ID}.resourceLockingAllowed`;
 const STORED_OFF = 1;
 const STORED_ON = 2;
 
-/**
- * ⚠️ Offset the same way, and for the same reason: an option that was never written reads
- * back as 0, so "unlocked" cannot be 0 or it would be indistinguishable from "never asked".
- */
+// ⚠️ Offset the same way: an option never written reads back as 0.
 const STORED_UNLOCKED = 1;
 const STORED_LOCKED = 2;
 
@@ -60,15 +38,8 @@ let allowed = null;
 
 /**
  * Whether the padlocks exist at all.
- *
- * ⚠️ Read by BOTH sides and enforced in this module rather than at each call site. Switched
- * off it has to mean two things at once - no padlock to click, and no lock having any effect
- * on a bulk clear - and the second is the one that would be quietly forgotten if every caller
- * had to remember it. `isResourceLocked` below answers "no" outright while this is off, so
- * `unassign.js` needs no knowledge of the option whatsoever.
- *
- * The locks themselves are NOT discarded when it is switched off: turning the option back on
- * during the same session restores what was pinned, rather than silently losing it.
+ * ⚠️ Switched off means GONE, not inert: a padlock still drawn but doing nothing is worse than
+ * either state.
  */
 export function isResourceLockingAllowed() {
     if (allowed === null) {
@@ -95,21 +66,12 @@ export function setResourceLockingAllowed(value) {
     announce();
 }
 
-/**
- * Raised whenever a lock is added or removed, so anything drawing one can repaint without
- * polling. The padlock repaints itself on click; this is for everything else.
- */
+/** Raised when a lock changes, so anything drawing one repaints without a DOM mutation. */
 export const ResourceLocksChangedEventName = 'najane-commerce-resource-locks-changed';
 
 /**
- * ⚠️ Keyed by SETTLEMENT AND RESOURCE together, not by either alone.
- *
- * The same resource type appears many times over an empire and the player means one of them;
- * a whole settlement is too coarse to be useful, since the case this exists for is usually
- * one placement in a settlement whose other slots should still be rebuilt. `resourceValue` is
- * the resource's own identity in the pool - the same value `canAssign` and the model's
- * `slottedResources` use - so a locked resource that is somehow moved anyway is no longer
- * matched, which is the right way round: the lock protects a placement, not a resource.
+ * ⚠️ Keyed by SETTLEMENT AND RESOURCE together, not by either alone: locking a resource TYPE would
+ * pin every copy of it, and locking a settlement would pin whatever happened to be in it.
  */
 const locked = new Set();
 
@@ -141,12 +103,9 @@ function optionName(key) {
 }
 
 /**
- * ⚠️ Read through to storage ONCE per key, then answered from memory.
- *
- * This is asked for every padlock on every pass of the injector's `MutationObserver`, which
- * is far too often to be touching the options store - and it is also the call `unassign.js`
- * makes about every assigned resource in the empire. The first question about a pair reaches
- * storage; every later one does not.
+ * ⚠️ Read through to storage ONCE per key, then answered from memory. This is asked for every
+ * padlock on every pass of the injector, and it is also what unassign.js asks about every assigned
+ * resource in the empire.
  */
 function readLock(key) {
     if (known.has(key)) {
@@ -204,15 +163,7 @@ export function toggleResourceLock(cityID, resourceValue) {
     return nowLocked;
 }
 
-/**
- * Takes the lock off a placement that no longer exists.
- *
- * ⚠️ A lock protects a RESOURCE IN A SETTLEMENT, so once the resource leaves that settlement
- * there is nothing left for it to protect and it has to go. Kept, it would lie in wait: put
- * the resource back into the same settlement later and it would arrive already pinned,
- * without the padlock ever having been clicked - and the player would find "Unassign all"
- * skipping something they never asked it to skip.
- */
+/** Takes the lock off a placement that no longer exists. */
 export function clearResourceLock(cityID, resourceValue) {
     const key = lockKey(cityID, resourceValue);
     // ⚠️ Only when it was actually locked. This runs on every unassignment in the game,
@@ -237,34 +188,23 @@ let upkeepStarted = false;
 
 /**
  * Watches for resources leaving settlements, so their locks go with them.
- *
- * ⚠️ Started from the entry point rather than at import. This module is also imported by the
- * options screen, which loads in SHELL scope where there is no game and no engine events to
- * subscribe to.
+ * ⚠️ From the entry point rather than at import: this module is also imported by the options
+ * screen, which loads in SHELL scope where there is no game and no engine events.
  */
 export function startResourceLockUpkeep() {
     if (upkeepStarted) {
         return;
     }
     upkeepStarted = true;
-    try {
-        engine.on('ResourceUnassigned', (data) => {
-            if (data?.player !== undefined && data.player !== GameContext.localPlayerID) {
-                return;
-            }
-            /*
-             * ⚠️ `targetCity` is the settlement it LEFT - the same field the game's own model
-             * reads to find the card to take it off. The plot index is the resource's identity
-             * here, exactly as it is in the lock key.
-             */
-            const city = data?.targetCity;
-            const location = data?.location;
-            if (!city || !location) {
-                return;
-            }
-            clearResourceLock(city, GameplayMap.getIndexFromLocation(location));
-        });
-    } catch (error) {
-        warn(`could not watch for unassigned resources: ${error}`);
-    }
+    // ⚠️ The same "is it mine" test this used to make by hand, except it is now made once for all
+    // four listeners on this name.
+    onLocalPlayerEvent('ResourceUnassigned', (data) => {
+        // ⚠️ `targetCity` is the settlement it LEFT - the same field the game's own model reads.
+        const city = data?.targetCity;
+        const location = data?.location;
+        if (!city || !location) {
+            return;
+        }
+        clearResourceLock(city, GameplayMap.getIndexFromLocation(location));
+    });
 }

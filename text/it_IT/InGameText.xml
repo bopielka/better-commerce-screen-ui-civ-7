@@ -106,6 +106,13 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="it_IT">
             <Text>Lo stesso per l'Oro: giada, ciprea, rubini, argento, chiodi di garofano e il resto vengono raccolti nella città che già produce più Oro — e deliberatamente non in quella della Cultura, perché i due mucchi non si contendano gli stessi slot. Gli insediamenti a cui hai dato una priorità vengono serviti per primi.</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS" Language="it_IT">
+            <Text>Non mostrare i suggerimenti nella schermata Commercio</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION" Language="it_IT">
+            <Text>Con questa opzione attiva non viene disegnata nessuna delle spiegazioni che questa mod aggiunge alla schermata Commercio: né i suggerimenti incorniciati sui suoi pulsanti, interruttori e controlli degli insediamenti, né quelli semplici su barre, totali, lucchetti e titoli delle rotte commerciali, né il suggerimento esteso sulle carte Impero, Fabbrica e Tesoro. I segni tondi «?» spariscono con loro, perché esistono solo per portare un suggerimento.[N][N]I suggerimenti PROPRI del gioco restano intatti.[N][N]Disattivata per impostazione predefinita. Ha pieno effetto alla prossima apertura della schermata Commercio.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="it_IT">
             <Text>Scorciatoie del mouse</Text>
         </Row>

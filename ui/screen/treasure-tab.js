@@ -1,12 +1,6 @@
 /**
- * The Treasure Convoys tab: three columns, and no settlements that were never in the race.
- *
- * The game's own component does the drawing. This wraps it to do two things it cannot:
- * hand it a shorter list, and put three convoys on a row instead of two.
- *
- * ⚠️ The visible panel is the CardFrame INSIDE the card, not the card itself - the same
- * shape as the trade route cards, and the same trap. The frame carries `w-128` and its own
- * `mr-6`, so sizing the outer element alone changes nothing on screen.
+ * The Treasure Convoys tab: three columns, and no settlements that were never in the race - the
+ * game lists every settlement, including homeland ones that cannot generate treasure at all.
  */
 import { createComponent, onCleanup, onMount } from '/core/vendor/solid-js/dist/solid.js';
 import { commerceTabRow } from './screen-parts.js';
@@ -20,7 +14,7 @@ import {
     setTreasureAutoReturnEnabled,
 } from '../engine/treasure-return-setting.js';
 import { disposeFramedTooltips } from './framed-tooltip.js';
-import { ensureStyle, makeElement } from '../support/dom.js';
+import { appendAll, ensureStyle, makeElement } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
 
 /** The tab strip; its parent is the positioned row this tab hangs its "?" in. */
@@ -30,13 +24,7 @@ const STYLE_ID = 'najane-treasure-tab-style';
 /** Holds the "?" and the auto-return switch together at the left end of the tab row. */
 const LEFT_ROW_CLASS = 'najane-treasure-controls';
 
-/**
- * ⚠️ Its OWN tooltip scope, not the default. These two controls are torn down every time the
- * tab is left, which is sooner than the screen's own teardown - so their frames have to be
- * disposed here, and disposing the DEFAULT scope to do it would take the Resources and Trade
- * Routes tabs' tooltips with it. That is the exact bug the per-scope split exists for; see
- * `disposeFramedTooltips`.
- */
+/** ⚠️ Its OWN scope: these controls are torn down every time the tab is left. */
 const TOOLTIP_SCOPE = 'treasure-tab';
 
 /** The card's outer element. Only these cards exist while this tab is the one open. */
@@ -90,18 +78,9 @@ ${SWITCH_STYLE}
 `;
 
 /**
- * The two controls at the left end of the tab row.
- *
- * The "?" says what a click on a card does: clicking one - its name, one of its resource
- * icons, or the convoy flag - runs `Camera.lookAtPlot` and nothing else, so the map moves
- * BEHIND a screen that stays open. Nothing on screen says so, and the natural reading of a
- * card that visibly responds to a click is that it took you somewhere.
- *
- * The switch beside it turns off sending convoys home by themselves; the mechanism is in
- * engine/treasure-convoys.js and the setting in engine/treasure-return-setting.js.
- *
- * ⚠️ Idempotent, and it has to be: it is called from the tab's own mount, but the tab row
- * belongs to the screen and survives a tab being left and re-entered.
+ * The two controls at the left end of the tab row: the "?" explaining what a click on a card does,
+ * and the auto-return switch. They go in the tab ROW, which belongs to the screen rather than to
+ * this tab, so leaving and re-entering must not leave a second copy behind.
  */
 function showTabControls() {
     const row = commerceTabRow();
@@ -109,7 +88,10 @@ function showTabControls() {
         return;
     }
     const controls = makeElement('div', LEFT_ROW_CLASS);
-    controls.appendChild(
+    // ⚠️ `appendAll`, not `appendChild`: `makeHelpMark` answers with nothing when this mod's
+    // tooltips are switched off, and a mark that hovers to nothing is worse than none.
+    appendAll(
+        controls,
         makeHelpMark(
             'LOC_NAJANE_COMMERCE_TREASURE_CLICK_TOOLTIP',
             'LOC_NAJANE_COMMERCE_TREASURE_CLICK',
@@ -135,21 +117,7 @@ function hideTabControls() {
     document.querySelectorAll(`.${LEFT_ROW_CLASS}`).forEach((element) => element.remove());
 }
 
-/**
- * What a convoy is worth, as two figures instead of a sentence.
- *
- * The game writes "+300 Gold and 60 GDP per convoy once unloaded in your homeland" on
- * every card. The condition is the same for all of them and never changes, so it is a
- * sentence the eye has to read past to reach the two numbers it came for. Those move into
- * the tooltip; the numbers stay on the card.
- *
- * ⚠️ Built as `L10n.Stylize`, the same component the model uses for this field, because
- * the card renders whatever it is handed - and Stylize spreads any extra props onto its
- * own element, which is how the tooltip gets attached without touching the DOM.
- *
- * The figures are read back off the settlement: the model composes them into the sentence
- * and does not keep them anywhere else.
- */
+/** What a convoy is worth, as two figures instead of a sentence. */
 function convoySummary(fleet) {
     try {
         const resources = Cities.get(fleet.cityID)?.Resources;
@@ -166,15 +134,8 @@ function convoySummary(fleet) {
 }
 
 /**
- * Drops homeland settlements from the "not generating" list.
- *
- * Treasure only ever comes from distant lands, so a homeland settlement is not a convoy
- * that has stalled - it is a settlement that was never going to produce one. Listing every
- * one of them buries the handful that could actually be fixed.
- *
- * ⚠️ Only the section flagged `generatingConvoys: false` is touched. A distant-lands
- * settlement that has stalled still belongs there, and the generating section is left
- * exactly as the model built it.
+ * Drops homeland settlements from the "not generating" list - they never could, so listing them as
+ * a shortfall is noise.
  */
 export function withoutHomelandIdlers(treasureTabData) {
     const sections = treasureTabData?.sections;

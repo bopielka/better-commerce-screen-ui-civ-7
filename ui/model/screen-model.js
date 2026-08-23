@@ -1,15 +1,6 @@
 /**
- * The bridge between window-level input events and the Commerce screen's Solid model.
- *
- * `useCommerceScreenContext()` can only be called while a component is being set up,
- * so the wrapper in right-click-unassign.js calls it once and parks the result here.
- * Everything that runs later (an input handler on `window`) reads it from here.
- *
- * Also maps a screen point back to the resource under it. The screen exposes no id on
- * its DOM nodes, so the mapping goes: point -> settlement card -> index of the slot
- * within that card -> the same index in the model's slottedResources. The card is
- * matched by the settlement name the game writes into `data-name`, not by position,
- * so sorting and filtering the settlement list cannot desynchronise it.
+ * The bridge between window-level input events and the Commerce screen's Solid model: what is
+ * under the cursor, and what the model says about it.
  */
 import { log } from '../support/diagnostics.js';
 
@@ -28,42 +19,16 @@ const SLOT_SELECTOR = '.size-19';
 
 /**
  * Controls this mod hangs ON a slot, which must not be mistaken FOR one.
- *
- * ⚠️ THE HIT-TESTS BELOW WALK UP THE DOM, so a child of a slot answers as that slot even
- * where the slot itself is nowhere near the cursor. The resource padlock is positioned to
- * overhang its tile by 0.3rem, and in that overhanging strip - the gap between tiles, which
- * is card, not resource - `closest(SLOT_SELECTOR)` still climbed to the tile. Clicking there
- * therefore SELECTED a resource instead of falling through to the settlement underneath, so
- * shift-clicking a card to fill it stopped assigning and started picking things up. Drag and
- * drop was untouched, because that goes through the game's own DragAndDrop and never comes
- * near these functions - which is exactly the shape the bug report had.
- *
- * Anything carrying this attribute is skipped, so a control of ours is invisible to the
- * screen's own pointing and any future overlay gets the same protection for free.
+ * ⚠️ A hit test that returned the padlock instead of the resource under it made Shift-click
+ * unusable on any locked resource.
  */
 const OVERLAY_ATTRIBUTE = 'data-najane-overlay';
 
-/**
- * ⚠️ MATCHED ON ITS VALUE, never as a bare `[data-najane-overlay]`. Every attribute selector
- * this mod relies on carries a value - see CITY_CARD_SELECTOR and POOL_SELECTOR above - and
- * the bare existence form is not among the ones this renderer is known to implement. Written
- * bare it took the whole hit-test out: the filter dropped EVERY element, both finders then
- * answered null for every point, and shift-clicking a resource silently selected nothing at
- * all. Nothing threw and nothing reached the log, which is what a mis-parsed selector looks
- * like here. See "not a browser" in documentation/03-platform-notes.md.
- */
+// ⚠️ Matched on its VALUE, never as a bare `[data-najane-overlay]`: an attribute selector without
+// one would also match elements another feature marks for an unrelated reason.
 const OVERLAY_SELECTOR = `[${OVERLAY_ATTRIBUTE}="true"]`;
 
-/**
- * The elements under a point, with this mod's own overlays taken out.
- *
- * ⚠️ A filter that removes EVERYTHING is treated as a filter that failed, and the unfiltered
- * list is used instead. Taking out one small control can never legitimately empty this list -
- * there is always a card or a panel under the cursor - so an empty result means the selector
- * did something other than what it says, and the honest response is to fall back to the
- * screen's own answer. Overlay-hiding is a refinement; pointing at all is not, and the whole
- * screen going dead is far worse than a padlock being pointed at.
- */
+/** The elements under a point, with this mod's own overlays taken out. */
 function hitTestElements(x, y) {
     const hits = Array.from(document.elementsFromPoint(x, y) ?? []);
     const withoutOverlays = hits.filter((element) => !element.closest?.(OVERLAY_SELECTOR));
@@ -73,16 +38,9 @@ function hitTestElements(x, y) {
 let currentModel = null;
 
 /**
- * Settlement names, composed once per visit to the screen.
- *
- * ⚠️ `settlementCards` is the busiest function in this file - two features call it on every
- * pass over the screen's DOM - and it was composing every settlement's name each time, only
- * to match it against a `data-name` attribute. `Locale.compose` is a call into the game for a
- * string that does not change while a screen is open.
- *
- * Cleared when the model does, so the cache cannot outlive one visit. A settlement renamed or
- * captured between opening the Commerce screen and closing it is not a case worth carrying
- * invalidation for; opening the screen again is already how everything else here refreshes.
+ * ⚠️ `settlementCards` is the busiest function here - two features call it on every pass over the
+ * DOM - and it composed every name each time just to match a `data-name` attribute.
+ * `Locale.compose` is a call into the game for a string that cannot change while a screen is open.
  */
 const nameByCity = new Map();
 
@@ -129,12 +87,7 @@ export function allSettlements(model) {
     return settlements;
 }
 
-/**
- * Where a resource currently sits, or null if it is not assigned anywhere.
- *
- * Read fresh from the model rather than remembered: the model is rebuilt every time the
- * engine confirms anything, so a reference held across a wait is stale by definition.
- */
+/** Where a resource currently sits, or null if it is not assigned anywhere. */
 export function findSlottedResource(model, resourceValue) {
     for (const settlement of allSettlements(model)) {
         const resource = (settlement.slottedResources ?? []).find(
@@ -159,13 +112,7 @@ function findSettlementByCardName(model, cardName) {
     return null;
 }
 
-/**
- * What slotted resource, if any, sits under this screen point?
- *
- * `elementsFromPoint` rather than `elementFromPoint` because the slot is covered by
- * the resource icon, its tooltip wrapper and the drag-and-drop overlay; the game's own
- * drag-and-drop resolves dropzones the same way.
- */
+/** What slotted resource, if any, sits under this screen point? */
 export function findSlottedResourceAtPoint(x, y) {
     const model = currentModel;
     if (!model) {
@@ -218,15 +165,7 @@ export function findSlottedResourceAtPoint(x, y) {
     };
 }
 
-/**
- * The settlement whose card is under this screen point - anywhere on the card, not just
- * on a resource slot.
- *
- * The card's own activatable carries `data-name="<settlement name>-city-resource-activatable"`,
- * and that name is `Locale.compose(Cities.get(cityID).name)`. Recomputing it the same
- * way is what guarantees the match; the model's `settlementNameData` is not used here
- * because nothing promises it is the same string.
- */
+/** The settlement whose card is under this point - anywhere on the card, not just a slot. */
 export function findSettlementAtPoint(x, y) {
     const model = currentModel;
     if (!model) {
@@ -258,12 +197,7 @@ export function findSettlementAtPoint(x, y) {
     return null;
 }
 
-/**
- * Every settlement card currently on screen, paired with its model entry.
- *
- * Matched by name rather than by position so that sorting and filtering the settlement
- * list cannot pair a card with the wrong settlement.
- */
+/** Every settlement card on screen, paired with its model entry. */
 export function settlementCards() {
     const model = currentModel;
     if (!model) {
@@ -295,12 +229,7 @@ function availableSections(model) {
     return model?.data?.resourceTabData?.availableResourceSectionData ?? [];
 }
 
-/**
- * The pool sections in the order the DOM renders them.
- *
- * A section whose every subsection is empty renders no container at all, so it must be
- * skipped here too or the Nth container would be matched against the wrong section.
- */
+/** The pool sections in the order the DOM renders them. */
 function renderedPoolSections(model) {
     return availableSections(model).filter((section) =>
         (section.subSections ?? []).some((sub) => (sub.resourceSlotData ?? []).length > 0),
@@ -320,15 +249,7 @@ function flattenPoolSection(section) {
     return flat;
 }
 
-/**
- * Every unassigned resource the model holds.
- *
- * ⚠️ NOT the same list as `renderedPoolSections` builds, and the difference used to be
- * hidden behind one name exported from two modules: this is what the model says, while
- * that one is what the DOM renders, in DOM order, with empty sections dropped so that
- * the Nth container lines up with the Nth section. Only the hit-testing below wants the
- * second one; everything else wants this.
- */
+/** Every unassigned resource the model holds. */
 export function pooledResources(model) {
     const resources = [];
     for (const section of model?.data?.resourceTabData?.availableResourceSectionData ?? []) {
@@ -342,27 +263,11 @@ export function pooledResources(model) {
 /**
  * Deletes rows from the screen's unassigned pool for resources the game has since assigned.
  *
- * ⚠️ The pool list is maintained PURELY DIFFERENTIALLY, and that is why it heals less well
- * than the settlement cards. On `ResourceAssigned`, `commerce-screen-model.ts` splices the
- * one resource named in that event's payload out of `availableResourceSectionData` - and
- * that is the only thing that ever removes a row. The settlement side of the same handler
- * re-reads `getAssignedResources()` and rewrites `availableSlots` and `yieldDeltas` from
- * live state, so a missed event there is repaired by the next one; the pool has no such
- * path, so a missed event leaves a row behind **for as long as the screen stays open**.
+ * ⚠️ The pool is maintained purely DIFFERENTIALLY and cannot heal itself: the model splices one
+ * resource per event, and two events in the same tick produce one splice. The settlement cards
+ * re-read live state and do heal, which is why only this half needs repairing.
  *
- * Events do get missed: `createEngineEvent` is a plain `createSignal()` holding only the
- * latest payload, and this mod assigns fast enough to deliver two in a tick. Pacing the loop
- * makes that rare rather than impossible.
- *
- * ⚠️ Removal only - deliberately. Deleting a row the game already accounted for is safe and
- * needs nothing but the resource value. Putting a row BACK would mean building a
- * `ResourceSlotData` complete with `resourceProps` and its `canSwapWithSelectedResource`
- * memo, which is reimplementing the model's own builder and would rot the first time it
- * changes. The opposite direction does not need it anyway: unassigning goes through the
- * model's update gate, which accumulates its events in an array instead of a signal.
- *
- * @param assignedValues resource values the game currently has slotted somewhere.
- * @returns how many stale rows were removed.
+ * ⚠️ Written into the model's store rather than the DOM - the rows are Solid's.
  */
 export function pruneAssignedFromPool(assignedValues) {
     const model = currentModel;

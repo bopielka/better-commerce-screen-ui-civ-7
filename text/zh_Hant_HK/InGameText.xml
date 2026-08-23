@@ -106,6 +106,13 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="zh_Hant_HK">
             <Text>金幣同理：翡翠、貝幣、紅寶石、白銀、丁香等會集中到本身金幣產出最高的城市，並且刻意避開文化城市，以免兩堆資源爭搶同樣的槽位。你已指定優先項的聚落會先得到滿足。</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS" Language="zh_Hant_HK">
+            <Text>不在商業畫面顯示提示框</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION" Language="zh_Hant_HK">
+            <Text>開啟後，本模組加到商業畫面的所有說明都不再繪製：包括其自有按鈕、開關和聚落控制項上的帶框提示，長條、合計、鎖和貿易路線標題上的普通提示，以及帝國、工廠和寶藏卡片上的延伸資源提示。圓形「?」標記亦一併消失，因為它們只是提示的載體。[N][N]遊戲本身的提示不受影響。[N][N]預設關閉。下次開啟商業畫面時完全生效。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="zh_Hant_HK">
             <Text>滑鼠快捷操作</Text>
         </Row>

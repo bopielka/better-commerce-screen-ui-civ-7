@@ -1,33 +1,18 @@
 /**
- * A setting the player changes, remembered between sessions.
+ * A setting the player changes, remembered between sessions. Callers keep the option name, the
+ * default and what the value MEANS; the plumbing is here.
  *
- * Five modules had grown their own copy of this - factories-first, imports-first, the two
- * gathering switches, the happiness-priority dropdown and treasure auto-return - and the
- * copies were not quite the same. Each had its own `restore`, its own `UI.setOption` call,
- * its own `Configuration.getUser().saveCheckpoint()`, its own `try`/`catch` and its own
- * custom event, and every one of those is a place where the next one written differs from
- * the last by accident.
+ * ⚠️ THE OFFSET IS THE WHOLE REASON THIS IS NOT A ONE-LINER, and it has bitten this mod twice.
+ * `UI.getOption` answers 0 for an option that was never set, which is indistinguishable from one
+ * deliberately set to 0 - harmless while every default is "off", fatal the moment a default is
+ * "on" or 0 is a legitimate choice (the happiness dropdown's "Never"). So nothing here stores a
+ * raw value: a switch stores 1 for off and 2 for on, a choice its index plus one.
  *
- * What the callers keep is the part that is actually theirs: the option name, the default,
- * and what the value MEANS. What they hand over is the plumbing.
+ * ⚠️ Written to BOTH `UI.setOption` and `saveCheckpoint()`. Without the checkpoint the value is
+ * remembered for the session and forgotten on exit, which reads as a switch that does not stick.
  *
- * ⚠️ THE OFFSET IS THE WHOLE REASON THIS IS NOT A ONE-LINER, and it has bitten this mod
- * twice. `UI.getOption` answers **0** for an option that was never set, which is
- * indistinguishable from an option deliberately set to 0. With a default of "off" that is
- * harmless; the moment a default becomes "on" - or the moment 0 is a legitimate choice, as
- * it is for the happiness dropdown's "Never" - the two have to be told apart. So nothing
- * here stores a raw value: a switch stores 1 for off and 2 for on, and a choice stores its
- * index plus one. 0 always and only means "the player has never touched this".
- *
- * ⚠️ Written to BOTH `UI.setOption` and the checkpoint. `saveCheckpoint` is what makes the
- * value survive the game being closed; without it the option is remembered for the session
- * and forgotten on exit, which reads to a player as a switch that does not stick.
- *
- * ⚠️ `window.dispatchEvent` from `engine/` is a deliberate exception to the layer rule, and
- * an existing one: `treasure-return-setting.js` lived here and did this before the plumbing
- * was shared. A setting has to be able to announce itself to whatever is drawing it, and
- * the alternative - a second copy of this file in `planner/` for the settings that happen to
- * live there - is how it got to five copies in the first place.
+ * ⚠️ `window.dispatchEvent` from engine/ is a deliberate exception to the layer rule: a setting has
+ * to be able to announce itself to whatever is drawing it.
  */
 import { log, warn } from '../support/diagnostics.js';
 
@@ -69,16 +54,8 @@ function announce(changedEventName) {
 }
 
 /**
- * An on/off setting.
- *
- * @param option            the full `UI.setOption` key, including the mod id.
- * @param defaultValue      what "never touched" means.
- * @param label             how this reads in the log and in a failure warning.
- * @param changedEventName  dispatched on `window` after a change, or omitted for none.
- *
- * @returns `{ isOn(), set(value) }`. The value is read from the game once, on the first
- *          question asked, and held in memory afterwards - the callers ask this on every
- *          planning pass, and an option read is not free.
+ * An on/off setting. @returns `{ isOn(), set(value) }` - the value is read from the game once, on
+ * the first question asked, because the callers ask on every planning pass.
  */
 export function storedSwitch({ option, defaultValue = true, label, changedEventName = null }) {
     let value = null;
@@ -100,14 +77,7 @@ export function storedSwitch({ option, defaultValue = true, label, changedEventN
     };
 }
 
-/**
- * A setting with more than two states.
- *
- * @param values    every value that may be stored; anything else falls back to the default.
- * @param describe  turns a value into words for the log. Optional.
- *
- * @returns `{ get(), set(value) }`.
- */
+/** A setting with more than two states. @returns `{ get(), set(value) }`. */
 export function storedChoice({ option, values, defaultValue, label, changedEventName = null, describe = null }) {
     let value = null;
 

@@ -1,46 +1,23 @@
 /**
- * Right-click an assigned resource to send it back to the unassigned pool.
- * Shift + right-click sends back every resource of that same kind assigned to that
- * settlement.
+ * Right-click an assigned resource to send it back to the pool; Shift + right-click sends back
+ * every resource of that kind in that settlement.
  *
- * How it hooks in
- * ---------------
- * The Commerce screen is Solid.js (`ui-next`), so there is no `Controls.decorate`.
- * The framework's own mod hook is the component registry: register a component under
- * an existing name with a higher `overridePriority` and every render site switches to
- * it. To extend rather than replace, the original factory is captured at import time
- * and called at the end - the `ui-next` equivalent of a decorator.
+ * ⚠️ HOW IT HOOKS IN. The Commerce screen is Solid (`ui-next`), so there is no `Controls.decorate`.
+ * The framework's own mod hook is the component registry: register under an existing name with a
+ * higher `overridePriority` and every render site switches. The original factory is captured at
+ * import time and called at the end - the ui-next equivalent of a decorator.
  *
- * `CommerceResourcesContainer` is the right host: it is the Resources tab itself, so
- * it is mounted exactly when right-click should do something, and being inside the
- * screen's context provider it can reach the model.
+ * ⚠️ THE WORK HAPPENS ON A DOM EVENT, NOT AN ENGINE ACTION, because the engine does not emit
+ * `mousebutton-right` while a modifier is held. Traced with an input spy: a plain right-click
+ * gives both the DOM event and the engine action, Shift + right-click gives only the DOM event.
+ * Two earlier attempts at reading Shift looked broken for this reason - neither `event.shiftKey`
+ * nor `Input.isShiftDown()` was at fault, the event being listened to never arrived.
  *
- * Why the work happens on a DOM event and not an engine action
- * ------------------------------------------------------------
- * The engine does NOT emit its `mousebutton-right` action while a modifier is held.
- * Traced with an input spy:
+ * The engine action is still handled for one reason: a plain right-click is `isCancelInput()` and
+ * the panel closes the whole screen on it, so it has to be swallowed when the click was ours.
  *
- *   plain right-click:  dom mousedown button=2 shiftKey=false
- *                       engine-input mousebutton-right START ... FINISH
- *   Shift + right-click: dom mousedown button=2 shiftKey=true isShiftDown=true
- *                       (no engine-input at all)
- *
- * So anything listening only for `mousebutton-right` can never see a modified click -
- * which is why two earlier attempts at reading Shift both looked broken. Neither
- * `event.shiftKey` nor `Input.isShiftDown()` was at fault; the event we listened to
- * simply never arrived. Native DOM mouse events fire for both cases and carry the
- * modifier state, so they drive the feature.
- *
- * The engine action is still handled, for one reason only: a plain right-click is
- * `isCancelInput()`, and the panel closes the whole screen on it. That has to be
- * swallowed when the click was ours.
- *
- * Playing well with Resource+
- * ---------------------------
- * The Workshop mod Resource+ wraps this same component at overridePriority 1100.
- * Taking `existing + 100` instead of a hard-coded number means we end up outside
- * whoever is already there regardless of load order, and calling `originalFactory`
- * keeps their wrapper - and the game's own container - alive.
+ * ⚠️ `overridePriority` is `existing + 100`, not a fixed number: Resource+ wraps the same component
+ * at 1100, and calling `originalFactory` keeps its wrapper alive whatever the load order.
  */
 import { onCleanup, onMount } from '/core/vendor/solid-js/dist/solid.js';
 import { ComponentRegistry } from '/core/ui-next/services/component-registry.js';
@@ -66,10 +43,8 @@ const COMPONENT_NAME = 'CommerceResourcesContainer';
 const RIGHT_CLICK_ACTION = 'mousebutton-right';
 const RIGHT_BUTTON = 2;
 
-/**
- * The engine action arrives after the DOM mouseup that did the work. Anything within
- * this window belongs to the same physical click and must not close the screen.
- */
+// The engine action arrives after the DOM mouseup that did the work; anything within this window
+// is the tail of our own click.
 const SAME_CLICK_WINDOW_MS = 400;
 
 // Whatever is registered when this module is imported: the game's container, or
@@ -116,9 +91,7 @@ function CommerceResourcesContainerWithRightClickUnassign(props) {
             model.deselectSelectedResource();
         }
 
-        // Unassigning is a sequence of engine round-trips, not one call - a resource
-        // that carries slots needs its companions to actually land before it can go.
-        // The click itself is answered immediately; the work reports back when done.
+    // Unassigning is a sequence of engine round-trips, not one call.
         const work = wantsBulk
             ? unassignAllOfTypeInSettlement(settlement, slottedResource.resourceType)
             : unassignOne(settlement, slottedResource);
@@ -134,11 +107,8 @@ function CommerceResourcesContainerWithRightClickUnassign(props) {
         return true;
     }
 
-    /**
-     * The press. Nothing happens yet, but a press that lands on a resource is swallowed
-     * so the screen's own handlers cannot start selecting or dragging it - that is what
-     * made Shift + right-click look like it was "selecting" the resource.
-     */
+    // The press: nothing happens yet, but one that lands on a resource is swallowed so the card
+    // underneath does not treat it as a selection.
     function onMouseDown(event) {
         if (event.button !== RIGHT_BUTTON) {
             return;
@@ -170,11 +140,8 @@ function CommerceResourcesContainerWithRightClickUnassign(props) {
         event.stopPropagation();
     }
 
-    /**
-     * Only suppression - the work is already done by the time this arrives. Listening in
-     * the capture phase on `window` means this runs before the event reaches the panel,
-     * whose handler treats a right-click as "cancel" and would close the whole screen.
-     */
+    // Only suppression - the work is done by the time this arrives. Listening in capture so it is
+    // stopped before the panel sees it.
     function onEngineInput(event) {
         if (event.detail?.name !== RIGHT_CLICK_ACTION) {
             return;

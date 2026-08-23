@@ -106,6 +106,13 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="fr_FR">
             <Text>Idem pour l'Or : jade, cauris, rubis, argent, clous de girofle et le reste sont rassemblés dans la ville qui produit déjà le plus d'Or — et délibérément pas celle de la Culture, afin que les deux tas ne se disputent pas les mêmes emplacements. Les colonies auxquelles vous avez donné une priorité sont servies d'abord.</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS" Language="fr_FR">
+            <Text>Ne pas afficher les infobulles sur l'écran de Commerce</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION" Language="fr_FR">
+            <Text>Lorsque cette option est activée, aucune des explications que ce mod ajoute à l'écran de Commerce n'est dessinée : ni les infobulles encadrées de ses propres boutons, interrupteurs et contrôles de colonie, ni les simples sur les barres, totaux, cadenas et titres de routes commerciales, ni l'infobulle de ressource étendue sur les cartes Empire, Usine et Trésor. Les marques rondes « ? » disparaissent avec elles, car elles n'existent que pour porter une infobulle.[N][N]Les infobulles PROPRES au jeu ne sont pas touchées.[N][N]Désactivée par défaut. Pleinement effective à la prochaine ouverture de l'écran de Commerce.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="fr_FR">
             <Text>Raccourcis souris</Text>
         </Row>

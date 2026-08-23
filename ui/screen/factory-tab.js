@@ -1,25 +1,10 @@
 /**
  * A fifth tab, Factory Resources, in the Modern age only.
  *
- * The game has no such tab: factory resources appear as a subsection of the unassigned
- * pool and as a dropdown on settlements that have a factory. There is nowhere to see
- * them together, which is what this tab is for; its body is in factory-resources.js.
- *
- * Why the whole screen is replaced
- * --------------------------------
- * Tabs are children of `CommerceScreen`, declared inline in its JSX. Nothing in the
- * framework lets a mod push another `Tab.Item` into an existing `Tab`, so the only way
- * in is to register a `CommerceScreen` of our own at a higher priority. This function is
- * therefore a transcription of the game's own component - deliberately line for line,
- * so that a future game patch can be diffed against it - with one `Show` added at the
- * end and nothing else changed.
- *
- * It is written in Solid's compiled form (`createComponent`, prop getters) rather than
- * JSX, because a mod's scripts are plain ES modules with no build step. The getters are
- * not decoration: a plain value there would read the model once and never update.
- *
- * ⚠️ This is the one place in the mod that will break on a game patch that touches the
- * Commerce screen's own layout. Everything else wraps or decorates; this replaces.
+ * ⚠️ Adding a tab means replacing `CommerceScreen` itself - the tab list is built inside it - so
+ * this module loads whether or not any tab is ever opened, and it is also where the trade tab's
+ * data is prepared on its way through. Registered at `existing + 100` so it wins over Resource+
+ * whatever the load order, and the original factory is still called.
  */
 import { Show, createComponent, createMemo, mergeProps, onMount } from '/core/vendor/solid-js/dist/solid.js';
 import { Tab } from '/core/ui-next/components/tab.js';
@@ -111,14 +96,8 @@ const CommerceScreenWithFactoryTab = (_props) => {
                                     name: 'Trade',
                                     title: () => 'LOC_COMMERCE_TRADE_ROUTE_TAB',
                                     body: () => {
-                                        /*
-                                         * ⚠️ Read and prepared HERE, not inside the props
-                                         * getter below. This hands the mod the very arrays the
-                                         * tab renders - it opens the "unavailable" section and
-                                         * keeps them for ordering - and both are writes into a
-                                         * mutable store. A write from inside a tracked read is
-                                         * how a render loop starts.
-                                         */
+    // ⚠️ Read and prepared HERE, not inside the props getter: the getter runs inside a reactive
+    // scope, and writing to the store from there would wake the effect that reads it.
                                         prepareTradeTabData(model.data.tradeRouteTabData);
                                         return createComponent(
                                             TradeRoutesContainer,

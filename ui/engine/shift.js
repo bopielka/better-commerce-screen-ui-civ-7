@@ -1,15 +1,9 @@
 /**
  * Is Shift currently held?
  *
- * `Input.isShiftDown()` asks the engine directly. The game's own tooltip code uses it
- * the same way (core/ui/tooltips/tooltip-manager.js shortens the tooltip delay while
- * Shift is down), so it is answerable at any moment - no event plumbing, no state to
- * keep in sync, and it works in every input context.
- *
- * The first attempt here tracked DOM keydown/keyup instead. It never once reported
- * Shift as held: this UI does not deliver the engine's modifier state through DOM
- * keyboard events. The DOM listeners are kept only as a fallback in case
- * Input.isShiftDown is missing from some build - they cost nothing when unused.
+ * ⚠️ `Input.isShiftDown()` asks the engine, as the game's own tooltip-manager does. Tracking
+ * DOM keydown/keyup instead NEVER reported Shift as held - this UI does not deliver modifier
+ * state through DOM keyboard events. The DOM listeners survive only as a fallback.
  */
 import { log, warn } from '../support/diagnostics.js';
 

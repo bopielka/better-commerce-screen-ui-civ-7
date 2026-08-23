@@ -1,42 +1,24 @@
 /**
  * One `MutationObserver` for the whole Commerce screen, instead of one per feature.
  *
- * ⚠️ FOUR OBSERVERS ON `document.body` WITH `subtree: true` IS WHAT THIS REPLACES, and the
- * cost was not the observers - it was what they were watching. `document.body` is the whole
- * HUD: unit flags, the notification train, the turn timer, every tooltip that opens and
- * closes, every yield banner the engine repaints. None of that is on the Commerce screen,
- * and all of it woke four separate callbacks that then ran `querySelectorAll` over the
- * screen to conclude nothing had changed.
+ * ⚠️ It replaces four observers on `document.body` with `subtree: true`. The cost was not the
+ * observers but what they watched: every unit flag, notification and yield banner in the HUD
+ * woke four callbacks that then searched the Commerce screen for nothing. This is scoped to the
+ * `screen-resource-allocation` element - `document.body` only until that exists, because the
+ * content renders behind a ThrobberSuspense.
  *
- * Two things fix that, and they are both here rather than in each feature:
+ * ⚠️ One pass per FRAME, and the frame is a crash fix, not a nicety. A MutationObserver callback
+ * is a microtask, and so is Solid's effect queue; writing to the DOM from inside one lands mid-
+ * render and the next `reconcileArrays` throws `NotFoundError: insertBefore`. rAF runs after the
+ * microtask queue has drained.
  *
- *   1. **Scope.** The target is the `screen-resource-allocation` element, which is where
- *      every one of this mod's injections lives. Mutations elsewhere in the HUD are not
- *      delivered at all - the observer never sees them. `document.body` is used only until
- *      that element exists, because the screen's content renders behind a `ThrobberSuspense`
- *      and the first pass can arrive before there is anything to attach to.
- *
- *   2. **One pass per frame.** Solid rebuilds a card as a burst of mutations; every
- *      subscriber used to run once per mutation. They now run once per FRAME, together.
- *
- * ⚠️ The frame is not a nicety, it is the fix for a crash - see the note on `scheduleDecorate`
- * in trade-routes.js. A `MutationObserver` callback is a microtask and so is Solid's effect
- * queue; touching the DOM from inside the callback lands in the middle of a render Solid has
- * begun and not finished, and its next `reconcileArrays` throws `NotFoundError: Failed to
- * execute 'insertBefore'`. `requestAnimationFrame` runs after the microtask queue has
- * drained. Every subscriber gets that guarantee now, not only the one that paid for it.
- *
- * ⚠️ `takeRecords()` after the pass is what stops the loop. Every subscriber writes to the
- * DOM the observer is watching, so each pass queues the records for the next one - the
- * observers this replaces all ran twice for every real change, and only settled because each
- * feature was careful to write nothing on the second pass. Discarding the records the pass
- * itself produced is safe and not a race: nothing else can run between the last subscriber
- * returning and the call below, so any DOM state those records describe is state the pass has
- * already seen.
+ * ⚠️ `takeRecords()` after the pass is what stops the loop: every subscriber writes to the DOM
+ * being watched, so each pass would queue the next. Safe because nothing can run between the
+ * last subscriber returning and that call.
  */
+import { isAssignmentInProgress } from '../planner/run.js';
 import { warn } from '../support/diagnostics.js';
 import { COMMERCE_SCREEN_SELECTOR } from './screen-parts.js';
-
 
 const subscribers = new Set();
 
@@ -66,6 +48,18 @@ function schedulePass() {
     }
     frame = requestAnimationFrame(() => {
         frame = null;
+        /*
+         * ⚠️ NOT WHILE A BULK ASSIGNMENT IS RUNNING. `place.js` waits one frame per resource, so
+         * a full empire is a hundred-odd frames and a full re-decoration of every settlement card
+         * was landing in each of them, in front of the frame the loop was waiting on.
+         *
+         * Re-armed rather than dropped: `takeRecords` only runs from a pass, so the whole run's
+         * mutations are still queued for the pass that follows it.
+         */
+        if (isAssignmentInProgress()) {
+            schedulePass();
+            return;
+        }
         // The screen may have appeared since the last pass, in which case this stops
         // watching the whole HUD and narrows to it.
         retarget();
@@ -74,10 +68,9 @@ function schedulePass() {
 }
 
 /**
- * Points the observer at the screen once it exists.
- *
- * Called from every pass rather than once, because `startX()` runs from a component's
- * `onMount` and the screen's content is still a Suspense placeholder at that moment.
+ * Points the observer at the screen once it exists. Called from every pass rather than once,
+ * because `startX()` runs from a component's `onMount`, when the content is still a Suspense
+ * placeholder.
  */
 function retarget() {
     if (!observer) {
@@ -93,10 +86,10 @@ function retarget() {
 }
 
 /**
- * Runs `callback` once per frame in which the Commerce screen's DOM changed, and once now.
+ * Runs `callback` once per frame in which the screen's DOM changed.
  *
- * @returns a function that stops it. The observer itself is torn down when the last
- *          subscriber leaves, so a closed screen costs nothing at all.
+ * @returns a function that stops it. The observer is torn down when the last subscriber leaves,
+ *          so a closed screen costs nothing.
  */
 export function watchCommerceScreen(callback) {
     subscribers.add(callback);

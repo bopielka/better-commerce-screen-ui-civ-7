@@ -1,23 +1,10 @@
 /**
- * A small square button that is nothing but an icon.
+ * A small square button that is nothing but an icon - locate, cancel, and the plus that sends a
+ * spare merchant.
  *
- * The trade route cards grew three of these - find the merchant, call it off, and the warning
- * mark - and each was built by hand from the rules meant for the button that carries a PRICE.
- * That button holds an icon and a number, so its padding is deliberately lopsided and its
- * height comes out of whatever its contents happen to measure. Borrowed by a button holding
- * one icon, both of those are wrong in the same two ways every time: the icon sits off-centre,
- * and two such buttons side by side end up a pixel or two apart.
- *
- * It was patched three times - symmetric padding, then matching icon sizes, then the missing
- * mount rules - and each fix corrected one of the ways they could differ without removing the
- * possibility. This removes it: one component, one fixed height, one fixed icon box. Two
- * buttons built through it cannot be different sizes, because there is no second set of
- * numbers to disagree with.
- *
- * ⚠️ FIXED, not derived. Everywhere else in this mod a size is inherited or measured, which is
- * usually right - it keeps things in step as fonts and scales change. Here it is the thing
- * that kept going wrong, because "the same as whatever that one worked out to be" is not a
- * size two elements can be held to.
+ * ⚠️ FIXED dimensions, written out as one number rather than assembled: everywhere else in this
+ * mod a size is inherited or measured, and the point of this module is that the number cannot
+ * drift between the buttons that have to line up with each other.
  */
 import { appendWithFramedTooltip } from './framed-tooltip.js';
 import { bindActivatable, makeElement } from '../support/dom.js';
@@ -88,15 +75,8 @@ export const ICON_BUTTON_STYLE = `
 `;
 
 /**
- * @param icon      a `blp:` url for the picture.
- * @param tint      an optional CSS filter for it, for an icon whose own colour is wrong.
- * @param title     localisation key for the tooltip heading.
- * @param text      already-composed tooltip body.
- * @param scope     which teardown owns the tooltip; see framed-tooltip.js.
- * @param label     an optional figure to show beside the icon; widens the button, never
- *                  its height.
- * @param onActivate what the click does.
- * @returns the MOUNT to put in the row, not the button - the tooltip encloses its trigger.
+ * @param icon   a `blp:` url for the picture.
+ * @param scope  which teardown owns the tooltip; see disposeFramedTooltips.
  */
 export function makeIconButton({
     icon, tint = null, title, text, scope, onActivate, className = '', label = null,

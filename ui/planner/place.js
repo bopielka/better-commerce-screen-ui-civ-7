@@ -1,34 +1,19 @@
 /**
- * The placement loop: one resource at a time, re-planned after each.
+ * The placement loop: one resource at a time, re-planned after each. ONE loop for both paths -
+ * the buttons, and the automatic placement that runs with the screen shut.
  *
- * ONE loop for both paths - the buttons on the screen and the automatic placement that
- * runs with the screen shut. They used to be two, and the screen's version was slower for
- * a reason worth writing down.
+ * ⚠️ IT DOES NOT GO THROUGH THE SCREEN'S MODEL, and that is measured. The first version drove the
+ * screen (`clickAvailableResource` / `slotSelectedResource` / `deselectSelectedResource`, then
+ * poll the model): 111 resources cost 30.7 s of which only 1.6 s was deciding anything. Each of
+ * the three model calls mutates a Solid store and re-renders, so every resource paid for three
+ * redraws it had no use for, plus a fourth it then waited on.
  *
- * Why it does not go through the screen's model
- * ---------------------------------------------
- * The first version drove the screen: `clickAvailableResource`, `slotSelectedResource`,
- * `deselectSelectedResource`, then poll the model until the resource showed up in its new
- * home. Measured over 111 resources, that cost 30.7 seconds - and only 1.6s of it was
- * deciding anything:
+ * So this talks to the engine and reads the engine back. The screen still redraws - it listens to
+ * the same events - but nothing here waits for it.
  *
- *     assigned 111 resource(s) in 30663ms (1610ms planning, 16346ms waiting, 276ms each)
- *
- * The 12.7 seconds unaccounted for there were the three model calls: each one mutates a
- * Solid store and re-renders the screen, so every resource paid for three full redraws it
- * had no use for. The 16.3s of waiting was the fourth redraw - the one the assignment
- * itself causes - because the loop was waiting for the SCREEN to catch up before it could
- * plan again.
- *
- * So this talks to the engine and reads the engine back: the operation goes straight to
- * PlayerOperations, the wait asks the settlement itself whether the resource has arrived,
- * and the next plan is made from the game state rather than from the rendered screen. The
- * screen still redraws - it listens for the engine's events - but nothing here waits for
- * it to finish.
- *
- * ⚠️ Do not "optimise" this into a batch. Each choice is made against the board the
- * previous one left behind; that is what makes the happiness rescue level out and the
- * factories fill one kind at a time.
+ * ⚠️ Do not "optimise" this into a batch. Each choice is made against the board the previous one
+ * left behind; that is what makes the happiness rescue level out and the factories fill one kind
+ * at a time.
  */
 import { assignRefusalReasons, canAssign, requestAssign } from '../engine/operations.js';
 import {
@@ -46,14 +31,11 @@ import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
 /**
  * Waits for the engine to have actually taken the assignment.
  *
- * NOT the `ResourceAssigned` event: that fires for every player, so an AI assigning
- * something on the far side of the map would release this loop early and the next plan
- * would be made against a board that had not changed yet. Asking the settlement directly
- * cannot be confused by anyone else's turn.
+ * ⚠️ NOT the `ResourceAssigned` event: it fires for every player, so an AI assigning something on
+ * the far side of the map would release the loop early. Asking the settlement cannot be confused.
  *
- * Checked every few milliseconds rather than once a frame. The operation is processed on
- * the engine's own tick, and a frame-aligned check can miss it by most of a frame - which
- * is 16ms lost on every resource, for nothing.
+ * ⚠️ Polled every few ms rather than once a frame: the operation is processed on the engine's own
+ * tick, and a frame-aligned check can miss it by most of a frame - 16ms per resource, for nothing.
  */
 const CONFIRM_POLL_MS = 4;
 const CONFIRM_TIMEOUT_MS = 2000;
@@ -88,27 +70,16 @@ function awaitAssignment(cityID, resourceValue) {
 /**
  * Letting the Commerce screen keep up, when it happens to be open.
  *
- * ⚠️ The screen updates INCREMENTALLY and it can miss events. `commerce-screen-model.ts`
- * turns `ResourceAssigned` into a Solid signal with `createEngineEvent`, which is a plain
- * `createSignal()` - it holds the LATEST payload and nothing else - and the effect reading
- * it splices that one resource into its store. Two events delivered in the same tick
- * therefore produce one splice, and the resource from the overwritten payload never appears
- * on screen at all.
+ * ⚠️ The screen updates INCREMENTALLY and CAN MISS EVENTS. `commerce-screen-model.ts` turns
+ * `ResourceAssigned` into a plain `createSignal()`, which holds only the LATEST payload, and the
+ * effect reading it splices that one resource in - so two events in the same tick produce one
+ * splice. This loop provokes exactly that by polling every 4ms and moving on before the event is
+ * delivered. Leaving the screen and coming back shows the correct layout, which is what makes it
+ * look like an assignment bug when it is a display one.
  *
- * This loop provokes exactly that. It confirms an assignment by POLLING the settlement every
- * 4ms, so it moves on as soon as the game state changes - which is earlier than the event is
- * delivered. At roughly fifteen placements a second the events arrive in clumps, and the
- * board on screen ends up missing some of what the engine actually did. Leaving the screen
- * and coming back rebuilds it from scratch and shows the correct layout, which is what makes
- * this look like an assignment bug when it is a display one.
- *
- * ⚠️ There is no way to ask the screen to rebuild. `updateSlottedResources()` does exactly
- * that and is private; the model's only public reset, `resetResourceTab()`, just clears the
- * selection. So the fix is not to refresh afterwards but to not outrun it in the first place:
- * one frame between placements is enough for the event pump to deliver each one separately.
- *
- * ⚠️ Only while the screen is OPEN. With it shut there is no model to keep in step, and the
- * automatic path runs at full speed as before.
+ * ⚠️ There is no way to ask the screen to rebuild - `updateSlottedResources()` is private. So the
+ * fix is not to refresh afterwards but not to outrun it: one frame per placement is enough.
+ * ⚠️ Only while the screen is OPEN; the automatic path runs at full speed.
  */
 function letTheScreenCatchUp() {
     if (!getCommerceModel()) {
@@ -117,10 +88,7 @@ function letTheScreenCatchUp() {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-/**
- * Guards against a runaway loop if the engine keeps accepting but nothing changes.
- * High enough to cover a whole empire twice over.
- */
+/** Guard against a runaway loop: high enough to cover a whole empire twice over. */
 const MAX_PLACEMENTS = 300;
 
 /** How many refusals to spell out when a pass places nothing; the rest repeat. */
@@ -132,10 +100,6 @@ const CITY_RESOURCE_CLASS = 'RESOURCECLASS_CITY';
 
 /**
  * Places as much as it can, best first.
- *
- * @param scope        the resource values that may be placed, or null for anything free.
- * @param targetCityID restrict placement to one settlement, or null for all of them.
- * @param label        what to call this in the log.
  * @returns how many resources were placed.
  */
 export async function placeResources({ scope = null, targetCityID = null, label = 'assign' } = {}) {
@@ -193,15 +157,9 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         // if that was a camel. Every other settlement's remain valid and are kept.
         forgetEligibility(plan.settlement.cityID);
         forgetSettlementBuildings(plan.settlement.cityID);
-        /*
-         * ⚠️ One line per placement, naming the TIER that won it.
-         *
-         * Only the happiness rescue used to say anything, and that left every other
-         * outcome unexplainable from outside: "why did Tin end up in my culture capital
-         * instead of Silk" has at least four possible answers - the import tier, the
-         * production fallback, a rescue, or the resource already sitting there before the
-         * run - and the board looks the same in all of them.
-         */
+        // ⚠️ One line per placement, naming the TIER that won it: "why did Tin end up in my
+        // culture capital instead of Silk" has at least four possible answers and the board looks
+        // the same in all of them.
         if (DIAGNOSTICS) {
             log(
                 `  ${plan.resource.resourceType}${isImportedResource(plan.resource) ? ' [import]' : ''}` +
@@ -222,13 +180,9 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         waitingMs += Date.now() - mark;
     }
 
-    /*
-     * ⚠️ Explained whenever ANYTHING is left, not only when the run placed nothing.
-     *
-     * "It placed most of them and left three" is the case a player actually reports, and it
-     * used to be the one case that said nothing at all - so a run that had finished correctly
-     * and a run that had stalled produced the same silence.
-     */
+    // ⚠️ Explained whenever ANYTHING is left, not only when the run placed nothing - "it placed
+    // most of them and left three" is the case a player actually reports. Gated here rather than
+    // inside `log`: the walk and up to eight `canStart` calls are the expensive part.
     // ⚠️ Gated here, not inside `log`: the walk and up to eight `canStart` calls are the
     // expensive part, and `canStart` is the most expensive call in this mod.
     if (leftInPool > 0 && DIAGNOSTICS) {
@@ -255,22 +209,13 @@ export async function placeResources({ scope = null, targetCityID = null, label 
 /**
  * Brings the screen back into line with the game, and says so if it could not.
  *
- * ⚠️ BOTH halves of the screen, because they fail differently and only checking one is how
- * the second round of this went. The settlement cards heal themselves - their handler
- * re-reads live state on every event - so comparing only the assigned count reported "all
- * good" while the unassigned pool on the left still showed a resource that had been placed.
- * The pool is maintained purely differentially and cannot heal; see
- * `pruneAssignedFromPool`.
+ * ⚠️ BOTH halves, because they fail differently. The settlement cards heal themselves - their
+ * handler re-reads live state on every event - so comparing only the assigned count reported "all
+ * good" while the pool on the left still showed a resource that had been placed. The pool is
+ * maintained purely differentially and cannot heal, so it is REPAIRED here rather than reported.
  *
- * The pool is therefore REPAIRED rather than merely reported: stale rows are removed. What
- * cannot be repaired - a card missing a resource - is reported, because that half is the
- * game's to rebuild and reopening the screen does it.
- *
- * Two frames of grace first: the last placement's event may still be in flight.
- *
- * ⚠️ Exported for `screen/bulk-assign.js` as well as used here. Anything that drives the
- * engine directly - rather than through the model's own handlers - leaves the pool to be
- * repaired afterwards, and Shift-moving a whole kind of resource is exactly that.
+ * ⚠️ Exported for screen/bulk-assign.js too: anything driving the engine directly leaves the pool
+ * to be repaired afterwards.
  */
 export async function verifyScreenMatchesEngine() {
     const model = getCommerceModel();
@@ -318,17 +263,11 @@ function settlementName(cityID) {
 }
 
 /**
- * Says, per resource, why the engine will not take it anywhere.
+ * Says, per resource, why the engine will not take it anywhere. Diagnostics only.
  *
- * ⚠️ Diagnostics only, and only when a pass placed NOTHING - which is the case worth
- * explaining. "nothing could be placed" on its own says the pass failed but not what the
- * player is supposed to do about it, and that is the same gap the game's own notification
- * leaves: it insists resources can be assigned while every settlement refuses them.
- *
- * One settlement per resource is enough. The reasons are properties of the pair, but the
- * common ones - no room, wrong class, not connected - repeat across every settlement, and
- * asking all of them would multiply the most expensive call in this mod by the size of
- * the empire for the sake of a log line.
+ * ⚠️ One settlement per resource is enough: the common reasons repeat across every settlement, and
+ * asking all of them would multiply the most expensive call in this mod by the size of the empire
+ * for the sake of a log line.
  */
 function explainWhyNothingFits(scope, refused) {
     try {
@@ -343,13 +282,9 @@ function explainWhyNothingFits(scope, refused) {
 
         const withRoom = settlements.filter((settlement) => settlement.availableSlots?.length);
         /*
-         * ⚠️ Cities counted separately, because that is the answer most of the time.
-         *
-         * "3 in the pool, 7 of 15 settlements have room" reads like a bug in this mod, and
-         * that is exactly how it was read. What it actually meant was that the three left
-         * were CITY resources and all seven settlements with room were TOWNS - and a city
-         * resource cannot go into a town: "City Resources must be assigned to a City with
-         * available Resource Capacity" (LOC_PEDIA_CONCEPTS_CITY_RESOURCES_TOOLTIP).
+         * ⚠️ Cities counted separately, because that is the answer most of the time. "3 in the
+         * pool, 7 of 15 settlements have room" reads like a bug in this mod; what it meant was
+         * that the three left were CITY resources and all seven with room were TOWNS.
          */
         const citiesWithRoom = withRoom.filter((settlement) => !settlement.settlementNameData?.isTown);
 
@@ -404,12 +339,8 @@ function explainWhyNothingFits(scope, refused) {
 }
 
 /**
- * One line on the state of the factories, at the start of a run.
- *
- * ⚠️ Diagnostics only. "Factories first placed nothing" has three quite different causes -
- * no factory resources in the pool, no settlement with a factory, or every such settlement
- * already full - and from the outside they look identical. Printing the three counts costs
- * one pass over the board and tells them apart at a glance.
+ * One line on the state of the factories at the start of a run. Diagnostics only: "factories
+ * first placed nothing" has three quite different causes that look identical from outside.
  */
 function logFactoryState() {
     if (!isFactoryFirstEnabled()) {

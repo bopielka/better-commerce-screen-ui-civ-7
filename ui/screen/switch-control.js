@@ -1,17 +1,11 @@
 /**
- * The checkbox-and-caption this screen uses for a yes/no setting.
+ * The checkbox-and-caption used for a yes/no setting, by assign-switches.js and treasure-tab.js.
  *
- * Shared rather than copied, for the reason given at the top of help-mark.js: a second one
- * that looked slightly different would read as a different kind of control. It is used by the
- * switches in the Resources button bar (assign-switches.js) and by the Treasure Convoys tab
- * (treasure-tab.js), and those sit in very different places on very different rows - so the
- * one thing this must NOT do is impose a layout. It produces a row that sizes to its content;
- * where that row goes is the caller's business.
+ * ⚠️ It must NOT impose a layout - the two callers sit on very different rows. It produces a row
+ * that sizes to its content; where that goes is the caller's business.
  *
- * ⚠️ The dimensions are the button bar's, and they are deliberately small: two of these have
- * to stack inside the height of one 2.4rem button there. See the note on `SWITCH_CLASS` for
- * what happens when they are not - and keep them, because matching the bar is what makes the
- * two places read as the same control.
+ * ⚠️ The dimensions are the button bar's and are deliberately small: two of these stack inside
+ * one 2.4rem button there.
  */
 import { appendWithFramedTooltip } from './framed-tooltip.js';
 import { appendAll, bindActivatable, makeElement } from '../support/dom.js';
@@ -60,12 +54,10 @@ export const SWITCH_STYLE = `
 `;
 
 /**
- * ⚠️ Returns a WRAPPER, not the row: the framed tooltip has to enclose its trigger. Same
- * shape as `makeHelpMark`.
+ * ⚠️ Returns a WRAPPER, not the row: the framed tooltip has to enclose its trigger.
  *
- * ⚠️ The tick is painted from `isOn()` after every click rather than tracked here, so a
- * setting that refuses to change - or that something else changes - shows what is actually
- * stored rather than what was clicked.
+ * ⚠️ The tick is repainted from `isOn()` after every click rather than tracked here, so a setting
+ * that refuses to change shows what is stored rather than what was clicked.
  */
 export function makeSwitch({ label, tooltip, isOn, setOn, scope = undefined }) {
     const text = Locale.compose(label);

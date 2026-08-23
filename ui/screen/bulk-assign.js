@@ -1,31 +1,10 @@
 /**
- * Shift while assigning: keep filling the settlement with the same kind of resource.
+ * Shift while assigning: keep filling the settlement with the same kind of resource until it runs
+ * out of room or the pool runs out of copies. Shift while returning one sends the rest of its kind
+ * back with it.
  *
- * Where this hooks in
- * -------------------
- * The screen offers two ways to assign - drag and drop, and point and click - but both
- * end at the same call:
- *
- *   city Activatable onActivate -> model.slotSelectedResource(cityID)
- *   ghost slot       onActivate -> model.slotSelectedResource(cityID)
- *   DragAndDrop      onDragDrop -> model.slotSelectedResource(cityID)
- *
- * So the model's own method is wrapped, once, and both routes are covered. The model is
- * a `createMutable` store, so the property can simply be reassigned and put back on
- * cleanup.
- *
- * A call carrying `targetResourceValue` is a swap between two resources, not an
- * assignment into a free slot, and is left alone.
- *
- * How many is "as many as possible"
- * ---------------------------------
- * Not computed. Free slots are not counted and capacity is not modelled: the loop just
- * keeps asking `canStart` and stops the first time the engine says no. That is also why
- * it copes with camels, which bring two extra slots with them and make room for more
- * than were free when the player clicked.
- *
- * Each step waits for the previous one to land - `sendRequest` only queues, so asking
- * `canStart` in the same tick would still be answering about the old state.
+ * ⚠️ It works in every direction - pool to settlement, settlement to settlement, settlement to
+ * pool. An earlier version only did the first, which read as the shortcut being broken.
  */
 import { findSlottedResource, pooledResources } from '../model/screen-model.js';
 import { freeRoomForMove } from '../engine/unassign.js';
@@ -43,20 +22,7 @@ function resourceTypeOf(model, resourceValue) {
     return pooledResources(model).find((resource) => resource.resourceValue === resourceValue)?.resourceType;
 }
 
-/**
- * The other resources Shift should carry along, and where they are coming from.
- *
- * ⚠️ WORKED OUT BEFORE THE MOVE IS SENT, because the model is about to change underneath us:
- * the original call clears the selection and repopulates both the pool and the settlement.
- *
- * ⚠️ THE POOL IS ONLY ONE OF THE THREE SOURCES, which is what this used to assume. Shift only
- * ever bulked "pool to settlement" because both the type lookup and the candidate list came
- * from `pooledResources`, so a resource picked up from a settlement was not found there, the
- * type came back undefined, and the wrapper bailed out having moved exactly one. A resource
- * already slotted somewhere is bulked from ITS settlement instead.
- *
- * @returns {{resourceType: string, candidates: object[]}|null}
- */
+/** The other resources Shift should carry along, and where they are coming from. */
 function planBulk(model, selected, targetCityID) {
     const value = selected?.resourceValue;
     if (value === undefined || value === -1) {
@@ -95,15 +61,7 @@ function planBulk(model, selected, targetCityID) {
     };
 }
 
-/**
- * Keeps assigning unassigned resources of `resourceType` to `cityID` until the engine
- * refuses one or there are none left.
- *
- * ⚠️ `candidates` is a SNAPSHOT taken before the first wait, by `planBulk`. The model
- * repopulates underneath this loop, and the resource the player moved themselves is already
- * queued - still listed where it was - so it is excluded when the list is built rather than
- * re-derived here.
- */
+/** Keeps assigning copies of `resourceType` to `cityID` until the engine refuses. */
 async function fillWithMore(model, cityID, resourceType, candidates) {
     if (candidates.length === 0) {
         return 0;
@@ -126,23 +84,13 @@ async function fillWithMore(model, cityID, resourceType, candidates) {
     }
 
     log(`bulk assign "${resourceType}": ${assigned} more assigned (${candidates.length} were available)`);
-    /*
-     * ⚠️ The screen is put back in step afterwards, and it is not optional. This loop talks to
-     * the engine directly instead of going through the model's own handlers, so the model's
-     * differential bookkeeping never runs for these moves - the settlement cards heal
-     * themselves from live state, but the unassigned pool is maintained purely by addition and
-     * removal and cannot. Left alone it keeps drawing resources in places they no longer are.
-     */
+    // ⚠️ The screen is put back in step afterwards, and it is not optional: this loop talks to the
+    // engine directly, so the pool is left holding rows for resources that have since been placed.
     await verifyScreenMatchesEngine();
     return assigned;
 }
 
-
-/**
- * Is this a move that the engine will refuse for lack of room in the settlement being
- * left behind? Only slot-carrying resources can be, and only when actually moving
- * between settlements - a swap trades places and changes no capacity.
- */
+/** Is this a move the engine will refuse for lack of room in the settlement being LEFT? */
 function needsRoomFreed(model, selected, targetCityID, targetResourceValue) {
     if (targetResourceValue !== undefined || !selected?.cityID || !targetCityID) {
         return null;
@@ -157,12 +105,7 @@ function needsRoomFreed(model, selected, targetCityID, targetResourceValue) {
     return found;
 }
 
-/**
- * Makes room in the source settlement, then performs the move.
- *
- * The selection is re-made rather than assumed: freeing companions rebuilds the model,
- * and whatever was selected before does not survive that.
- */
+/** Makes room in the source settlement, then performs the move. */
 async function moveAfterFreeingRoom(model, source, resource, targetCityID, originalSlot) {
     if (!(await freeRoomForMove(source.settlement, source.resource, targetCityID))) {
         return;
@@ -179,13 +122,7 @@ async function moveAfterFreeingRoom(model, source, resource, targetCityID, origi
     originalSlot.call(model, targetCityID);
 }
 
-/**
- * Returns the rest of one kind to the pool, one at a time.
- *
- * The mirror image of `fillWithMore`, and asynchronous for the same reason: `sendRequest`
- * only queues, so asking `canUnassign` about the next one in the same tick would still be
- * answering about the board before this one left.
- */
+/** Returns the rest of one kind to the pool, one at a time. */
 async function releaseMore(cityID, resourceType, candidates) {
     // The player's own removal is still in flight; nothing can be judged until it lands.
     await waitForEngineEvent(UNASSIGNED_EVENT);
@@ -253,15 +190,7 @@ export function startBulkAssign(model) {
         return;
     }
     originalUnslotSelectedResource = model.unslotSelectedResource;
-    /*
-     * Shift while returning a resource to the pool: send the rest of its kind back with it.
-     *
-     * ⚠️ A SECOND METHOD HAD TO BE WRAPPED. `slotSelectedResource` is where a resource lands
-     * somewhere, and wrapping it covers "pool to settlement" and "settlement to settlement" -
-     * but taking one OUT to the pool never goes through it. That is `unslotSelectedResource`,
-     * and until it was wrapped Shift moved exactly one resource in that direction, however
-     * many of its kind were sitting beside it.
-     */
+/** Shift while returning a resource to the pool: send the rest of its kind back with it. */
     model.unslotSelectedResource = () => {
         const selected = model.selectedResource?.();
         const source = isShiftHeld() && selected?.cityID

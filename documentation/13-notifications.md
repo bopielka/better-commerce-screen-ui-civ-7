@@ -44,7 +44,7 @@ With either one off the game behaves exactly as it does without this mod — not
 away, the icon is drawn, and the turn button blocks as the engine intends.
 
 ⚠️ An options change raises **no engine event**, so `CommerceOptionsChangedEventName` is listened
-for alongside `RECHECK_EVENTS`. Without it, switching the setting would not visibly change
+for alongside the board events. Without it, switching the setting would not visibly change
 anything until something else happened to refresh the panel.
 
 ⚠️ **Nothing is dismissed, cancelled or acknowledged, and turn blocking is untouched.** That is
@@ -134,8 +134,22 @@ it never dismissed anything. The timing policy now lives only in the icon filter
 On any error it returns `true`. **Hiding a notification the player should have seen is the worse of
 the two failures.**
 
-Answers are cached for `ANSWER_CACHE_MS = 250` — long enough to cover a burst of refreshes, no
-longer. `forgetPlaceability()` clears it.
+Answers are cached for `ANSWER_CACHE_MS = 3000`, and **what actually invalidates them is
+`forgetPlaceability()`**, wired to every event that can change the answer (`BOARD_EVENTS` below).
+
+⚠️ The timer is the **backstop, not the invalidation**. At 250 ms it was doing the invalidating
+instead: the most expensive call in this mod ran four times a second for the whole game while the
+board sat still, because the action panel refreshes far more often than that.
+
+Two cheap refusals come before the engine is asked at all, and both are answers the *data* already
+carries:
+
+- a **factory** resource cannot work in a settlement without a factory;
+- a **City** resource cannot go into a Town at all
+  (`LOC_PEDIA_CONCEPTS_CITY_RESOURCES_TOOLTIP`), which is also why `place.js` explains that case
+  by hand — the engine's refusal for it carries no reason.
+
+Both skips remove whole rows of `canStart` calls from the expensive "no" case.
 
 ## The two wrapped methods
 
@@ -166,9 +180,24 @@ call, so the untouched original takes its own no-blocker path.
 notification and unit events. Without a nudge the icon would keep whatever it decided last, which
 after an automatic pass is always "show", since that is what the filter answers mid-pass.
 
-So `RECHECK_EVENTS` = `ResourceAssigned`, `ResourceUnassigned`, `ResourceCapChanged`,
-`NotificationAdded` (the notification is raised *after* the resource lands, so without it the first
-chance to hide would be whatever happened next). Debounced at 400 ms.
+The events are split in two, and the split is a performance fix as much as a tidy-up:
+
+- **`BOARD_EVENTS`** — `ResourceAssigned`, `ResourceUnassigned`, `ResourceCapChanged`,
+  `CityTransfered`, `CityAddedToMap`. These can change the *answer*, so they throw the cached one
+  away (`forgetPlaceability`) **and** ask for a re-check. The two city events are there because
+  taking or losing a settlement changes which settlements have room, and raises none of the
+  resource events.
+- **`RECHECK_ONLY_EVENTS`** — `NotificationAdded` (the notification is raised *after* the resource
+  lands, so without it the first chance to hide would be whatever happened next). It changes only
+  *whether to ask*, never the answer, so it must **not** forget it.
+
+⚠️ `NotificationAdded` used to sit in the first list, and that is what made the answer cache almost
+worthless. It fires constantly, and every one of them threw away an answer that
+`anythingCanBePlaced` — the most expensive call in this mod — then had to work out again from
+scratch: in the worst case one `canStart` per unassigned resource per settlement with room, several
+times a second, for the whole game.
+
+Both debounced at 400 ms.
 
 Two guards, both against loops:
 

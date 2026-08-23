@@ -1,51 +1,44 @@
 /**
  * Waiting for a queued player operation to actually land.
  *
- * `Game.PlayerOperations.sendRequest` only queues; the game state - and therefore the
- * answer `canStart` gives about the next operation - does not change until the engine
- * has processed it. Anything that chains operations has to wait in between.
+ * `sendRequest` only QUEUES; the state - and the answer `canStart` gives about the next
+ * operation - does not change until the engine has processed it.
  *
- * The timeout matters as much as the event: an operation the engine drops would
- * otherwise leave the sequence hanging forever.
+ * ⚠️ The timeout is WALL-CLOCK and used to be counted in frames. Thirty frames is half a second
+ * at sixty, three at ten, and never if the frame loop is not running - which is where these are
+ * chained: one per settlement from the automatic pass at LocalPlayerTurnBegin, between turns.
  */
-import { warn } from '../support/diagnostics.js';
+import { onEngineEvent, stopEngineEvents } from './events.js';
 
-const DEFAULT_TIMEOUT_FRAMES = 30;
+/** Half a second: what 30 frames was meant to be before the framerate got a say. */
+const DEFAULT_TIMEOUT_MS = 500;
 
-export function waitForEngineEvent(eventName, timeoutFrames = DEFAULT_TIMEOUT_FRAMES) {
+export function waitForEngineEvent(eventName, timeoutMs = DEFAULT_TIMEOUT_MS) {
     return new Promise((resolve) => {
         let settled = false;
+        let timer = null;
+        const handles = [];
 
         const finish = () => {
             if (settled) {
                 return;
             }
             settled = true;
-            try {
-                engine.off(eventName, finish);
-            } catch (error) {
-                warn(`could not detach the ${eventName} listener: ${error}`);
+            if (timer !== null) {
+                clearTimeout(timer);
+                timer = null;
             }
+            stopEngineEvents(handles);
             resolve();
         };
 
-        try {
-            engine.on(eventName, finish);
-        } catch (error) {
-            warn(`could not listen for ${eventName}: ${error}`);
+        // Shared dispatcher, so a chain of these does not churn a subscription on a name four
+        // other modules already listen for.
+        const handle = onEngineEvent(eventName, finish);
+        if (handle) {
+            handles.push(handle);
         }
 
-        let frames = 0;
-        const tick = () => {
-            if (settled) {
-                return;
-            }
-            if (++frames >= timeoutFrames) {
-                finish();
-                return;
-            }
-            requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
+        timer = setTimeout(finish, timeoutMs);
     });
 }

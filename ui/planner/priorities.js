@@ -1,10 +1,6 @@
 /**
- * What each settlement should be fed first.
- *
- * A priority is the player's answer to "what is this settlement for", chosen from the
- * picker on its card. It is the dominant term in the scoring - see scoring.js - and it
- * outlives the session, so this module is also the in-memory half of the store in
- * priority-store.js: read once from there, kept here, written back on every change.
+ * What each settlement should be fed first. The picker is screen/settlement-controls.js and the
+ * storage is ./priority-store.js; this is the meaning in between.
  */
 import { forgetLoadedGame, storePriority, storedPriority } from './priority-store.js';
 
@@ -19,12 +15,7 @@ export const PRIORITY_OPTIONS = [
     { type: 'YIELD_DIPLOMACY' },
 ];
 
-/**
- * The name to show for a priority.
- *
- * Every yield already has a translated name in the game's own data, so only "Balanced"
- * needs a string of ours - one line of translation instead of eight per language.
- */
+/** The name to show for a priority. */
 export function priorityLabel(type) {
     if (!type) {
         return Locale.compose('LOC_NAJANE_COMMERCE_PRIORITY_BALANCED');
@@ -39,31 +30,20 @@ export function cityKey(cityID) {
 }
 
 /**
- * What "Balanced" means.
+ * What "Balanced" RESOLVES TO - not a value that is stored or displayed. A city wants production;
+ * a town wants food, because it turns production into gold rather than building with it.
  *
- * A city wants production. A town wants food: it turns its production into gold rather
- * than building with it, so production would be steering it nowhere, while food is what
- * a town grows on.
+ * ⚠️ It used to be what `getPriority` returned for a settlement nobody had chosen for, so the
+ * picker showed "Production" on a settlement the player had never touched - a choice they had not
+ * made, presented as one they had.
  *
- * ⚠️ This is what Balanced RESOLVES TO, not a value that gets stored or displayed. It used
- * to be what `getPriority` returned for a settlement nobody had chosen for, which meant the
- * picker on the card showed "Production" on a settlement the player had never touched - a
- * choice they had not made, presented as one they had.
- *
- * Balanced also no longer means what Resource+ made it mean. There, a settlement with no
- * priority took whichever yield it had least of, which pulled every settlement towards the
- * same shapeless middle. City-production / town-food is a stance instead of an average, and
- * it is the one the rest of the scoring is built around.
+ * ⚠️ Not what Resource+ made it mean either: there a settlement with no priority took whichever
+ * yield it had least of, which pulled every settlement towards the same shapeless middle.
  */
 export const DEFAULT_CITY_PRIORITY = 'YIELD_PRODUCTION';
 export const DEFAULT_TOWN_PRIORITY = 'YIELD_FOOD';
 
-/**
- * What the player chose, or null for Balanced - including "never chose anything".
- *
- * Read by the picker, which needs the player's own answer and not an interpretation of it.
- * The scoring wants `effectivePriority` instead.
- */
+/** What the player chose, or null for Balanced - including "never chose anything". */
 export function getPriority(cityID) {
     const key = cityKey(cityID);
     if (priorityByCity.has(key)) {
@@ -78,11 +58,7 @@ export function getPriority(cityID) {
     return null;
 }
 
-/**
- * The yield the scoring should feed this settlement first - never null.
- *
- * @param isTown pass it when the caller already knows; looked up otherwise.
- */
+/** The yield the scoring should feed this settlement first - never null. */
 export function effectivePriority(cityID, isTown = undefined) {
     const chosen = getPriority(cityID);
     if (chosen) {
@@ -92,14 +68,7 @@ export function effectivePriority(cityID, isTown = undefined) {
     return town ? DEFAULT_TOWN_PRIORITY : DEFAULT_CITY_PRIORITY;
 }
 
-/**
- * Drops everything remembered about priorities, in memory and in the cached file.
- *
- * Called when a game is loaded. Settlements are identified by the numeric part of their
- * ComponentID, which means the same key is a different city in a different campaign - so
- * carrying the in-memory map across a load would apply one game's choices to another's
- * cities.
- */
+/** Drops everything remembered about priorities, in memory and in storage. */
 export function forgetPriorityMemory() {
     priorityByCity.clear();
     forgetLoadedGame();

@@ -1,36 +1,24 @@
 /**
  * What an empire resource is actually worth to THIS empire, right now.
  *
- * The Empire tab shows each resource's rule - "+1 Gold and Happiness in all settlements" -
- * which is the same sentence whether you hold one settlement or twenty. This works out the
- * total: twelve settlements make that line worth +12 Gold and +12 Happiness.
+ * The Empire tab shows the rule - "+1 Gold and Happiness in all settlements" - which reads the
+ * same whether you hold one settlement or twenty. This works out the total.
  *
- * How the numbers are reached
- * ---------------------------
- * Out of the modifier tables, the same way planner/effects.js reads them, because the
- * aggregation rule belongs to the EFFECT behind a resource rather than to the resource:
+ * Read out of the modifier tables, because the aggregation rule belongs to the EFFECT rather than
+ * to the resource:
+ *   ADJUST_YIELD_PER_AVAILABLE_RESOURCE_TYPE / ADJUST_YIELD_PER_RESOURCE
+ *       Amount x copies held x settlements the modifier reaches.
+ *   UNIT_ADJUST_COMBAT_STRENGTH_PER_RESOURCE   Amount x copies across the army, capped.
+ *   CITY_ADJUST_CONSTRUCTIBLE_PRODUCTION_PER_RESOURCE   a percentage towards one building kind.
+ * How far a city-wide effect reaches is narrowed by the modifier's COLLECTION and then by its
+ * requirements.
  *
- *   EFFECT_CITY_ADJUST_YIELD_PER_AVAILABLE_RESOURCE_TYPE   Gold, Silver, Wine, Furs...
- *   EFFECT_CITY_ADJUST_YIELD_PER_RESOURCE                  Ivory, Horses, Pearls...
- *       Both: Amount x copies held x settlements the modifier reaches.
+ * ⚠️ The combat cap is NOT in the data. Every one of these resources says "(maximum +6)" in its
+ * description but no argument, parameter or table carries it - the engine holds it. If a patch
+ * changes the cap, the constant here is the line that will be wrong.
  *
- *   EFFECT_UNIT_ADJUST_COMBAT_STRENGTH_PER_RESOURCE        Saltpeter, Coal, Oil, Rubber
- *       Amount x copies, across the whole army, capped.
- *
- *   EFFECT_CITY_ADJUST_CONSTRUCTIBLE_PRODUCTION_PER_RESOURCE   Coal, Oil
- *       A percentage, Amount x copies, towards one kind of building.
- *
- * How far a city-wide effect reaches is narrowed by two separate things: the modifier's
- * COLLECTION (all cities, the capital only, the player) and then its requirements.
- *
- * ⚠️ The combat cap is NOT in the data. Every one of these resources says "(maximum +6)"
- * in its own description, but no modifier argument, global parameter or table carries the
- * number - the engine holds it. So it is a constant here, and if a patch changes the cap
- * this is the line that will be wrong. Everything else is read from the game.
- *
- * ⚠️ Effects this does not know how to total are left out rather than guessed at. The
- * card still carries the game's own description in its tooltip, so nothing goes missing -
- * it simply does not get a number of its own.
+ * ⚠️ Effects this cannot total are LEFT OUT rather than guessed at. The card still carries the
+ * game's own description in its tooltip, so nothing goes missing - it just gets no number.
  */
 import { collectionOf, effectTypeOf, forgetModifierIndex, modifierApplies, modifierRequirements, resourceModifiers } from './effects.js';
 import { buildSettlements } from '../model/headless-model.js';
@@ -40,58 +28,27 @@ import { warn } from '../support/diagnostics.js';
 const COMBAT_STRENGTH_CAP = 6;
 
 /*
- * Four suffixes live side by side in the same files, chosen modifier by modifier:
+ * ⚠️ ALL FOUR SUFFIXES SCALE WITH COPIES - `PER_RESOURCE`, `PER_AVAILABLE_RESOURCE_TYPE`,
+ * `PER_RESOURCE_TYPE`, `PER_SLOTTED_RESOURCE`. An earlier version read the `_TYPE` names as the
+ * counting rule and concluded they pay once for the whole empire; play says otherwise - improving
+ * one more copy of Gold raised income by roughly the settlement count. Wine showed +10 Culture
+ * whether you held one bottle or six for a round longer than that.
  *
- *   PER_RESOURCE                  62 uses
- *   PER_AVAILABLE_RESOURCE_TYPE   29 uses
- *   PER_RESOURCE_TYPE              3 uses
- *   PER_SLOTTED_RESOURCE           7 uses
+ * What actually distinguishes PER_RESOURCE_TYPE is its SCOPE: it pays the PLAYER rather than each
+ * settlement, which the collection already says.
  *
- * ⚠️ An earlier version of this file read those names as the counting rule and concluded
- * that the two carrying `_TYPE` pay once for the whole empire. Play says otherwise:
- * improving one more copy of Gold raised income by roughly the settlement count, which
- * that reading predicts should not happen at all.
- *
- * ⚠️ The same correction applies to PER_RESOURCE_TYPE, which was left flat for one round
- * longer than it should have been - Wine showed +10 Culture whether you held one bottle or
- * six. Nothing distinguishes it from the other three except its scope: it is the only one
- * that pays the PLAYER rather than each settlement, which is what the collection already
- * says. So: ALL FOUR scale with copies; whatever the naming distinguishes, it is not that.
- *
- * The lesson is bigger than the number: a name in the data is a hypothesis, and a
- * measurement in the running game outranks it.
+ * The lesson is bigger than the number: a name in the data is a hypothesis, and a measurement in
+ * the running game outranks it.
  */
 const PER_TYPE_YIELD = 'ADJUST_YIELD_PER_AVAILABLE_RESOURCE_TYPE';
 const PER_TYPE_PLAYER_YIELD = 'PLAYER_ADJUST_YIELD_PER_RESOURCE_TYPE';
 const PER_COPY_YIELD = 'ADJUST_YIELD_PER_RESOURCE';
 const PER_COPY_COMBAT = 'ADJUST_COMBAT_STRENGTH_PER_RESOURCE';
 const CONSTRUCTIBLE_PRODUCTION = 'ADJUST_CONSTRUCTIBLE_PRODUCTION_PER_RESOURCE';
-/**
- * Hardwood, and only Hardwood as of this writing - a percentage towards UNIT production
- * rather than building production, which is why it needed a branch of its own rather than
- * folding into CONSTRUCTIBLE_PRODUCTION above.
- *
- * ⚠️ Left unhandled, this fell all the way through to the card's fallback - the game's own
- * description, composed but never stylized, so its `[icon:...]` and `[TIP:...]...[/tip]`
- * markup showed as literal text instead of an icon and a tooltip. Reported as "missing
- * labels on Hardwood".
- */
+/** A percentage towards UNIT production rather than a building - Hardwood, as of this writing. */
 const UNIT_PRODUCTION = 'ADJUST_UNIT_PRODUCTION_PER_RESOURCE';
 
-/**
- * Which units a combat bonus reaches.
- *
- * ⚠️ The unit-class tags have no name anywhere in the game's data - nothing displays them,
- * so nothing translates them. The resource descriptions spell the classes out in prose,
- * written by hand per resource. These keys are therefore the mod's own; see
- * text/<locale>/InGameText.xml.
- *
- * ⚠️ LIGHT and HEAVY are NAVAL classes, which is not obvious from the tag and was wrong
- * here at first - "light" and "heavy" on their own read as land units. Checked against
- * age-modern/data/units.xml: UNIT_CLASS_LIGHT is the cruiser, destroyer and ironclad;
- * UNIT_CLASS_HEAVY is the battleship, dreadnought and frigate. The game's own descriptions
- * say "light naval units" for exactly this reason.
- */
+/** Which units a combat bonus reaches. */
 const UNIT_CLASS_NAMES = {
     UNIT_CLASS_AIRCRAFT: 'LOC_NAJANE_COMMERCE_UNITS_AIRCRAFT',
     UNIT_CLASS_CAVALRY: 'LOC_NAJANE_COMMERCE_UNITS_CAVALRY',
@@ -134,13 +91,7 @@ function indexUnitClasses() {
     return unitsByClass;
 }
 
-/**
- * The only condition on these resources that is about the player rather than a settlement.
- *
- * Three modifiers carry it - furs and tea pay gold during a Celebration and nothing
- * outside one. Every other requirement in the resource data is city-level (handled by the
- * shared evaluator) or a unit tag.
- */
+/** The only condition on these resources that is about the player rather than a settlement. */
 const GOLDEN_AGE_REQUIREMENT = 'REQUIREMENT_PLAYER_IS_IN_GOLDEN_AGE';
 
 function inGoldenAge() {
@@ -151,12 +102,7 @@ function inGoldenAge() {
     }
 }
 
-/**
- * Whether a modifier's player-level condition holds right now.
- *
- * @returns { conditional, active } - conditional says the bonus comes and goes, active
- *          says whether it is being paid at this moment.
- */
+/** Whether a modifier's player-level condition holds right now. */
 function playerCondition(modifierId) {
     for (const entry of modifierRequirements(modifierId)?.entries ?? []) {
         if (entry.type !== GOLDEN_AGE_REQUIREMENT) {
@@ -185,17 +131,8 @@ function taggedClasses(modifierId) {
 }
 
 /**
- * Every unit class the bonus actually reaches - including ones the modifier never names.
- *
- * ⚠️ Unit classes OVERLAP. A battleship is SIEGE and NAVAL and HEAVY and RANGED all at
- * once. So saltpeter, written as RANGED + SIEGE, reaches every heavy warship in the age -
- * which is why the game's own description for it talks about heavy naval units, and why
- * listing only the two named tags left a player looking at a battleship unable to tell
- * whether it was included. It was.
- *
- * A class is listed when EVERY unit in it is covered. Naval is not added to saltpeter, for
- * instance, because light warships are naval and are not reached - the test is containment,
- * not overlap, so nothing is ever claimed that is not true of the whole class.
+ * Every unit class the bonus reaches, including ones the modifier never names - a requirement on
+ * "all naval" covers the light and heavy classes under it.
  */
 function unitClassesOf(modifierId) {
     const tags = taggedClasses(modifierId);
@@ -229,20 +166,7 @@ function unitClassesOf(modifierId) {
         }
     }
 
-    /*
-     * "All naval, siege" - not "heavy naval, light naval, all naval, siege".
-     *
-     * LIGHT and HEAVY are subdivisions of NAVAL (checked below rather than assumed), so
-     * once the whole of NAVAL is covered, naming the halves as well is noise. In an age
-     * where only some warships are reached, NAVAL is not listed and the halves stay - which
-     * is the whole point of them, since "heavy naval" then says something "ranged" does not.
-     *
-     * Deliberately NOT a general "drop any class contained in another": in the Modern age
-     * every heavy warship happens to be ranged as well, so that rule would quietly delete
-     * "heavy naval" from saltpeter - the one class a player checking their battleship is
-     * looking for. Containment between roles is a coincidence of one age's roster;
-     * containment within naval is a taxonomy.
-     */
+/** "All naval, siege" - the covering class swallows the ones beneath it. */
     const listed = new Set(wholeClasses);
     const navalUnits = byClass.get(NAVAL_CLASS);
     if (listed.has(NAVAL_CLASS) && navalUnits) {
@@ -262,17 +186,7 @@ function unitClassesOf(modifierId) {
     return names.length ? names : tags.map((tag) => Locale.compose(UNIT_CLASS_NAMES[tag]));
 }
 
-/**
- * What `EFFECT_PLAYER_ADJUST_UNIT_PRODUCTION_PER_RESOURCE` names its target as - an ARGUMENT
- * on the modifier, not a requirement, and not built from a unit-class tag the way the combat
- * bonuses above are. Hardwood alone uses two shapes of it across the ages:
- *
- *     Antiquity / Exploration   Domain="DOMAIN_SEA"           -> "Naval Units"
- *     Modern                    UnitClass="UNIT_CLASS_NON_COMBAT" -> "Civilian Units"
- *
- * `DOMAIN_SEA` reuses this file's own naval key rather than a name of its own - "naval" means
- * the same thing whichever argument said so.
- */
+/** ⚠️ Named as an ARGUMENT rather than as a requirement, unlike everything else here. */
 const DOMAIN_UNIT_NAMES = {
     DOMAIN_SEA: UNIT_CLASS_NAMES.UNIT_CLASS_NAVAL,
 };
@@ -300,13 +214,7 @@ function constructibleName(constructibleType) {
     }
 }
 
-/**
- * How many settlements a modifier actually reaches.
- *
- * Both narrowings apply: the collection says WHICH settlements are in scope at all, and
- * the requirements - "in the homeland", "cities only" - then filter those, through the
- * same evaluator the assignment scoring uses.
- */
+/** How many settlements a modifier actually reaches. */
 function settlementsReached(modifierId, settlements) {
     const collection = collectionOf(modifierId);
     let inScope = settlements;
@@ -328,13 +236,7 @@ function isCapital(settlement) {
     }
 }
 
-/**
- * The totals for one resource type.
- *
- * @param resourceType e.g. RESOURCE_GOLD
- * @param copies       how many of it the player holds
- * @returns [{ kind: 'yield'|'combat'|'percent', yieldType, amount, isPercent }]
- */
+/** The totals for one resource type. */
 export function empireEffectTotals(resourceType, copies, settlements = null) {
     const reachable = settlements ?? buildSettlements();
     const totals = [];
@@ -355,13 +257,7 @@ export function empireEffectTotals(resourceType, copies, settlements = null) {
 
     resourceModifiers(resourceType).forEach((argumentsMap, modifierId) => {
         const effect = effectTypeOf(modifierId);
-        /*
-         * ⚠️ `Percent`, not `Amount`, is what `EFFECT_PLAYER_ADJUST_UNIT_PRODUCTION_PER_RESOURCE`
-         * calls its own figure - checked against the argument names in
-         * resources-gameeffects-v2.xml, not assumed. Every other effect here uses `Amount`;
-         * reading only that silently dropped Hardwood to the fallback, which is how it got
-         * here. A modifier is asked for whichever name it actually carries.
-         */
+        // ⚠️ `Percent`, not `Amount`, for this one effect.
         const amount = Number(argumentsMap.get('Amount') ?? argumentsMap.get('Percent'));
         if (!Number.isFinite(amount) || amount === 0) {
             return;
@@ -372,12 +268,7 @@ export function empireEffectTotals(resourceType, copies, settlements = null) {
         const { conditional, active } = playerCondition(modifierId);
 
         if ((effect.includes(PER_TYPE_YIELD) || effect.includes(PER_TYPE_PLAYER_YIELD) || effect.includes(PER_COPY_YIELD)) && yieldType) {
-            /*
-             * All three count copies - see the note on the suffixes above for why the names
-             * suggest otherwise. What still differs is REACH, and that comes from the
-             * collection rather than the effect: a settlement-scoped bonus pays once per
-             * settlement it reaches, a player-scoped one pays once, full stop.
-             */
+        // All three count copies; see the suffix note at the top.
             const each = amount * settlementsReached(modifierId, reachable);
             add(`yield:${yieldType}:${active}`, {
                 kind: 'yield',
@@ -393,14 +284,8 @@ export function empireEffectTotals(resourceType, copies, settlements = null) {
 
         if (effect.includes(PER_COPY_COMBAT)) {
             const units = unitClassesOf(modifierId);
-            /*
-             * ⚠️ Keyed by which units it reaches, NOT by "combat". Two combat modifiers on
-             * one resource are two separate bonuses - a siege unit does not also collect
-             * the one written for destroyers - so merging them into a single line both
-             * added up numbers that never add up and silently kept only the first
-             * modifier's unit list. No resource in the shipped data has two, but the next
-             * patch or the next mod is a poor thing to be relying on.
-             */
+    // ⚠️ Keyed by which units it reaches, NOT by "combat": two combat modifiers on different
+    // classes are two separate bonuses, not one counted twice.
             add(`combat:${units.join('|')}`, {
                 kind: 'combat',
                 amount: Math.min(amount * copies, COMBAT_STRENGTH_CAP),
@@ -414,12 +299,7 @@ export function empireEffectTotals(resourceType, copies, settlements = null) {
             return;
         }
 
-        /*
-         * A percentage towards building something - coal's rail stations and ports, oil's
-         * factories. PER_RESOURCE, so it scales with copies; the `Empire = true` argument
-         * says WHICH copies are counted - the whole empire's, rather than the ones assigned
-         * to the settlement being built in.
-         */
+/** A percentage towards building something - coal's rail stations and ports, oil's. */
         if (effect.includes(CONSTRUCTIBLE_PRODUCTION)) {
             const building = constructibleName(argumentsMap.get('ConstructibleType'));
             const entry = byKey.get(`percent:${amount}`);
@@ -441,13 +321,7 @@ export function empireEffectTotals(resourceType, copies, settlements = null) {
             return;
         }
 
-        /*
-         * A percentage towards producing a KIND OF UNIT rather than a building - Hardwood's
-         * naval bonus in Antiquity and Exploration, its civilian one in Modern. Same shape
-         * as the branch above and merged the same way ("percent:${amount}"), because both
-         * ends up rendered as the identical "+X% Production towards {towards}" line; nothing
-         * distinguishes a building's row from a unit's once the number matches.
-         */
+/** A percentage towards producing a KIND OF UNIT rather than a building. */
         if (effect.includes(UNIT_PRODUCTION)) {
             const target = unitProductionTargetName(argumentsMap);
             const entry = byKey.get(`percent:${amount}`);

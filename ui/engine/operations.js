@@ -1,19 +1,14 @@
 /**
- * The one place that knows how to ask the engine to assign or release a resource.
+ * The one place that asks the engine to assign or release a resource.
  *
- * Every one of these is the same player operation, ASSIGN_RESOURCE, told apart only by
- * its arguments - `Action: Deactivate` releases one, `Action: Clear` empties a whole
- * settlement, and no Action at all assigns. Mirrors `assignResource` and
- * `unassignResource` in the game's commerce-screen-model.ts.
+ * All of it is one player operation, ASSIGN_RESOURCE, told apart by its arguments:
+ * `Action: Deactivate` releases, `Action: Clear` empties a settlement, no Action assigns.
+ * Mirrors the game's own commerce-screen-model.ts.
  *
- * ⚠️ Everything that talks to PlayerOperations belongs here. This module already said so
- * and three other modules had grown their own copies anyway - the planner, the unassign
- * sequence and this file each had a `canAssign` differing only in argument order, which
- * is exactly how two of them come to disagree about what a refusal means.
+ * ⚠️ Everything touching PlayerOperations belongs here. Three modules had grown their own
+ * `canAssign` differing only in argument order - which is how two of them come to disagree.
  *
- * ⚠️ `sendRequest` only QUEUES. The game state - and so the answer `canStart` gives about
- * the next operation - does not change until the engine has processed it, so anything
- * chaining operations must wait in between; see ./wait.js.
+ * ⚠️ `sendRequest` only QUEUES; chained operations must wait in between. See ./wait.js.
  */
 import { warn } from '../support/diagnostics.js';
 
@@ -61,12 +56,9 @@ function send(args, what) {
 }
 
 /**
- * WHY the engine would refuse an assignment, in its own words.
- *
- * `canStart` answers with `{ Success, FailureReasons }`, and the reasons are localisation
- * keys the game shows elsewhere as tooltips. Only used for diagnostics - the placement
- * loop needs the yes/no and nothing more - but when a resource cannot go anywhere, this
- * is the difference between "nothing could be placed" and knowing what to do about it.
+ * WHY the engine would refuse, in its own words - `canStart` returns FailureReasons as
+ * localisation keys. Diagnostics only, but it is the difference between "nothing could be
+ * placed" and knowing what to do about it.
  */
 export function assignRefusalReasons(cityID, resourceValue) {
     try {

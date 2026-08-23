@@ -106,6 +106,13 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="de_DE">
             <Text>Dasselbe für Gold: Jade, Kaurimuscheln, Rubine, Silber, Gewürznelken und der Rest werden in der Stadt gesammelt, die bereits am meisten Gold erzeugt – und bewusst nicht in der Kultur-Stadt, damit die beiden Stapel nicht um dieselben Plätze konkurrieren. Siedlungen mit eigener Priorität werden zuerst bedient.</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS" Language="de_DE">
+            <Text>Keine Tooltips im Handelsbildschirm anzeigen</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION" Language="de_DE">
+            <Text>Ist dies aktiviert, werden keine der Erklärungen gezeichnet, die dieser Mod dem Handelsbildschirm hinzufügt: weder die gerahmten Tooltips an seinen eigenen Schaltflächen, Schaltern und Siedlungssteuerungen, noch die einfachen an Leisten, Summen, Schlössern und Handelsroutentiteln, noch der erweiterte Ressourcen-Tooltip auf den Karten für Reich, Fabrik und Schatz. Die runden „?“-Zeichen verschwinden mit ihnen, denn sie existieren nur, um einen Tooltip zu tragen.[N][N]Die EIGENEN Tooltips des Spiels bleiben unberührt.[N][N]Standardmäßig aus. Wird beim nächsten Öffnen des Handelsbildschirms vollständig wirksam.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="de_DE">
             <Text>Maus-Kurzbefehle</Text>
         </Row>

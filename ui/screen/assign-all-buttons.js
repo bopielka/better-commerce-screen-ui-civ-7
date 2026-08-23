@@ -1,15 +1,9 @@
 /**
- * "Assign All" and "Reassign All", side by side to the left of the tab strip.
+ * "Assign All", "Reassign All" and "Unassign All", to the left of the tab strip, plus the GDP
+ * readout and the assign switches. What the buttons DO is planner/run.js.
  *
- * The behaviour is Resource+'s - see planner/scoring.js for the attribution note. The
- * placement is not: that mod measures the resource column every frame and pins its
- * buttons over it with `position: fixed`. These sit inside the tab row, which is a
- * positioned element the game already maintains, so they move with the layout instead
- * of chasing it.
- *
- * They live in the tab row rather than in the Resources tab body because they are
- * screen-level actions. They are still only mounted while the Resources tab is open,
- * since that is the only tab where they mean anything.
+ * ⚠️ This bar is the one container on this screen the mod owns outright, which is why
+ * assign-switches.js hangs its switches in it rather than in the screen's own header.
  */
 import { assignAll, isAssignmentInProgress, reassignAll, unassignAll } from '../planner/run.js';
 import { gdpPerTurn } from '../planner/gdp.js';
@@ -35,11 +29,7 @@ const GDP_ICON = 'blp:fi_victorypoint_economic_64';
 
 const SLOTTED_CONTAINER_SELECTOR = '[data-name="slotted-resource-container"]';
 
-/**
- * The game's own "unassign all" sits at the very bottom of the settlement column, past
- * everything the player has to scroll through. `self-end` is what marks it out from the
- * settlement sections around it.
- */
+// The game's own "unassign all" sits at the bottom of the settlement column, past the fold.
 const ORIGINAL_UNASSIGN_SELECTOR = '.self-end';
 
 /** Every string is a localisation key; see text/en_us/InGameText.xml. */
@@ -60,17 +50,8 @@ const BUTTONS = [
         label: 'LOC_NAJANE_COMMERCE_UNASSIGN_ALL',
         busy: 'LOC_NAJANE_COMMERCE_UNASSIGN_ALL_BUSY',
         tooltip: 'LOC_NAJANE_COMMERCE_UNASSIGN_ALL_TOOLTIP',
-        /*
-         * ⚠️ Not `model.clearAllResources()`, which is what this used to call.
-         *
-         * That is the game's own bulk clear, and it sends exactly the operation this one
-         * sends - but it fires every settlement's Clear in a single tick and never waits.
-         * With nothing planned afterwards that is fine for the game and it was fine here
-         * too, right up until it became the odd one out: three buttons that all empty the
-         * empire, two of them through the planner's path and one straight into the model,
-         * reporting nothing and answering "did that work?" differently. One path now, in
-         * engine/unassign.js, which still sends the game's own operation.
-         */
+    // ⚠️ Not `model.clearAllResources()`, which is what this used to call: that one knows nothing
+    // about resource locks and sweeps a padlocked resource away with the rest.
         run: (model) => unassignAll(model),
     },
 ];
@@ -161,33 +142,17 @@ let bar = null;
 let styleElement = null;
 let unwatch = null;
 /**
- * The engine subscriptions, kept so they can be taken off again.
- *
- * ⚠️ THEY USED NOT TO BE, and that is a leak that grew for the whole session: `startX` ran on
- * every visit to the Resources tab and added four more listeners, `stopX` removed none, and
- * the pile kept firing on every resource ANY player assigned long after the screen had been
- * closed. `engine.off` needs the same function reference that was registered, which is what
- * these handles carry - see engine/events.js.
+ * ⚠️ Kept so they can be taken off again. They used not to be: `startX` ran on every visit to the
+ * Resources tab and added four more listeners, `stopX` removed none, and the pile kept firing long
+ * after the screen was closed.
  */
 let gdpSubscriptions = [];
 /** The GDP readout, kept so it can be rebuilt when the board changes. */
 let gdpMount = null;
 let gdpTimer = null;
 
-/**
- * Events after which the figure is out of date.
- *
- * ⚠️ Debounced, and rebuilt rather than edited in place. A run places one resource at a
- * time and fires one event each - fifty-odd for a full empire - so without the debounce the
- * readout would be rebuilt fifty times in four seconds. The tooltip carries the same
- * numbers broken down by source, so editing only the total would leave it disagreeing with
- * itself the moment it was opened.
- */
-/*
- * ⚠️ Every one of these is raised for EVERY player, not for you. An AI assigning a resource
- * on the far side of the map cannot change your empire's GDP, so those are dropped before
- * the handler is reached - see `onEngineEvents` in engine/events.js.
- */
+/** Events after which the figure is out of date. */
+// ⚠️ Every one is raised for EVERY player. An AI assigning a resource cannot change your GDP.
 const GDP_EVENTS = ['ResourceAssigned', 'ResourceUnassigned', 'ResourceCapChanged', 'ConstructibleBuildCompleted'];
 const GDP_REFRESH_MS = 400;
 
@@ -197,14 +162,7 @@ function refreshGdpSoon() {
     }
     gdpTimer = setTimeout(() => {
         gdpTimer = null;
-        /*
-         * ⚠️ `parentNode.replaceChild`, NOT `gdpMount.replaceWith`.
-         *
-         * This engine's DOM is Coherent's, not a browser's, and it does not implement the
-         * ChildNode convenience methods - `replaceWith` threw `is not a function` on every
-         * single refresh, so the figure never moved. `isConnected` is avoided for the same
-         * reason: a live parent is the check that is safe to rely on here.
-         */
+    // ⚠️ `parentNode.replaceChild`, NOT `gdpMount.replaceWith` - this DOM has no `replaceWith`.
         const parent = gdpMount?.parentNode;
         if (!parent) {
             return;
@@ -251,15 +209,8 @@ function makeButton({ label, busy, tooltip, run }) {
 
 /**
  * What every assigned resource is earning per turn, in one figure.
- *
- * ⚠️ No label, deliberately: this sits in a row that is already three buttons, a help mark
- * and two switches wide, and the game writes its own victory-point readouts the same way -
- * the number and the icon, with the words in the tooltip.
- *
- * The three sources are broken out there because they are not one rule: resources in a
- * CITY pay 1, an imported one pays 1 more on top, and a factory resource pays 3 in a city
- * or a town alike. The factory card is left out entirely outside the Modern age, where
- * there is nothing to say.
+ * ⚠️ Rebuilt rather than edited: the tooltip breaks the same number down by source, so editing
+ * only the total would leave it disagreeing with itself.
  */
 function makeGdpTotal() {
     const { fromCities, fromImports, fromFactories, fromBuildings, total } = gdpPerTurn();
@@ -289,10 +240,7 @@ function makeGdpTotal() {
 }
 
 function injectBar() {
-    /*
-     * The tab row is `relative`, so absolute placement inside it stays put without any
-     * measuring. The tab strip itself is centred in that row, which leaves the left end free.
-     */
+    // The tab row is `relative`, so absolute placement inside it stays put without measuring.
     const row = commerceTabRow();
     if (!row) {
         return false;
@@ -309,24 +257,15 @@ function injectBar() {
     );
     gdpMount = makeGdpTotal();
     bar.appendChild(gdpMount);
-    // "Imports first" in every age, "factories first" stacked under it in the Modern age.
-    // They ride in this bar rather than in the screen's own header - see the note at the
-    // top of assign-switches.js.
+    // They ride in this bar rather than the screen's own header; see assign-switches.js.
     bar.appendChild(createAssignSwitches());
     row.appendChild(bar);
     return true;
 }
 
 /**
- * Hides the game's own "unassign all", which sits at the very bottom of the settlement
- * column, past everything the player has to scroll through. The button in the bar above
- * sends the same operation, through engine/unassign.js.
- *
- * The original is hidden rather than moved: it is a `ConfirmationDialog` wrapping an
- * icon button, and relocating a Solid-managed subtree would fight whatever re-renders it.
- *
- * ⚠️ The confirmation prompt is lost along the way. That matches its new neighbours -
- * "Reassign All" already clears everything without asking.
+ * Hides the game's own "unassign all", whose job the bar has taken over.
+ * ⚠️ HIDDEN, NEVER REMOVED - it is Solid's and comes back with every redraw.
  */
 function hideOriginalUnassign() {
     const container = document.querySelector(SLOTTED_CONTAINER_SELECTOR);
@@ -356,12 +295,9 @@ export function startAssignAllButtons() {
         return;
     }
     /*
-     * The tab row may not exist yet - the screen's content renders behind a Suspense
-     * boundary. Watch until it does, then stop watching.
-     *
-     * No re-entrancy guard here on purpose: inject() appends the bar only when it is
-     * missing, and the observer is disconnected in the same breath. Anything that DOES
-     * mutate on every pass needs one - see the freeze described in trade-routes.js.
+     * The tab row may not exist yet - the content renders behind a Suspense boundary. This watcher
+     * unsubscribes as soon as the bar is in, because the bar does not need re-injecting: nothing
+     * that mutates on every pass needs one.
      */
     unwatch = watchCommerceScreen(() => {
         if (inject()) {

@@ -106,6 +106,13 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="ko_KR">
             <Text>금도 마찬가지로 비취, 자패, 루비, 은, 정향 등을 이미 금을 가장 많이 내는 도시에 모읍니다. 문화 도시와는 의도적으로 다른 도시를 고르므로 두 더미가 같은 슬롯을 두고 다투지 않습니다. 직접 우선순위를 지정한 정착지가 먼저 처리됩니다.</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS" Language="ko_KR">
+            <Text>상업 화면에서 툴팁을 표시하지 않음</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION" Language="ko_KR">
+            <Text>켜면 이 모드가 상업 화면에 추가하는 설명이 전혀 그려지지 않습니다. 모드 자체의 버튼·스위치·정착지 컨트롤에 붙는 액자형 툴팁, 막대·합계·자물쇠·교역로 제목에 붙는 일반 툴팁, 제국·공장·보물 카드의 확장 자원 툴팁이 모두 해당됩니다. 둥근 "?" 표시도 함께 사라집니다. 툴팁을 담기 위해서만 존재하기 때문입니다.[N][N]게임 자체의 툴팁은 건드리지 않습니다.[N][N]기본값은 꺼짐. 상업 화면을 다시 열면 완전히 적용됩니다.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="ko_KR">
             <Text>마우스 단축키</Text>
         </Row>

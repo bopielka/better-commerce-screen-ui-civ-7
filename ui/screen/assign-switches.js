@@ -1,20 +1,12 @@
 /**
- * The switches in the button bar: "imports first" and, in the Modern age, "factories
- * first". Stacked, because two of them side by side would not fit beside three buttons.
+ * The "imports first" and (Modern age) "factories first" switches in the button bar, stacked.
+ * What they mean and where they are kept is in planner/{imports,factory}-first-setting.js.
  *
- * Only the controls are here; what each one means and where it is kept are in
- * planner/imports-first-setting.js and planner/factory-first-setting.js.
+ * On the screen rather than in mod options because they are decisions about this empire in this
+ * age. The set-once ones live in Options → Mods.
  *
- * Why controls on the screen rather than mod options: they are decisions about this empire
- * in this age, the kind of thing you change while looking at the board, not something you
- * set once in a menu and forget. The three that ARE set once - happiness priority, and the
- * two gathering switches - live in Options → Mods.
- *
- * ⚠️ Factories-first began beside the filters, in the screen's own header bar, and never
- * appeared there. Injecting into it, watching it and putting the switch back when it
- * vanished all failed silently - Solid owns that bar. They now go into
- * assign-all-buttons.js's bar, which this mod builds and therefore controls; this module
- * only makes the elements.
+ * ⚠️ They cannot go in the screen's own header bar - Solid owns it, and injecting there failed
+ * silently. They go into the bar assign-all-buttons.js builds.
  */
 import { isFactoryFirstEnabled, setFactoryFirstEnabled } from '../planner/factory-first-setting.js';
 import { isImportsFirstEnabled, setImportsFirstEnabled } from '../planner/imports-first-setting.js';
@@ -41,12 +33,8 @@ ${SWITCH_STYLE}
 `;
 
 /**
- * The switches, or null when there are none to show.
- *
- * Imports-first is offered in every age; factories-first only in the Modern age, because
- * factory resources only exist there. Imports goes on top, as the wider of the two rules.
- *
- * The caller decides where it goes and owns its lifetime; see assign-all-buttons.js.
+ * The switches, or null when there are none to show. Factories-first only in the Modern age.
+ * The caller owns where it goes and its lifetime; see assign-all-buttons.js.
  */
 export function createAssignSwitches() {
     ensureStyle(STYLE_ID, STYLE);
@@ -77,8 +65,6 @@ export function createAssignSwitches() {
 }
 
 /**
- * No teardown of its own: the switches are created into assign-all-buttons.js's bar and go
- * when that bar goes. The module this replaced exported a stopFactoryFirst() that was never
- * called from anywhere - dead code in the one place that must not have any, the cleanup
- * path.
+ * No teardown of its own: the switches go when assign-all-buttons.js's bar goes. The module this
+ * replaced exported a stop function nobody called - dead code on a cleanup path.
  */

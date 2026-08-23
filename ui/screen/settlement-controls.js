@@ -1,17 +1,9 @@
 /**
- * Three controls on every settlement card, level with its name:
+ * Three controls on every settlement card, level with its name: a priority picker, a quick
+ * assign, and an unassign-all - plus a factory clear where the game's factory display was.
  *
- *   - a priority picker - which yield this settlement should be fed first;
- *   - a quick-assign button - fill this settlement, and only this one, from the pool;
- *   - an unassign button - empty it again.
- *
- * The first two are ports of Resource+'s controls, including their look; see
- * planner/scoring.js for the attribution note. The third is the game's own per-settlement
- * "return all resources", which normally sits alone on the far side of the card - it is
- * hidden there and reissued here, so all three actions are in one place.
- *
- * The card is Solid-rendered and is rebuilt whenever the model changes, so the controls
- * are re-injected from a MutationObserver rather than placed once.
+ * ⚠️ Re-injected from the shared screen watcher rather than placed once: the cards are Solid's
+ * and every redraw discards whatever this mod added.
  */
 import { getCommerceModel, settlementCards } from '../model/screen-model.js';
 import { PRIORITY_OPTIONS, getPriority, priorityLabel, setPriority } from '../planner/priorities.js';
@@ -41,24 +33,10 @@ const NAME_CLASS = 'najane-card-name';
 /** Holds our three controls and the game's cog, so the four cannot be separated. */
 const ACTIONS_CLASS = 'najane-card-actions';
 
-/**
- * Whose teardown owns the framed tooltips on these controls.
- *
- * ⚠️ Its own scope, never the default. These are torn down whenever the Resources tab is left,
- * which is sooner than the screen's own teardown - and disposing the DEFAULT scope to clean up
- * after them would take every other tab's tooltips with it. Same rule, same reason as the
- * treasure tab's; see `disposeFramedTooltips`.
- */
+/** Whose teardown owns the framed tooltips on these controls. */
 const TOOLTIP_SCOPE = 'settlement-controls';
 
-/**
- * The game's factory display (cog + current factory resource), FactoryTypeDisplay.
- *
- * It is the header's last child under `justify-between`, which is why it sits against the
- * far edge - and why it is the first thing to wrap onto a second line on a settlement
- * carrying a lot of pills. Matched by its inner black pill, since the outer element's
- * classes are as generic as they come.
- */
+/** The game's factory display (cog + current factory resource), FactoryTypeDisplay. */
 const FACTORY_DISPLAY_INNER_SELECTOR = '.bg-black.rounded-lg';
 
 /** This mod's replacement for it: one button, the same one the rest of the header uses. */
@@ -335,24 +313,9 @@ function renderPriorityIcon(host, yieldType) {
     host.appendChild(cluster);
 }
 
-/**
- * ⚠️ This mod's wording, not the game's `LOC_COMMERCE_UNASSIGN_RESOURCES`.
- *
- * That key reads "Return all assignments from the city of Berlin" - a sentence about
- * *assignments* rather than about resources, and phrased unlike anything else on this screen.
- * The button bar at the top says "Assign all" / "Unassign all" and explains itself in a
- * tooltip underneath; this is the same action for one settlement, so it says so the same way.
- * The general rule of reusing the game's own strings is worth breaking exactly where the
- * game's own string is the odd one out.
- */
-/**
- * Wraps a control in a framed tooltip and hands back the mount to put in the row.
- *
- * ⚠️ Two of these because the frame takes localisation KEYS for its heading, which is right
- * for a fixed label - but the unassign button's heading carries a settlement name and is
- * therefore already composed. `framedText` is the same thing for a string that has been
- * composed already; passing composed text as a key would print the sentence back as a tag.
- */
+    // ⚠️ This mod's wording, not the game's `LOC_COMMERCE_UNASSIGN_RESOURCES` - that one reads
+    // "Return all assignments from the city of Berlin", which matches nothing else on the screen.
+/** Wraps a control in a framed tooltip and hands back the mount to put in the row. */
 function framed(button, className, labelKey, tooltipKey) {
     const mount = makeElement('div', `${className}-mount`);
     appendWithFramedTooltip(mount, button, {
@@ -441,11 +404,8 @@ function createControl(settlement) {
     unassign.appendChild(unassignIcon);
     bindActivatable(unassign, () => {
         closeMenus();
-        /*
-         * ⚠️ This mod's own clear, not the model's `clearAllResources`. That one does not know
-         * locks exist, so a padlocked resource - safe from "Unassign all" - was swept away by
-         * this smaller button instead. See `unassignSettlement`.
-         */
+    // ⚠️ This mod's own clear, not the model's `clearAllResources`: that one does not know about
+    // resource locks and sweeps a padlocked resource away.
         getCommerceModel()?.deselectSelectedResource?.();
         unassignSettlement(settlement.cityID).catch((error) =>
             warn(`returning a settlement's resources failed: ${error}`),
@@ -470,14 +430,7 @@ function createControl(settlement) {
 
     // The card beneath treats a press as "assign here"; these controls are not that.
     control.addEventListener('engine-input', (event) => event.stopPropagation());
-    /*
-     * ⚠️ Each one wrapped in the game's FRAMED tooltip, the same as the button bar at the top
-     * of the screen - a heading over an inset card, rather than the bare box a plain
-     * `data-tooltip-content` draws. These are the same three actions the bar offers, scoped to
-     * one settlement, so they should not arrive looking like a different kind of control.
-     *
-     * The wrapper is what goes into the row, not the button: see `appendWithFramedTooltip`.
-     */
+    // ⚠️ Each wrapped in the game's FRAMED tooltip, matching the button bar at the top.
     appendAll(
         control,
         // Its heading is the settlement's CURRENT priority, so it is already composed.
@@ -506,13 +459,9 @@ function injectControls() {
 }
 
 /**
- * Hides the settlement's own "return all resources" button, whose job the card's new
- * controls have taken over.
- *
- * ⚠️ Not simply the first `.fxs-image-button` in the card. On a settlement with a factory
- * the FactoryTypeDisplay in the header contains one too, and being in the header it comes
- * first - so that version hid the factory's button and left the settlement's on screen,
- * which is the opposite of what was wanted. Anything inside the header is the factory's.
+ * Hides the settlement's own "return all resources" button, whose job the new controls took.
+ * ⚠️ Not simply the first `.fxs-image-button` in the card: on a settlement with a factory the
+ * FactoryTypeDisplay contains one too, and being in the header it comes FIRST.
  */
 function hideSettlementReturnButton(cardElement, header) {
     for (const button of cardElement.querySelectorAll(RETURN_BUTTON_SELECTOR)) {
@@ -524,11 +473,7 @@ function hideSettlementReturnButton(cardElement, header) {
 
 /**
  * One button that empties the settlement of its factory resources.
- *
- * ⚠️ Offered only where the game offers it: this is built solely for a card that HAS a factory
- * display, so a settlement without a factory - or in an age that has none - never sees it. The
- * engine is asked to do the work through the model's own `clearFactoryResources`, the same
- * call the button this replaces made, so nothing here reimplements what the game does with it.
+ * ⚠️ Offered only where the game offers it - built solely for a card that HAS a factory display.
  */
 function createFactoryClearButton(settlement) {
     const button = makeElement('div', FACTORY_BUTTON_CLASS, {
@@ -578,12 +523,8 @@ function injectControlsOnce() {
         }
 
         /*
-         * The game's factory display goes, and one button of ours takes its place.
-         *
-         * ⚠️ HIDDEN, NEVER REMOVED. It is Solid's, and it comes back with every redraw of the
-         * card; removing it would be a node Solid still believes it owns. Hiding is idempotent
-         * and survives the rebuild, which is the same rule `hideSettlementReturnButton` above
-         * already follows.
+         * ⚠️ HIDDEN, NEVER REMOVED. The display is Solid's and comes back with every redraw of the
+         * card; removing it would be a node Solid still believes it owns. Hiding is idempotent.
          */
         const factoryDisplay = header.querySelector(FACTORY_DISPLAY_INNER_SELECTOR)?.parentElement;
         if (factoryDisplay) {
@@ -601,11 +542,8 @@ export function startSettlementControls() {
     }
     styleElement = ensureStyle(STYLE_ID, STYLE);
 
-    /*
-     * ⚠️ Kept in a variable and removed in `stopSettlementControls`. An inline arrow could
-     * not be, so every visit to the Resources tab left another one behind and the whole pile
-     * ran on every click anywhere in the game for the rest of the session.
-     */
+    // ⚠️ Kept in a variable so it can be removed: an inline arrow could not be, so every visit to
+    // the tab left another one behind, all running on every click in the game.
     onDocumentClick = () => closeMenus();
     document.addEventListener('click', onDocumentClick);
 
@@ -630,10 +568,8 @@ export function stopSettlementControls() {
     }
     document.querySelectorAll(`.${CONTROL_CLASS}`).forEach((control) => control.remove());
     document.querySelectorAll(`.${FACTORY_BUTTON_CLASS}-mount`).forEach((mount) => mount.remove());
-    /*
-     * ⚠️ Before the elements go, and only OUR scope. A framed tooltip outliving the control it
-     * is anchored to is drawn in the top-left corner of the screen; see `TOOLTIP_SCOPE`.
-     */
+    // ⚠️ Before the elements go, and only OUR scope: a framed tooltip outliving its anchor draws
+    // in the top-left corner of the screen.
     disposeFramedTooltips(TOOLTIP_SCOPE);
     document.querySelectorAll(`.${HIDDEN_CLASS}`).forEach((el) => el.classList.remove(HIDDEN_CLASS));
     document.querySelectorAll(`.${HEADER_CLASS}`).forEach((el) => el.classList.remove(HEADER_CLASS));

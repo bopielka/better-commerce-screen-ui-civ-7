@@ -1,54 +1,28 @@
 /**
  * Automatic resource assignment.
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * ORIGIN: this is a port of the assignment engine from the Steam Workshop mod
- * **Resource+** (`brads-assign-all-resources`, id 3756000777) by **Br4d**, at the
- * request of this mod's author, so that the buttons here behave identically to that
- * mod's. The scoring constants, the ordering rules, the conditional-bonus table and
- * the overall shape of `bestAssignment` are Br4d's work, not ours.
+ * ⚠️ ORIGIN, AND KEEP THIS NOTE: a port of the assignment engine from the Steam Workshop mod
+ * **Resource+** (`brads-assign-all-resources`, id 3756000777) by **Br4d**, with permission. The
+ * scoring constants, the ordering rules, the conditional-bonus table and the shape of
+ * `bestAssignment` are Br4d's work. Resource+'s per-resource locks are NOT ported.
  *
- * Br4d has given permission for this port.
- * ─────────────────────────────────────────────────────────────────────────────
+ * Tiers, best first:
+ *   0.  rescue unhappiness - NOT Br4d's, sits above everything, and is why this file diverges.
+ *       How far it goes is the player's: happiness-setting.js.
+ *   0b. factory resources into factories that can be filled, when "factories first" is on.
+ *   1.  camels - they bring two slots with them, so placing them early makes room.
+ *   1b. imported resources into CITIES, when "imports first" is on: double towards the Economic
+ *       Victory and worth nothing in a town.
+ *   2.  resources whose conditional criteria are met there (conditionalBoostStrength).
+ *   3.  single-yield before multi-yield; unit-production-only resources last.
+ *   4.  within all of that, settlements matching their priority share the yield gain evenly, and
+ *       how well a resource serves that priority dominates.
+ *   4b. when nothing serves a city's priority, production comes next.
+ *   5.  a resource carrying production is nudged away from towns, which turn it into gold.
+ *   6.  culture gathered into one city, gold into another - outranks the conditional tier but
+ *       never a settlement's own priority. Either pile can be switched off.
  *
- * What it does, in order of preference:
- *   0. rescue unhappiness first - see rescueScore. This tier is NOT Br4d's; it sits
- *      above everything below and it is the whole reason this file diverges. How far it
- *      goes - not at all, cities only, or everything - is the player's, see
- *      happiness-setting.js;
- *   0b. factory resources into the factories that can be filled with them, when
- *      "factories first" is switched on for the age - see factoryFirstScore;
- *   1. camels - they bring two extra slots with them, so placing them early makes
- *      room for everything after;
- *   1b. resources that arrived over a trade route from another leader, into CITIES, when
- *      "imports first" is switched on - they are worth double towards the Economic
- *      Victory and nothing at all in a town. See importFirstScore;
- *   2. resources whose stronger, conditional criteria are met in that settlement
- *      (the age-specific table in conditionalBoostStrength);
- *   3. single-yield resources before multi-yield ones, and resources that only make
- *      units cheaper to build after everything else - see givesUnitProductionBonus;
- *   4. within all of that, settlements matching their priority share the actual yield
- *      gain as evenly as they can, and how well a resource serves that priority is the
- *      dominant term - so a resource giving +1 production is only reached for once every
- *      resource giving more of it has been placed. Llamas, +1 production alongside +3
- *      happiness, are the case that makes this visible.
- *   4b. when nothing is left that serves a city's priority, production comes next - ahead
- *      of a resource whose conditional bonus merely happens to apply - see
- *      PRODUCTION_FALLBACK_SCORE_BASE;
- *   5. a resource carrying production is nudged away from towns, which turn production
- *      into gold rather than building with it - see TOWN_PRODUCTION_PENALTY;
- *   6. everything paying culture is gathered into the city that makes the most culture on
- *      its own, and everything paying gold into a different city that makes the most gold -
- *      see hoardScore. This outranks the conditional tier but never a settlement's own
- *      priority, and either pile can be switched off; see hoard-setting.js.
- *
- * "Balanced" - which is what every settlement is until the player says otherwise - means
- * production in a city and food in a town, NOT "whatever it has least of". See
- * DEFAULT_CITY_PRIORITY and the note in priorities.js.
- *
- * Resource+'s per-resource locks are NOT ported - this mod has no lock UI, so the
- * lock set is always empty and "reassign" clears everything unlocked, which is
- * everything.
+ * ⚠️ "Balanced" means production in a city and food in a town, NOT "whatever it has least of".
  */
 import { canAssign } from '../engine/operations.js';
 import { modifierApplies } from './effects.js';
@@ -75,72 +49,29 @@ import {
 } from './facts.js';
 import { DIAGNOSTICS, log } from '../support/diagnostics.js';
 
-/**
- * Above everything else, including camels: no settlement should sit on negative
- * happiness. See rescueScore for what this tier does and why it levels rather than
- * maximises.
- */
+/** Above everything else, including camels: no settlement should sit on negative happiness. */
 const HAPPINESS_RESCUE_BASE = 10000000000;
 /**
- * How much a town is docked for wanting a resource that carries production.
- *
- * A town turns its production into gold instead of building with it, so production is
- * worth less there than in a city - even when the resource also brings something a town
- * does want. Cotton is the case that prompted this: +2 food and +2 production, which
- * matched a town's food priority and a city's production priority equally well, and the
- * tie was being settled by nothing in particular.
- *
- * Half of one priority-boost step (those are worth 1000000 each). Enough that a city
- * always wins an otherwise equal contest, small enough that a town wanting the resource
- * distinctly more - a bigger boost on its own priority - still gets it.
+ * How much a town is docked for a resource carrying production: a town turns production into
+ * gold rather than building with it, so the same resource is worth less there.
  */
 const TOWN_PRODUCTION_PENALTY = 500000;
 
-/**
- * What a settlement falls back to when nothing left serves its chosen priority.
- *
- * Without this the leftovers were ordered by little more than the settlement's weakest
- * yield, so a culture-focused city that had run out of culture resources took whatever
- * happened to come up. Production is the sensible second choice, and this weight is small
- * enough to stay under the 100000 a priority match is worth - the fallback can never
- * outrank an actual match - while dominating the noise that decided it before.
- */
+/** What a settlement falls back to when nothing left serves its chosen priority. */
 const PRODUCTION_FALLBACK_WEIGHT = 1000;
 
-/**
- * "Factories first", unless the player has switched it off: fill the settlements that have
- * a factory with factory resources before placing anything else. On by default - factory
- * resources are the most valuable thing in the age and have nowhere else to go.
- *
- * Below the happiness rescue, which was named the overriding priority and stays that way -
- * an empire in revolt is not helped by a well-fed factory. Above everything else, which is
- * what "first" means here.
- */
+/** "Factories first" unless switched off: fill the settlements that have a factory. */
 const FACTORY_FIRST_SCORE_BASE = 5000000000;
 const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
 
 const CAMEL_SCORE_BASE = 1000000000;
 
 /**
- * "Imports first", when the player asks for it: everything that arrived over a trade route
- * from another leader goes into a CITY before anything of ours is placed at all.
+ * "Imports first", when asked for: everything that arrived over a trade route goes into CITIES
+ * before anything of your own.
  *
- * Off by default, and it is a bet on one victory condition. Towards the Economic Victory a
- * resource slotted in a city is worth +1 GDP a turn and an imported one is worth +1 more on
- * top of that - double - and neither pays anything in a town. Chasing any other victory the
- * same rule just hands your cities whatever the trade network happens to supply.
- *
- * ⚠️ Above the priority tiers on purpose, which is the whole point and also the whole cost.
- * A culture city that has run out of imported culture must not start on OUR culture while
- * an imported resource is still homeless somewhere else - the import is worth double
- * wherever it lands, and ours is worth the same wherever it lands, so ours can wait. Once
- * every import is placed the ordinary order takes over untouched.
- *
- * ⚠️ Below camels, which are not a priority and do not compete with this: a camel brings two
- * slots with it, so placing one first can only ever mean MORE imports fit.
- *
- * ⚠️ Cities only. An import in a town earns nothing towards the tracker, so there is nothing
- * to promote - it falls back to the ordinary rules like any other resource.
+ * ⚠️ Cities only. Towards the Economic Victory a slotted resource is worth +1 GDP and an imported
+ * one +1 more - but only in a city; in a town it is worth nothing at all.
  */
 const IMPORT_FIRST_SCORE_BASE = 900000000;
 /** Keeps the four ranks below apart, and the whole tier under CAMEL_SCORE_BASE. */
@@ -149,17 +80,8 @@ const IMPORT_RANK_WEIGHT = 10000000;
 const SPECIALIZED_CONDITIONAL_SCORE_BASE = 850000000;
 const SPECIALIZED_SCORE_BASE = 700000000;
 /**
- * A settlement whose priority nothing can serve takes production instead.
- *
- * This has to be a tier of its own, not a tiebreak. It started as a term inside
- * scorePair, which only ordered resources that had already landed on the same tier - so a
- * culture-focused city with no culture resources left still took pearls, because a
- * conditional bonus outranks a plain one, and the production sitting in the pool never
- * got a look in.
- *
- * Above conditional, below a real priority match and below the gathering rule. Cities
- * only: production in a town turns into gold rather than buildings, so a town falls back
- * the old way.
+ * A settlement whose priority nothing can serve takes production instead - ahead of a resource
+ * whose conditional bonus merely happens to apply there.
  */
 const PRODUCTION_FALLBACK_SCORE_BASE = 550000000;
 
@@ -168,33 +90,15 @@ const SINGLE_YIELD_SCORE_BASE = 100000000;
 const MULTI_YIELD_SCORE_BASE = 50000000;
 const FALLBACK_YIELD_SCORE_BASE = 10000000;
 
-/**
- * Below everything: resources whose whole point is making units cheaper to build -
- * military, civilian or religious alike. Worth having, but never at the cost of a slot
- * that could carry a yield.
- */
+/** Below everything: resources whose only effect is making units cheaper to build. */
 const UNIT_PRODUCTION_SCORE_BASE = 1000000;
 
 /**
- * Building a culture settlement and a gold settlement, without being asked to.
+ * Building a culture settlement and a gold settlement without being asked.
  *
- * Culture-paying resources are worth more together than spread out - several of them are
- * percentages, and a percentage of a big number beats the same percentage of six small
- * ones - so they all go to whichever city already makes the most culture on its own. Gold
- * goes the same way, to a DIFFERENT city, so the two piles do not compete for slots.
- *
- * This sits below the priority tier on purpose: a settlement takes what it was told to
- * prioritise first, and only what is left over gets gathered up like this. It sits above
- * the conditional tier, so gathering beats the generic "this bonus applies here" rule -
- * including, deliberately, the warehouse rule that would otherwise scatter turtles.
- *
- * ⚠️ Which resources these are is read from the data, not from a list of names. It started
- * as three names - turtles, silk, jade - which is how it was first asked for, and that left
- * every other culture resource in the age out of the pile it obviously belonged in: mangos,
- * flax, wine and incense all pay culture and were being scattered. "Whatever pays this
- * yield here" needs no maintenance when a patch or a DLC adds another one.
- *
- * Both piles are switchable; see hoard-setting.js.
+ * A +10% Culture resource in a settlement making 12 Culture is worth about a point; gathered
+ * where the yield is already largest they compound. Outranks the conditional tier and never a
+ * settlement's own priority. Both piles are switchable; see hoard-setting.js.
  */
 const HOARD_SCORE_BASE = 600000000;
 const HOARD_CULTURE_FIRST = 10000000;
@@ -235,33 +139,12 @@ const FACTORY_CONTINUE_BONUS = 3000000000;
 const FACTORY_STOCK_WEIGHT = 10000000;
 /** Past this, more copies stop making a difference; keeps the tier under the rescue. */
 const FACTORY_STOCK_CAP = 40;
-/**
- * Best fit, once two settlements would take the same number of copies: prefer the snugger
- * one and leave the roomier factory for a kind with more copies behind it.
- *
- * Far below FACTORY_STOCK_WEIGHT on purpose - it settles ties, it never overrules how many
- * copies would land.
- */
+/** Tie-break once two settlements would take the same number of copies: prefer the snugger. */
 const FACTORY_LEFTOVER_WEIGHT = 1000;
 
 /**
- * How many spare copies of each factory resource the pool still holds.
- *
- * ⚠️ Summed across GROUPS, never read off the map's own key. `groups` is keyed by
- * `groupByResourceType` as `` `${type}|${imported ? 'import' : 'ours'}` `` - an imported
- * Coffee and a home-grown one are two separate entries so a settlement's own trade-route
- * requirement can tell them apart. Destructuring that key straight into a variable named
- * `type` and using IT to key this map shipped once already: every lookup in
- * `factoryFirstScore` asks for the bare type (`resourceType(resource)`, e.g.
- * `"RESOURCE_COFFEE"`), which never matches a key that actually reads
- * `"RESOURCE_COFFEE|ours"` - so `factoryStock.get(type)` missed on every single call, stock
- * silently read as 0 for every kind, and the whole "prefer the kind with the most copies"
- * term in `factoryFirstScore` went dead. With one factory that left `scorePair` - a resource's
- * YIELD VALUE, nothing about how many copies were waiting - as the only thing deciding which
- * kind got started, which is exactly the "it picks some random resource" a stock-blind tier
- * looks like. Reading `resourceType(group[0])` here instead of trusting the map's key, and
- * summing rather than overwriting, is what makes an imported and a home-grown copy of the
- * same kind count as the one stock they actually are.
+ * How many spare copies of each factory resource the pool holds - what decides which kind an
+ * empty factory is started on. See factoryFirstScore for why the count matters.
  */
 function factoryStockByType(groups) {
     const stock = new Map();
@@ -289,30 +172,18 @@ function factoryTypeInSettlement(settlement) {
 }
 
 /**
- * The score for putting a factory resource in a settlement that has a factory, or null
- * when that is not what this pair is.
+ * The score for a factory resource in a settlement with a factory, or null when the pair is not
+ * that.
  *
- * ⚠️ The game's rule decides the shape of this, and it is not what the first version
- * assumed: "Only one type of Factory Resource can be assigned to a Settlement at a time.
- * You can assign multiple copies of the same Factory Resource to a Settlement, so it pays
- * to be efficient!" (LOC_PEDIA_CONCEPTS_FACTORY_RESOURCES_TOOLTIP).
+ * ⚠️ THE GAME'S RULE DECIDES THE SHAPE: "Only one type of Factory Resource can be assigned to a
+ * Settlement at a time" (LOC_PEDIA_CONCEPTS_FACTORY_RESOURCES_TOOLTIP). So spreading one apiece -
+ * the first version, by analogy with the happiness rescue - is the worst thing to do: every
+ * factory commits to a different kind and most of the pool becomes unplaceable. Instead keep
+ * feeding a running factory, and start an empty one on the kind with the most copies waiting.
  *
- * So spreading one apiece - which is what this did at first, by analogy with the happiness
- * rescue - is the worst thing to do. It commits every factory to a different kind, and
- * then every spare copy has exactly one settlement it may go to. With more kinds than
- * factories, most of the pool becomes unplaceable and only a handful get assigned.
- *
- * Instead: keep feeding a factory that is already running, and when starting an empty one,
- * start it on the kind with the most copies waiting - the kind that can fill it.
- *
- * ⚠️ How many copies would actually LAND, not how many are waiting. Weighing the raw stock
- * left the choice of settlement to scorePair, which is about yields and priorities and
- * knows nothing about how many slots are free - so the most plentiful kind could be started
- * in the smallest factory. Two factories with 3 and 10 free slots, Coffee x10 and Cocoa x3:
- * starting Coffee in the 3-slot one places 3, then the 10-slot one continues on Coffee for
- * the remaining 7 and Cocoa never goes anywhere - 10 placed where 13 would fit. Scoring
- * min(stock, free slots) sends Coffee to the roomy factory and leaves the small one for
- * Cocoa, which is the whole 13.
+ * ⚠️ Weighed by how many would actually LAND - min(stock, free slots) - not by raw stock. Two
+ * factories with 3 and 10 free slots, Coffee x10 and Cocoa x3: starting Coffee in the 3-slot one
+ * places 10 where 13 would fit.
  */
 function factoryFirstScore(resource, settlement, factoryStock, scoreContext) {
     if (!isFactoryFirstEnabled()) {
@@ -345,14 +216,7 @@ function settlementYieldTotal(settlement, yieldType) {
     return settlementYieldTotals(settlement).get(yieldType) ?? 0;
 }
 
-/**
- * Every yield this settlement currently produces.
- *
- * The screen's model only carries these as a list of icon URLs with numbers beside them,
- * so that path has to map each icon back to the yield it came from. Data built by
- * headless-model.js hands over the map directly - see the note there about what building
- * the screen's shape cost.
- */
+/** Every yield this settlement currently produces. */
 function settlementYieldTotals(settlement) {
     if (settlement.yieldTotals instanceof Map) {
         return settlement.yieldTotals;
@@ -368,15 +232,8 @@ function settlementYieldTotals(settlement) {
 }
 
 /**
- * Both of these hold for the length of ONE planning pass and are emptied at the start of
- * the next, because everything they describe is read off a board that the pass is about
- * to change.
- *
- * Within a pass the same figures are asked for again and again: `estimatedYieldBoosts`
- * for the priority yield, then for production, then for happiness, and `scorePair` from
- * as many as four branches of the same decision - all of them for the same pair, and all
- * of them returning the same number. Keyed by resource TYPE, since two copies of a
- * resource score identically.
+ * ⚠️ Both hold for ONE planning pass and are emptied at the start of the next: they describe a
+ * board that the last placement has already moved on.
  */
 const boostsThisPass = new Map();
 const scoresThisPass = new Map();
@@ -407,9 +264,7 @@ function computeYieldBoosts(resource, settlement) {
         if (!applicableYields.has(effect.yieldType)) {
             continue;
         }
-        // A bonus gated on being a city, a capital, distant lands or having a certain
-        // building is worth nothing where that is not true - and crediting it there is
-        // how a town ended up "wanting" Jade for gold it would never see.
+// A bonus gated on being a city, a capital, distant lands or a named constructible.
         if (effect.modifierId && !modifierApplies(effect.modifierId, settlement)) {
             continue;
         }
@@ -518,15 +373,7 @@ function computePairScore(resource, settlement, scoreContext = null) {
     const isTown = !!settlement.settlementNameData?.isTown;
     const openSlots = settlement.availableSlots?.length ?? 0;
     const actualBoost = estimatedTotalBoost(resource, settlement);
-    // Matching specializations balance their estimated realized yield gains.
-    // Percentage resources use the settlement's current yield, not their raw rate.
-    //
-    // ⚠️ There is no "no priority" case any more. `effectivePriority` resolves Balanced to
-    // production in a city and food in a town, so every settlement is always asking for
-    // something. The branch that used to sit here gave an unprioritised settlement a flat
-    // 10000 and ordered its candidates by the settlement's WEAKEST affected yield - the
-    // Resource+ reading of "balanced", which quietly pulled every such settlement towards
-    // whatever it happened to be worst at.
+/** Matching specialisations balance their estimated realised yield gains. */
     const servesPriority = affectedYields.has(priority);
     const specializedLoad = servesPriority ? specializedYieldLoad(settlement, priority, scoreContext) : 0;
     const priorityBonus = servesPriority ? 100000 : 0;
@@ -548,14 +395,7 @@ function computePairScore(resource, settlement, scoreContext = null) {
     );
 }
 
-/**
- * How far below zero each settlement's happiness sits right now.
- *
- * Read fresh on every pass. That is what makes the rescue level out instead of dumping
- * everything into one settlement: each assignment is chosen against the deficits left
- * after the previous one landed, so the worst settlement is fed only until it stops
- * being the worst, and then the next one takes over.
- */
+/** How far below zero each settlement's happiness sits right now. */
 /** The happiness a settlement currently produces, as the scoring reads it. */
 export function settlementHappiness(settlement) {
     return settlementYieldTotal(settlement, HAPPINESS_YIELD);
@@ -572,9 +412,7 @@ function happinessDeficits(settlements) {
     if (!isHappinessRescueEnabled()) {
         return { deficits, worstAnywhere: 0, townsAreEligible: false };
     }
-    // "Cities only" means a town's deficit is not a reason to run the tier at all, so it
-    // is left out of the reading rather than filtered later - otherwise every pass in an
-    // empire with one unhappy town would walk the whole board for a rescue it will refuse.
+    // "Cities only": a town's deficit is not a reason to run the tier at all.
     const townsCount = townsMayBeRescued();
 
     for (const settlement of settlements) {
@@ -595,17 +433,8 @@ function happinessDeficits(settlements) {
 }
 
 /**
- * The score for a pair while any settlement is unhappy, or null if this pair does not
- * help with that.
- *
- * `deficit * 1000` dominates, so the most unhappy settlement is always served first.
- * The tie-break is `min(boost, deficit)` - credit for how much of the hole a resource
- * actually fills, with no reward for overshooting it, because the goal is zero and not
- * a maximum.
- *
- * A camel scores here too, one point lower, but only in a settlement that is unhappy
- * AND full: it fixes nothing itself, it just opens the two slots that a happiness
- * resource then needs. Pointless if no happiness resource is left, hence the flag.
+ * The score for a pair while any settlement is unhappy, or null when this pair does not help.
+ * Cities as a class before towns, worst deficit first.
  */
 function rescueScore(resource, settlement, deficit, isCamel, happinessResourceExists, townsAreEligible) {
     if (deficit <= 0) {
@@ -626,14 +455,7 @@ function rescueScore(resource, settlement, deficit, isCamel, happinessResourceEx
     return null;
 }
 
-/**
- * A settlement's own yield, without what its assigned resources contribute.
- *
- * Not `baseYields` from the model: that is a snapshot taken when the screen opened, so it
- * still includes whatever was assigned at the time. Subtracting the estimated
- * contribution of what is slotted now gets closer to "what this settlement produces by
- * itself", using the same estimator the rest of the scoring trusts.
- */
+/** A settlement's own yield, without what its assigned resources contribute. */
 function bareYield(settlement, yieldType, scoreContext) {
     return settlementYieldTotal(settlement, yieldType) - specializedYieldLoad(settlement, yieldType, scoreContext);
 }
@@ -641,26 +463,15 @@ function bareYield(settlement, yieldType, scoreContext) {
 /**
  * The one culture settlement and the one gold settlement, chosen ONCE for a whole run.
  *
- * ⚠️ Exactly ONE settlement holds each role at a time. The gold pile used to have no target
- * at all: it scored every city that was not the culture city, weighted by that city's own
- * gold, which is "spread gold around, richest first" and not "build a gold settlement". The
- * cost was visible in play - Jade would take a slot in the CAPITAL at the gathering tier
- * (600 000 000) while Silk, which was not the capital's pile, could only reach the
- * conditional tier (500 000 000) there and stayed in the pool.
+ * ⚠️ Exactly ONE holds each role. The gold pile used to have no target: it scored every non-
+ * culture city weighted by its own gold, which is "spread gold around" and not "build a gold
+ * settlement" - visibly so in play, with Jade taking a capital slot at the gathering tier while
+ * Silk could only reach the conditional tier there and stayed in the pool.
  *
- * ⚠️ But the role is a ROLE, not a fixed settlement: when the city holding it runs out of
- * room, the next-best city takes over. A culture city with two free slots would otherwise
- * take two culture resources and let the remaining twelve scatter under the ordinary rules -
- * the very thing the option exists to prevent, merely delayed by two slots.
+ * ⚠️ But it is a ROLE, not a fixed settlement: when the holder runs out of room the next-best
+ * city takes over, or a culture city with two free slots lets the other twelve scatter.
  *
- * The ranking is settled once per run and only "which of them still has room" moves; see
- * hoardRanking for why re-ranking every pass is not safe.
- *
- * Cities only - several of the resources involved need a build queue to pay out anything,
- * and a town would be gathering yields it cannot use.
- *
- * ⚠️ Only KEYS are cached. The settlement objects are rebuilt from the board before every
- * pass, so anything held across passes must be a `cityKey` and not an object.
+ * ⚠️ Only KEYS are cached - the settlement objects are rebuilt before every pass.
  */
 let hoardRankingThisRun = null;
 let lastLoggedTargets = '';
@@ -674,16 +485,7 @@ export function startPlacementRun() {
     forgetImportOrigins();
 }
 
-/**
- * Cities ordered by how much of each yield they make on their own, best first.
- *
- * ⚠️ Ranked ONCE per run and then held. `bareYield` subtracts the estimated contribution of
- * what is slotted, so the culture city's own bare culture FALLS as its pile grows - and with
- * percentage resources the estimate is taken off a total those same resources inflated.
- * Re-ranked every pass, the leader could hand the role over to a rival partway through and
- * leave the pile split between two settlements, which is the one outcome this tier exists to
- * avoid. Ranking once fixes the order; only "which of them has room" is allowed to move.
- */
+/** Cities ordered by how much of each yield they make on their own, best first. */
 function hoardRanking(settlements, scoreContext) {
     if (hoardRankingThisRun) {
         return hoardRankingThisRun;
@@ -703,19 +505,7 @@ function hoardRanking(settlements, scoreContext) {
     return hoardRankingThisRun;
 }
 
-/**
- * Which settlement currently holds each role: the highest-ranked city that still has room.
- *
- * ⚠️ The role moves on when the settlement holding it fills up. Without that, a culture city
- * with two free slots took two culture resources and the remaining twelve fell back to the
- * ordinary rules and scattered - which is the behaviour the option is there to prevent, just
- * delayed by two slots. The RANKING is fixed for the run, so this only ever walks down a
- * settled order; it cannot reshuffle itself mid-run.
- *
- * ⚠️ The gold role skips whichever settlement currently holds the culture role, so the two
- * piles never compete for the same slots - and that check is against the CURRENT holder, not
- * the one picked at the start, so handing the culture role on also frees the city it left.
- */
+/** Which settlement holds each role: the highest-ranked city that still has room. */
 function hoardTargets(settlements, scoreContext) {
     const ranking = hoardRanking(settlements, scoreContext);
     const byKey = new Map(settlements.map((settlement) => [cityKey(settlement.cityID), settlement]));
@@ -743,17 +533,7 @@ function logHoardTargets(byKey, targets) {
     }
 }
 
-/**
- * The score for gathering this resource here, or null if this is not one of the two target
- * settlements or the resource pays nothing towards that settlement's pile.
- *
- * ⚠️ "Pays the yield" is asked of THIS settlement, not of the resource in the abstract:
- * silk pays culture in a city and nothing in a town, and a resource that would contribute
- * nothing here has no business being gathered here.
- *
- * The settlement's own yield is still part of the score, so a strong pile outranks a weak
- * one when both roles are competing for the same resource.
- */
+/** The score for gathering this resource here, or null if this is not one of the two piles. */
 function hoardScore(resource, settlement, targets, scoreContext) {
     const key = cityKey(settlement.cityID);
 
@@ -766,21 +546,7 @@ function hoardScore(resource, settlement, targets, scoreContext) {
     return null;
 }
 
-/**
- * The available pool, one entry per kind of resource.
- *
- * Copies of a kind score identically - the scoring reads the resource's type and nothing
- * else about the individual copy - so scoring all of them is repeated work, and with a
- * large pool most of the pool is copies. One representative is scored and the others come
- * along as substitutes for when the engine refuses that particular one.
- *
- * ⚠️ "Identically" stopped being true of the type alone when imports-first arrived. Whether
- * a copy came over a trade route is a property of the COPY: your own Silk and a Silk bought
- * from a neighbour are the same type and worth different amounts of GDP. Grouped on type
- * alone, one representative would answer for both and every copy in the group would be
- * scored as whatever the first one happened to be. So the key carries it, and the invariant
- * holds again.
- */
+/** The available pool, one entry per KIND of resource - the loop scores kinds, not copies. */
 function groupByResourceType(resources) {
     const groups = new Map();
     for (const resource of resources) {
@@ -799,22 +565,8 @@ function groupByResourceType(resources) {
 }
 
 /**
- * The score for putting an imported resource into a city, or null when that is not what
- * this pair is.
- *
- * The four ranks, best first - they decide the ORDER imports are placed in, not whether
- * they are placed, because every one of them outranks everything that is not an import:
- *
- *   3  it serves what the player told this city to make
- *   2  it brings production - the second choice everywhere else in this file too
- *   1  the city has no specialisation of its own, so nothing is being displaced
- *   0  a specialised city, and this helps neither its priority nor its production
- *
- * ⚠️ Rank 3 is measured against the player's EXPLICIT choice, not `effectivePriority`. A
- * settlement left on Balanced has not asked for anything, so an import landing there
- * displaces no plan and belongs at rank 1 - that is what "fill the unspecialised cities
- * next" means. Resolving Balanced to production here would collapse ranks 3, 2 and 1 into
- * one for every city the player never touched.
+ * The score for an imported resource in a city, or null when that is not what this pair is.
+ * ⚠️ Cities only, for the reason on IMPORT_FIRST_SCORE_BASE.
  */
 function importFirstScore(resource, settlement, scoreContext) {
     if (!isImportsFirstEnabled() || settlement.settlementNameData?.isTown) {
@@ -858,12 +610,9 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
     startPlanningPass();
     const groups = groupByResourceType(pooledResources(model));
     /*
-     * ⚠️ The whole empire, then the filter - not the other way round.
-     *
-     * Quick-assigning one settlement must not make that settlement the culture city by
-     * default, and `buildScoreContext` has to cover every settlement the gathering targets
-     * are compared across, or `bareYield` reads a missing entry as "contributes nothing"
-     * and hands the pile to whichever city happens to be outside the filter.
+     * ⚠️ The whole empire, then the filter - not the other way round. Quick-assigning one
+     * settlement must not make it the culture city by default, and `buildScoreContext` has to
+     * cover every settlement the gathering targets are compared across.
      */
     const everySettlement = allSettlements(model);
     const scoreContext = buildScoreContext(everySettlement);
@@ -923,16 +672,8 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
                 productionBoost > 0 &&
                 !settlement.settlementNameData?.isTown;
 
-            /*
-             * ⚠️ Every branch names the tier it came from, and the name rides along on the
-             * winning plan so place.js can log it.
-             *
-             * This is diagnostics, but it earned its keep: "why did Tin end up in my
-             * culture capital instead of Silk" is not answerable from the board - the same
-             * outcome can come from the import tier, the production fallback, a happiness
-             * rescue, or from the resource simply having been there before the run. Three
-             * rounds of reasoning from screenshots settled none of them.
-             */
+    // ⚠️ Every branch names the tier it came from, and the name rides along to the log line in
+    // place.js - "why did Tin end up there" has at least four possible answers.
             let normalScore;
             let normalTier;
             if (camel) {
@@ -962,9 +703,7 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
                 normalTier = 'plain yield';
             }
 
-            // A military-production resource goes to the back of the queue whatever else
-            // it would have scored - but it can still be pulled forward by the happiness
-            // rescue, which outranks everything.
+            // A military-production resource goes to the back of the queue whatever else fits.
             let ordinary = normalScore;
             let tier = normalTier;
             if (givesUnitProductionBonus(resource)) {
@@ -982,13 +721,8 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
                 tier += ' -town penalty';
             }
 
-            /*
-             * Gathering never overrides a settlement's own priority, and imports-first
-             * never overrides a camel, so all three are COMPARED rather than chained:
-             * whichever reads stronger wins. Chaining `importFirst ?? ordinary` would have
-             * pushed an imported camel down off its own tier and cost the two slots it
-             * brings - which is the opposite of what imports-first wants.
-             */
+            // Gathering never overrides a settlement's own priority, and imports-first outranks
+            // gathering.
             const hoard = hoardScore(resource, settlement, targets, scoreContext);
             if (hoard !== null && hoard > ordinary) {
                 ordinary = hoard;

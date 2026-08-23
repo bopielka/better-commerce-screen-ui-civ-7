@@ -1,29 +1,22 @@
 /**
- * Buying a merchant, walking it, and signing the route once it is there.
+ * Buying a merchant, walking it, and signing the route once it is there. No state; the standing
+ * order that survives turn to turn lives in ./merchant-orders.js.
  *
- * The three calls this needs are the game's own, taken from where the game makes them:
+ * The three calls are the game's own, taken from where the game makes them: `CityCommandTypes.
+ * PURCHASE` with `{ UnitType }` (production-chooser-helpers.js), `UnitOperationTypes.MOVE_TO`,
+ * and `UnitCommandTypes.MAKE_TRADE_ROUTE` with the TARGET SETTLEMENT'S OWN PLOT
+ * (trade-route-chooser.js).
  *
- *   buy    `CityCommandTypes.PURCHASE` with `{ UnitType }` - production-chooser-helpers.js,
- *          `Construct()`, the branch that runs when the Purchase tab is the open one.
- *   walk   `UnitOperationTypes.MOVE_TO` - the plain operation.
- *   sign   `UnitCommandTypes.MAKE_TRADE_ROUTE` with the TARGET SETTLEMENT'S OWN PLOT -
- *          trade-route-chooser.js, `checkAndStartTradeRoute()`.
+ * ⚠️ `WorldInput.requestMoveOperation` is NOT used, although the game's own send-merchant button
+ * uses it: it is the right-click handler, it probes for an attack first and can open a
+ * declare-war confirmation - which must never come out of a button labelled "buy a merchant".
  *
- * ⚠️ `WorldInput.requestMoveOperation` is NOT used, although the game's own "send merchant"
- * button uses it. That function is the right-click handler: it probes for an attack first
- * and can open a declare-war confirmation, which must never come out of a button labelled
- * "buy a merchant". Holistic QoL+ avoids it for the same reason and says so in a comment.
- *
- * ⚠️ Which unit is "a merchant" is `MakeTradeRoute` on the unit's definition, not the type
- * name. Half a dozen civs have their own - Vaishya, Watonathi, Mandarin, Tajiro, Hangshang -
- * and matching UNIT_MERCHANT would have left those civs with a button that never worked.
- *
- * Nothing here keeps state; the standing order that survives from turn to turn lives in
- * ./merchant-orders.js.
+ * ⚠️ "A merchant" is `MakeTradeRoute` on the unit definition, not the type name. Half a dozen
+ * civs have their own, so matching UNIT_MERCHANT left those civs with a button that never worked.
  */
 import { isFactoryAge } from './age.js';
 import { waitForEngineEvent } from './wait.js';
-import { warn } from '../support/diagnostics.js';
+import { log, warn } from '../support/diagnostics.js';
 
 /** A unit is identified the way settlements are elsewhere in this mod: by the id alone. */
 export function unitKey(unitID) {
@@ -32,12 +25,7 @@ export function unitKey(unitID) {
 
 let merchantTypes = null;
 
-/**
- * Every unit type that can open a trade route, as a set of type names.
- *
- * Built once. `GameInfo.Units` is a static table - it cannot change during a game - and it
- * is long enough that a per-card scan would be felt on a tab full of cards.
- */
+/** Every unit type that can open a trade route. Built once; `GameInfo.Units` is static. */
 function merchantTypeNames() {
     if (merchantTypes) {
         return merchantTypes;
@@ -58,15 +46,9 @@ function merchantTypeNames() {
 /**
  * `MakeTradeRoute`, remembered per unit type.
  *
- * ⚠️ `GameInfo.Units.lookup` is a DATABASE call, and this is asked once per unit every time
- * the merchant list is read - which, before the event filtering in engine/events.js, was
- * several times a second for the whole of everybody else's turn. The answer is a column in a
- * static table and cannot change while the game is running, so it is asked once per type.
- *
- * ⚠️ Keyed on `unit.type` exactly as it arrives, and answered THROUGH `lookup`, not by
- * pre-building a set of hashes. The hash is what the engine hands over today; keying on it
- * through the same call that always resolved it means a patch that changes the shape breaks
- * nothing here.
+ * ⚠️ `GameInfo.Units.lookup` is a DATABASE call and this is asked once per unit every time the
+ * merchant list is read. Keyed on `unit.type` as it arrives and answered THROUGH `lookup`, so a
+ * patch that changes the shape breaks nothing.
  */
 const makesTradeRouteByType = new Map();
 
@@ -93,13 +75,8 @@ export function isMerchant(unit) {
 }
 
 /**
- * Every merchant this player owns, wherever it is - or **null** when the engine could not be
- * asked at all.
- *
- * ⚠️ The null matters and is not defensive noise. Anything that prunes stored state against
- * this list reads an empty array as "every merchant is gone" and throws the lot away. A
- * failed call must be told apart from an empty answer, or one bad tick wipes the orders of
- * merchants that are alive and walking.
+ * Every merchant this player owns, or **null** when the engine could not be asked.
+ * ⚠️ null and [] are different answers: see `pruneOrders` in merchant-orders.js.
  */
 export function readMerchants() {
     try {
@@ -129,27 +106,10 @@ function purchaseArgs(definition) {
     return hash === undefined ? null : { UnitType: hash };
 }
 
-/**
- * What a merchant would cost in this settlement, and whether it can be bought at all.
- *
- * ⚠️ Asked through `canStartQuery`, not by looping over the unit table and asking about
- * each type in turn. The query is the call the production chooser itself makes (`getUnits`
- * in production-chooser-helpers.js), it answers for every unit type in one go, and its
- * `result` carries the reason for a refusal - which is what the tooltip needs when the
- * button is dark.
- *
- * @returns `{ definition, cost, canBuy, insufficientFunds }`, or null when this settlement
- *          has no merchant to sell at all - a different case from "cannot afford it".
- */
+/** What a merchant would cost here, and whether it can be bought at all. */
 const offerCache = new Map();
 
-/**
- * Throws the prices away.
- *
- * ⚠️ Must be called whenever gold is spent or a merchant is bought: the unit's cost
- * progression counts the copies already bought, so the next merchant costs more than the last
- * one did, and a stale figure on the button is a figure the engine will not honour.
- */
+/** Throws the prices away. */
 export function forgetMerchantOffers() {
     offerCache.clear();
 }
@@ -165,11 +125,8 @@ export function merchantOffer(cityID) {
         return null;
     }
 
-    /*
-     * ⚠️ Cached per settlement, and it is not an optimisation for its own sake: when no
-     * settlement can sell a merchant, `purchaseSite` walks the whole empire for every route
-     * card on screen. Without this that is one `canStartQuery` per settlement per card.
-     */
+    // ⚠️ Cached per settlement: asking the engine what a merchant costs runs once per settlement
+    // per card per observer pass otherwise.
     const cacheKey = String(city.id.id);
     if (offerCache.has(cacheKey)) {
         return offerCache.get(cacheKey);
@@ -213,18 +170,7 @@ export function merchantOffer(cityID) {
     return best;
 }
 
-/**
- * Which settlement buys the merchant.
- *
- * The route's own nearest settlement first - that is the one the route is measured from, and
- * the one the player is looking at on the card. It is not always able to sell a merchant
- * though: a settlement in unrest cannot buy, and a town's purchase list depends on what it
- * has. So the rest of the empire is tried after it, nearest to the destination first, and the
- * settlement that ends up buying is named in the tooltip rather than left to be discovered.
- *
- * @returns `{ city, offer }` where `offer.canBuy` says whether the button is live. The city
- *          is the preferred one when nothing can buy, so the tooltip can still explain.
- */
+/** Which settlement buys the merchant. */
 export function purchaseSite(preferredCityID, targetCity) {
     let preferred = null;
     try {
@@ -282,16 +228,7 @@ function nextFrame() {
     return new Promise((resolve) => requestAnimationFrame(resolve));
 }
 
-/**
- * Buys a merchant and hands back the unit that appeared.
- *
- * ⚠️ The new unit is found by comparing the merchant list before and after, NOT by listening
- * for `UnitAddedToMap`. The game's own unit-flag manager says why it avoids that event: "event
- * race condition in looking up a valid Unit" - it can arrive before the unit can be read back.
- * Polling asks the question the caller actually has, which is whether the unit is there yet.
- *
- * @returns the new merchant, or null if the purchase was refused or nothing turned up.
- */
+/** Buys a merchant and hands back the unit that appeared. */
 export async function purchaseAndCollectMerchant(cityID, definition) {
     const before = new Set(localMerchants().map((unit) => unitKey(unit.id)));
     if (!purchaseMerchant(cityID, definition)) {
@@ -309,13 +246,7 @@ export async function purchaseAndCollectMerchant(cityID, definition) {
     return null;
 }
 
-/**
- * How many trade routes this empire may hold with another leader, and how many it holds.
- *
- * The two calls the game's own trade lens makes for the same sentence - see
- * `getTradeActionText` in trade-routes-model.js, which writes "2 of 3 with Amina" from
- * exactly these. A merchant is only worth buying while the second number is below the first.
- */
+/** How many trade routes this empire may hold with another leader, and how many it holds. */
 export function tradeCapacityWith(leaderId) {
     try {
         const trade = Players.get(GameContext.localPlayerID)?.Trade;
@@ -329,16 +260,7 @@ export function tradeCapacityWith(leaderId) {
     }
 }
 
-/**
- * Puts the camera on a unit and selects it.
- *
- * The two together, because either alone is half an answer: the camera without the selection
- * leaves the player looking at a tile and hunting for which figure on it was meant, and the
- * selection without the camera happens somewhere off screen.
- *
- * ⚠️ Selecting FIRST. `UI.Player.selectUnit` moves the camera itself in some situations, and
- * doing it in the other order meant the framing this asks for was immediately overruled.
- */
+/** Puts the camera on a unit and selects it. */
 export function focusUnitOnMap(unit) {
     if (!unit?.location) {
         return false;
@@ -366,16 +288,31 @@ function plotDistance(from, to) {
 }
 
 /**
- * Where to walk to, best plot first.
+ * How many plots this will put through the pathfinder, and how many hits are enough to stop.
  *
- * The same shape as the game's own `tryIssueMoveCommand`: every plot the target settlement
- * owns, nearest first, keeping only the ones the unit can actually path to. A settlement's
- * centre is often not the reachable part of it - an inland capital reached by sea is the
- * obvious case - and a move order to an unreachable plot is simply refused.
+ * ⚠️ A PERFORMANCE FIX, and it matters most in Exploration. `Units.getPathTo` is a full
+ * pathfinder query, and this used to run one for EVERY plot the target settlement owns - thirty
+ * to fifty for a developed city - after which `advance` put every plot through `moveMerchant`,
+ * which pathfinds again inside `canStart`. Eighty searches per merchant per attempt.
  *
- * When nothing paths - a merchant that has not left the harbour yet, an unexplored gap in
- * between - the settlement's centre is handed back on its own, so an order still has
- * somewhere to aim. The engine then refuses the move, and the caller counts the attempt.
+ * ⚠️ And the FAILING case is the expensive one: a search that succeeds stops at the target, one
+ * that fails must exhaust everything the unit can reach first. A merchant that cannot get there
+ * paid the worst possible query forty times over, three times a turn, for every merchant under an
+ * order - all synchronous, all at `LocalPlayerTurnBegin`. Tens of seconds on a big map.
+ *
+ * ⚠️ Nearest-first is what makes the cap safe rather than merely cheap: sorted by distance FROM
+ * THE UNIT, the plots probed first are on the unit's own side - which for a ship approaching an
+ * inland capital are the coastal ones. When the cap bites the centre is still handed back, the
+ * engine still refuses, and the attempt is still counted.
+ */
+const MAX_PATH_PROBES = 10;
+const ENOUGH_REACHABLE = 3;
+
+/**
+ * Where to walk to, best plot first - the plots the target owns that the unit can path to.
+ * A settlement's centre is often not its reachable part. When nothing paths, the centre is handed
+ * back alone so an order still has somewhere to aim; the engine then refuses and the caller
+ * counts the attempt.
  */
 export function approachLocations(unit, city) {
     const locations = [];
@@ -396,17 +333,31 @@ export function approachLocations(unit, city) {
 
     locations.sort((first, second) => plotDistance(unit.location, first) - plotDistance(unit.location, second));
 
-    const reachable = locations.filter((location) => {
-        try {
-            return (Units.getPathTo(unit.id, location)?.plots?.length ?? 0) > 0;
-        } catch (error) {
-            return false;
+    const reachable = [];
+    let probes = 0;
+    for (const location of locations) {
+        if (reachable.length >= ENOUGH_REACHABLE || probes >= MAX_PATH_PROBES) {
+            break;
         }
-    });
+        probes++;
+        try {
+            if ((Units.getPathTo(unit.id, location)?.plots?.length ?? 0) > 0) {
+                reachable.push(location);
+            }
+        } catch (error) {
+            // Not reachable, and not worth a warning: that is what this loop is asking.
+        }
+    }
     if (reachable.length > 0) {
         return reachable;
     }
-    return city?.location ? [{ x: city.location.x, y: city.location.y }] : locations;
+    if (locations.length > probes) {
+        log(
+            `no reachable plot among the ${probes} nearest of ${locations.length}; ` +
+                'aiming at the settlement centre',
+        );
+    }
+    return city?.location ? [{ x: city.location.x, y: city.location.y }] : locations.slice(0, ENOUGH_REACHABLE);
 }
 
 function moveArgs(location) {
@@ -432,29 +383,16 @@ export function moveMerchant(unit, location) {
     }
 }
 
-/**
- * ⚠️ The argument is the target settlement's OWN plot, never the plot the merchant stands
- * on. The command asks "open a route with the settlement at X,Y"; handing it the merchant's
- * position makes it refuse for as long as the merchant is anywhere but on the city centre.
- */
+    // ⚠️ The target settlement's OWN plot, never the plot the merchant stands on - the same
+    // argument `checkAndStartTradeRoute()` passes.
 function routeArgs(location) {
     return { X: location.x, Y: location.y };
 }
 
-
 /**
  * Whether this merchant has already spent its turn.
- *
- * ⚠️ ASKED OF THE UNIT, NOT OF THE REFUSAL - and that is the second attempt at this test. The
- * first asked `canStart` why it had refused, on the reasonable assumption that
- * "LOC_UNITCOMMAND_NO_MOVES_REMAINING" would come back and could be told apart from
- * "...NO_NEARBY_CITIES". It does not: for MAKE_TRADE_ROUTE the engine answers Success=false
- * with `FailureReasons` EMPTY, every time (traced in UI.log). The reasons exist for other
- * commands - the game's own unit-actions panel reads them - but not for this one, so nothing
- * can be concluded from them here.
- *
- * `Movement.movementMovesRemaining` is the same field the unit flags and the end-turn panel
- * read, and it answers a question that needs no interpretation.
+ * ⚠️ Movement remaining, not "has it acted": a merchant bought this turn has none, and a course
+ * issued to it would only sit queued.
  */
 export function hasSpentItsTurn(unit) {
     try {
@@ -464,46 +402,16 @@ export function hasSpentItsTurn(unit) {
     }
 }
 
+/** Stops a merchant where it stands, dropping whatever journey it still had queued. */
 /**
- * Stops a merchant where it stands, dropping whatever journey it still had queued.
- *
- * ⚠️ `UNITCOMMAND_CANCEL` is the game's OWN cancel - `unit-commands.xml`, icon
- * `Action_Cancel.png`, the same command its unit action panel offers. Not a zero-distance
- * `MOVE_TO` standing in for one, which is the obvious trick and is refused.
- *
- * ⚠️ Returns true when there was nothing to cancel, too. A merchant can be under a standing
- * order with no journey queued - ours waits exactly like that when it has spent its turn and
- * will sign the route next turn - and for the caller the outcome is the same either way: it is
- * not going anywhere now.
- */
-/**
- * Whether a merchant can open a route from wherever it happens to be standing.
- *
- * ⚠️ AN AGE CHECK, deliberately, after two attempts at deriving this from the engine failed.
- * `canStart` refuses `MAKE_TRADE_ROUTE` with `Success: false` and an EMPTY `FailureReasons`
- * (traced in UI.log), so nothing in the refusal distinguishes "too far" from "no capacity"
- * from "no movement" - and without that distinction a refusal cannot be read as an
- * instruction to travel.
- *
- * The rule itself is plain and does not need deriving:
- *
- *   Antiquity, Exploration   the merchant must REACH the settlement to open the route
- *   Modern                   it may open one from anywhere, once it has movement to spend
- *
- * ⚠️ `isFactoryAge` is this mod's existing name for the Modern age - it was named for the
- * Factory tab that first needed it. Reused rather than duplicated; a second age test would be
- * a second thing to keep in step with the game's own age hashes.
+ * Whether a merchant can open a route from wherever it stands - true in the Modern age only.
+ * ⚠️ Named for the factory age because that is this mod's existing name for Modern.
  */
 /**
  * How many turns before this merchant can open the route, or null when it cannot be said.
- *
- * ⚠️ Read from the engine's own pathfinder rather than estimated. `Units.getPathTo` answers
- * with a `turns` array carrying one entry per plot - the same numbers the game paints on the
- * map as it draws a unit's route - so the last of them is the turn it arrives on.
- *
- * ⚠️ In the Modern age there is no journey to measure: the merchant opens the route from where
- * it stands as soon as it has movement, which is the start of next turn. Answering with a path
- * length there would be describing a walk that is never going to happen.
+ * ⚠️ Read from the engine's own pathfinder: `Units.getPathTo` answers with a `turns` array, one
+ * entry per plot, so the last is the arrival turn. Currently unused - see the note on
+ * MAX_PATH_PROBES before calling it from anything that draws many cards.
  */
 export function turnsUntilRouteOpens(unit, location) {
     if (routesOpenFromAnywhere()) {

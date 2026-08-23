@@ -53,9 +53,11 @@ and an optional automatic assignment that runs with the screen closed.
    `ui/support/diagnostics.js`, which go through `console.error`.
 4. **Do not batch the placement loop.** Each choice is made against the board the previous
    one left behind. See [planner: assignment](07-planner-assignment.md).
-5. **Keep the `⚠️` comments.** Almost every one of them records a bug that shipped, or an
-   approach that was tried and failed. They are the most valuable text in the repository.
-   If you change the code they describe, update them; do not delete them.
+5. **Keep the FACT in a `⚠️` comment, not the story around it.** Almost every one records a bug
+   that shipped or an approach that failed — keep that, drop the narrative. If you change the code
+   they describe, update them. See the comment budget in
+   [workflow](14-development-workflow.md).
+
 6. **This mod is not compatible with Resource+** — both replace the same screen. The
    override priorities are still computed as `existing + 100` so that co-installation
    degrades rather than breaks.

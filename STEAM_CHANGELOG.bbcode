@@ -5,7 +5,9 @@ Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the sourc
 [hr][/hr]
 [h2]1.9[/h2]
 [list]
-[*][b]Nothing on screen changes — this release is about what the mod costs the game.[/b] Every feature behaves exactly as it did in 1.8.
+[*][b]One new option; otherwise nothing on screen changes.[/b] This release is about what the mod costs the game — every other feature behaves exactly as it did in 1.8.
+[*][b]New: "Don't show tooltips on the Commerce screen"[/b] (Options → Mods, off by default). Hides every tooltip this mod draws, and the round "?" marks with them. The game's own tooltips are untouched.
+[*][b]Fixed: a Merchant on a standing order could add a minute to the turn.[/b] It asked the pathfinder about every plot its target owns — thirty to fifty — three times a turn, and a target it could not reach was the most expensive question of all. It now probes the ten nearest.
 [*][b]The mod no longer listens to other empires' turns.[/b] Unit movement, resource assignment and building events are raised by the engine for every player in the game, not for you — thousands of them per AI turn in a late game — and this mod woke up on all of them. Every subscription is now filtered by whose event it is before any work starts.
 [*][b]Automatic assignment installs nothing while it is switched off[/b], and off is the default. It used to subscribe to a dozen engine events and sweep every fifteen seconds whatever the setting said.
 [*][b]Merchant orders and Treasure Convoys stop scanning your whole army.[/b] A pass now runs only when something is actually under an order, and convoy events check the one unit they name.
@@ -55,12 +57,4 @@ Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the sourc
 [*][b]The capacity warning can now fix what it warns about[/b], proposing the same treaty straight from the card.
 [*][b]A blocked route's title tooltip says why[/b] — out of range, at war, or capacity full, in the game's own wording.
 [*][b]Fixed:[/b] "Factories first" ignored how many copies of each Factory Resource the pool held; buying a Merchant killed the tooltips on other cards; the Trade Routes tab could be dragged sideways.
-[/list]
-
-[h2]1.4[/h2]
-[list]
-[*][b]Buy and send a Merchant straight from a trade route card.[/b] One click buys it in the right settlement, walks it there, and opens the route itself.
-[*][b]Filter tabs above each trade route section[/b] — show only routes carrying a given yield, richest first.
-[*][b]The "unavailable trade routes" section opens by default[/b], split into "one trade slot away" and "out of range".
-[*][b]Fixed:[/b] Hardwood's card showed raw markup; the "no Trade Route slot" tooltip named the wrong fix.
 [/list]

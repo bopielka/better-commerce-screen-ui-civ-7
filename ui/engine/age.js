@@ -1,14 +1,11 @@
 /**
- * Which age the game is in.
+ * Which age the game is in, worked out once.
  *
- * `Database.makeHash` is a lookup, not a constant, so the answer is worked out once and
- * kept: the planner asks this for every resource-settlement pair it scores, which is
- * hundreds of thousands of hashes over one "Assign All". The age cannot change while the
- * game is running, so caching it is safe by construction.
+ * ⚠️ `Database.makeHash` is a lookup, not a constant, and the planner asks this for every
+ * resource-settlement pair it scores. The age cannot change mid-game, so the cache is safe.
  *
- * It lives here rather than beside the Factory tab that first needed it because three
- * modules across two layers ask the question, and the planner asking a screen module
- * meant the assignment engine could not be loaded without the UI behind it.
+ * In engine/ rather than beside the Factory tab: three modules across two layers ask it, and
+ * the planner may not import a screen module.
  */
 let modernAge = null;
 
@@ -23,10 +20,16 @@ export function isFactoryAge() {
     return modernAge;
 }
 
+/** ⚠️ Cached too: tab-icons.js asks this six times on every pass of its observer. */
+let explorationAge = null;
+
 export function isExplorationAge() {
-    try {
-        return Game.age === Database.makeHash('AGE_EXPLORATION');
-    } catch (error) {
-        return false;
+    if (explorationAge === null) {
+        try {
+            explorationAge = Game.age === Database.makeHash('AGE_EXPLORATION');
+        } catch (error) {
+            return false;
+        }
     }
+    return explorationAge;
 }

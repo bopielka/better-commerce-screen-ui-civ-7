@@ -110,6 +110,13 @@
             <Text>To samo dla Złota: jadeit, kaurysy, rubiny, srebro, goździki i reszta trafiają do miasta, które samo z siebie produkuje najwięcej Złota — i celowo nie do tego kulturowego, żeby obie kupki nie biły się o te same sloty. Osady, którym nadałeś własny priorytet, są obsługiwane najpierw.</Text>
         </Row>
 
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS" Language="pl_PL">
+            <Text>Nie pokazuj dymków na ekranie handlu</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION" Language="pl_PL">
+            <Text>Włączone: żadne z objaśnień, które ten mod dodaje na ekranie handlu, nie jest rysowane — ani ramkowane dymki przy jego własnych przyciskach, przełącznikach i kontrolkach osad, ani zwykłe przy paskach, sumach, kłódkach i tytułach szlaków handlowych, ani rozszerzony dymek zasobu na kartach Imperium, Fabryk i Skarbów. Znikają z nimi okrągłe znaczki „?”, bo istnieją wyłącznie po to, żeby nieść dymek.[N][N]WŁASNE dymki gry pozostają nietknięte — nie należą do tego moda.[N][N]Domyślnie wyłączone. Objaśnienia są sensem większości tego, co mod dodaje; ta opcja jest dla gracza, który je już przeczytał i chce mieć spokój na ekranie.[N][N]Działa w pełni po ponownym otwarciu ekranu handlu.</Text>
+        </Row>
+
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="pl_PL">
             <Text>Skróty myszy</Text>
         </Row>

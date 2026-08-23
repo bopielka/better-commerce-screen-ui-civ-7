@@ -106,6 +106,13 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="ja_JP">
             <Text>ゴールドも同様に、翡翠、子安貝、ルビー、銀、丁子などを、もともと最もゴールドを産出している都市に集めます。文化の都市とは意図的に別の都市を選ぶため、二つの山が同じスロットを奪い合いません。独自の優先度を設定した集落が先に処理されます。</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS" Language="ja_JP">
+            <Text>交易画面でツールチップを表示しない</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION" Language="ja_JP">
+            <Text>オンにすると、このMODが交易画面に追加する説明は一切描画されません。MOD独自のボタン・スイッチ・集落コントロールの枠付きツールチップ、バー・合計・南京錠・交易路の見出しに付く簡易ツールチップ、帝国・工場・宝物カードの拡張資源ツールチップのすべてです。丸い「?」マークも一緒に消えます。ツールチップを表示するためだけに存在するからです。[N][N]ゲーム本来のツールチップには手を触れません。[N][N]既定はオフ。次に交易画面を開いたときに完全に反映されます。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="ja_JP">
             <Text>マウス操作</Text>
         </Row>

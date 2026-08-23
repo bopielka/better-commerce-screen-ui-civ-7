@@ -1,19 +1,9 @@
 /**
- * While Shift is held, hovering a resource marks every resource of that same kind in
- * the same group - a preview of what Shift is about to do in bulk.
+ * While Shift is held, hovering a resource marks every resource of that same kind - a preview of
+ * what Shift-click is about to move.
  *
- * Both sides of the screen are covered, and each means something different:
- *   - a resource assigned to a settlement -> its kin in that settlement, all of which
- *     Shift + right-click would release;
- *   - a resource in the unassigned pool    -> its kin in the pool, which Shift-assigning
- *     would send into the settlement together.
- *
- * The screen is Solid.js and rebuilds its DOM whenever the model changes, so the marks
- * are not stored anywhere: every recompute clears whatever carries the class and marks
- * the current set again. That makes a stale mark impossible to keep, at the price of
- * one querySelectorAll per recompute.
- *
- * Cost when Shift is not held is a boolean test per mousemove - see scheduleRecompute.
+ * ⚠️ Recomputed on a frame, not on every mousemove, and skipped entirely when Shift is up and
+ * nothing is marked: this is a global `mousemove` listener.
  */
 import { findAvailableResourceAtPoint, findSlottedResourceAtPoint } from '../model/screen-model.js';
 import { isShiftHeld } from '../engine/shift.js';
@@ -24,14 +14,8 @@ const MARK_CLASS = 'najane-kin-highlight';
 const STYLE_ID = 'najane-commerce-highlight-style';
 
 /**
- * The same optical enlargement the game already gives a hovered resource. Its own
- * markup carries `hover\:scale-125` on the draggable, so 1.25 is not a taste decision -
- * it is the figure the screen uses, and matching it makes the preview read as "these
- * are all hovered" rather than as a new kind of decoration.
- *
- * `.framed-resource` is the target because it is rendered in both branches of
- * DraggableResource; `.draggable-resource` only exists while the resource is
- * interactive, which is not the case for every slot.
+ * The same optical enlargement the game gives a hovered resource, so the marked ones read as the
+ * same kind of thing rather than as a second highlight.
  */
 const STYLE = `
 .${MARK_CLASS} .framed-resource {
@@ -55,13 +39,7 @@ function clearMarks() {
     }
 }
 
-/**
- * Does the screen already enlarge this slot on hover by itself?
- *
- * `.draggable-resource` is the element carrying `hover\:scale-125`, and it is only
- * rendered while the resource is interactive - DraggableResource falls back to a plain
- * wrapper otherwise. So this is a real question, not a constant.
- */
+/** Does the screen already enlarge this slot itself? Marking it too multiplies the transforms. */
 function isEnlargedByTheGame(slotElement) {
     return slotElement.querySelector('.draggable-resource') !== null;
 }

@@ -1,17 +1,11 @@
 /**
- * Resources that carry their own slots.
+ * Resources that carry their own slots (camels grant two).
  *
- * Camels grant a settlement two extra resource slots - in the database, not in code:
+ * ⚠️ Read from `BonusResourceSlots`, a schema column, never by name - so it covers anything DLC
+ * or another mod gives the property.
  *
- *     <Row ResourceType="RESOURCE_CAMELS" ... BonusResourceSlots="2" .../>
- *
- * `BonusResourceSlots` is a schema column defaulting to 0, so reading it covers every
- * resource that ever gains the property, including ones added by DLC or other mods.
- * Nothing here mentions camels by name on purpose.
- *
- * The consequence for unassigning: taking such a resource out shrinks the settlement's
- * capacity, so other resources may have to leave first or the settlement would end up
- * holding more than it can.
+ * The consequence for unassigning: taking one out shrinks the settlement's capacity, so others
+ * may have to leave first.
  */
 const bonusSlotsByType = new Map();
 let indexed = false;
@@ -44,19 +38,13 @@ export function grantsBonusSlots(resourceType) {
 /**
  * Resources that could be released to make room, best candidate first.
  *
- * This is a *queue to draw from*, not a list to remove - the caller pulls one at a time
- * and stops the moment the engine accepts the resource it actually wanted to remove.
- * That is what keeps the settlement from losing more than the situation demands.
+ * ⚠️ A QUEUE TO DRAW FROM, not a list to remove: the caller pulls one at a time and stops the
+ * moment the engine accepts what it actually wanted gone. That is what keeps a settlement from
+ * losing more than the situation demands.
  *
- * Order is from the END of the settlement's list backwards: the most recently slotted
- * resources go first, which is what the player expects to lose.
- *
- * Resources that grant slots themselves are never candidates - removing one would
- * shrink capacity again and turn this into a cascade. The queue is capped at the number
- * of slots actually going away, so a misjudgement cannot strip the settlement.
- *
- * @param settlement CommerceCityResourceData
- * @param doomed the resources the player asked to unassign
+ * Ordered from the END of the settlement's list backwards - most recently slotted first, which
+ * is what the player expects to lose. Slot-granting resources are never candidates (that would
+ * cascade), and the queue is capped at the number of slots actually going away.
  */
 export function companionCandidates(settlement, doomed) {
     const slotsLost = doomed.reduce((total, resource) => total + bonusSlotsFor(resource.resourceType), 0);

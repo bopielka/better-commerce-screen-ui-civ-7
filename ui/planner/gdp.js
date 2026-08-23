@@ -1,22 +1,12 @@
 /**
  * What the empire's assigned resources earn per turn towards the Economic Victory.
  *
- * The Factory tab already showed this for factory resources alone. It is the same currency
- * everywhere, though, and the other two sources are invisible - so the figure that answers
- * "what is all of this worth" did not exist anywhere on the screen.
+ * ⚠️ Every rate is read from `GameInfo.VictoryScorings`, never written as a number here - these are
+ * exactly the values a balance patch moves, and a hardcoded one goes on looking right while being
+ * wrong.
  *
- * ⚠️ Every rate is read from `GameInfo.VictoryScorings`, never written as a number here.
- * These are exactly the kind of value a balance patch moves, and a hardcoded one would go
- * on looking right while being wrong.
- *
- *   VICTORY_TRACKER_SLOTTED_BONUS       1   a Bonus resource in a CITY
- *   VICTORY_TRACKER_SLOTTED_CITY        1   a City resource in a CITY
- *   VICTORY_TRACKER_IMPORTED_RESOURCES  1   ADDITIONAL, for one that came over a trade route
- *   VICTORY_TRACKER_SLOTTED_FACTORY     3   a Factory resource, city or town alike
- *
- * ⚠️ The first three pay in a CITY only - "assigned to a City (not a Town)", in the game's
- * own words - while the factory one pays in either. That asymmetry is the whole reason the
- * three are counted separately rather than as one walk with one rate.
+ * ⚠️ SLOTTED_BONUS, SLOTTED_CITY and IMPORTED_RESOURCES pay in a CITY only; SLOTTED_FACTORY pays in
+ * either. That asymmetry is why the three are counted separately rather than as one walk.
  */
 import { ConstructibleHasTagType } from '/base-standard/ui/utilities/utilities-tags.js';
 
@@ -67,22 +57,7 @@ function currentAgeType() {
     }
 }
 
-/**
- * Gold buildings that actually pay, in this city.
- *
- * ⚠️ Counted by TAG, not by a list of names - `VICTORY_TRACKER_GOLD_BUILDINGS_*` carries
- * `Data="GOLD"` and the game tags its buildings with it, so a DLC building is covered
- * without this knowing it exists. Note the tag is shared with RESOURCES (Jade, Silver,
- * Camels…); looking the id up in `GameInfo.Constructibles` is what keeps those out.
- *
- * ⚠️ "Of the current age", which the tracker means literally: a Market pays in Antiquity
- * and stops paying in Exploration. Without this the figure kept counting every gold
- * building the empire had ever built and drifted further from the truth each age.
- *
- * ⚠️ Except the AGELESS ones, which pay in every age. That is a TypeTag - `<Row
- * Type="BUILDING_PALACE" Tag="AGELESS"/>` - and NOT a column on the constructible, so it
- * has to be asked for the same way the gold tag is.
- */
+/** Gold buildings that actually pay, in this city. */
 function goldBuildings(city, ageType) {
     let count = 0;
     try {

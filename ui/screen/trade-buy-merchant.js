@@ -1,49 +1,27 @@
 /**
- * The stack of buttons on a trade route card: buy a merchant, go and look at it - and
- * on a card blocked by nothing but the trade limit, propose the treaty that would open a slot
- * and buy the merchant anyway.
+ * The stack of buttons on a trade route card: buy a merchant, go and look at it - and on a card
+ * blocked by nothing but the trade limit, propose the treaty that would open a slot and buy the
+ * merchant anyway.
  *
- * A card in "Available trade routes" says a route is there for the taking, and then leaves
- * the player to close the screen, find a settlement, open its production list, buy a
- * merchant, find it on the map, walk it several turns, and remember what it was for. The gold
- * button is that sequence in one click:
+ * The gold button is one click for: buy a merchant in the settlement the route is measured from,
+ * walk it to the other empire, open the route the moment the engine allows it (the last step is
+ * engine/merchant-orders.js). The limit-blocked variant proposes "Improve Trade Relations"
+ * (engine/diplomacy.js) first and sends the merchant regardless of the answer.
  *
- *     buy a merchant in the settlement the route is measured from
- *     walk it to the other empire's settlement
- *     open the route the moment the engine will allow it       ← ui/engine/merchant-orders.js
+ * ⚠️ THE TREATY CAN BE REFUSED - proposing is not the same as it taking effect. The merchant goes
+ * anyway because it already knows how to wait: merchant-orders.js retries every turn, whoever the
+ * slot ends up coming from.
  *
- * A card blocked ONLY by the trade limit gets a variant of the same button, showing an
- * Influence cost alongside the Gold one:
+ * ⚠️ A button appears ONLY where this mod can promise something. A card blocked by distance or
+ * already running gets no button rather than a dark one - the reason is written across it.
  *
- *     propose "Improve Trade Relations" with that leader     ← ui/engine/diplomacy.js
- *     buy a merchant and send it regardless of the answer
- *     open the route the moment a slot exists, whoever it came from
+ * ⚠️ Nothing asks for confirmation, deliberately: the price is on the button before it is
+ * pressed. What must never happen is buying without the price visible, which is why an
+ * unaffordable button goes dark rather than hidden.
  *
- * ⚠️ THE TREATY CAN BE REFUSED. Proposing it is not the same as it taking effect - see the
- * file note in diplomacy.js. The merchant is sent anyway because it already knows how to wait
- * for an uncertain outcome: `merchant-orders.js` retries opening the route every turn on its
- * own, whether the slot comes from this treaty, a later one, or nothing this mod did at all.
- *
- * A locate button appears whenever a merchant is actually on either errand: it closes the
- * screen and takes the player to it, which is the one thing they cannot do from here and the
- * first thing they want once they wonder where it has got to.
- *
- * ⚠️ Nowhere else. On a card blocked by distance, or already running, the merchant would
- * arrive to nothing this mod can promise, so those cards keep no button at all rather than a
- * dark one - the reason is already written across them.
- *
- * ⚠️ Nothing here asks for confirmation, and that is deliberate: the game's own production
- * list buys with one click too, and the price is on the button before it is pressed. What
- * this must never do is buy WITHOUT the price being visible, which is why a button goes dark
- * rather than hidden when it cannot be afforded.
- *
- * Where it sits
- * -------------
- * At the right-hand end of the card's TITLE ROW, after the route name, which truncates to
- * make room for it. The leader's portrait keeps the top-right corner to itself and the
- * resources have the row below, so the three do not overlap. The row is Solid's and a redraw
- * takes the stack with it; the tab's observer puts it back, the same way as everything else
- * this mod adds to these cards.
+ * It sits at the right-hand end of the card's TITLE ROW; the portrait keeps the corner and the
+ * resources have the row below. The row is Solid's, so a redraw takes the stack and the tab's
+ * observer puts it back.
  */
 import { RaiseDiplomacyEvent } from '/base-standard/ui/diplomacy/diplomacy-events.js';
 
@@ -78,20 +56,15 @@ import { bindActivatable, clearChildren, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
 /**
- * "The trade capacity with someone just changed" - raised when this mod proposes "Improve
- * Trade Relations", listened for by ui/screen/trade-routes.js.
+ * Raised when this mod proposes "Improve Trade Relations"; listened for by screen/trade-routes.js.
  *
- * ⚠️ An EVENT rather than a direct call, and rather than reopening the screen. What goes stale
- * when a limit moves is never one button: every card of that leader carries the same warning,
- * the group headers under the unavailable routes are drawn from the same numbers, and so is
- * the total above the tabs. Redrawing the one card that was clicked left all of that behind,
- * and reopening the screen to fix it blacked out the whole screen for a button on one card.
- * The tab already knows how to redraw itself in place; this is how it is told to.
+ * ⚠️ An EVENT rather than a direct call: what goes stale when a limit moves is never one button -
+ * every card of that leader carries the same warning, and so do the group headers and the total.
+ * Reopening the screen to fix it blacked out the whole screen for a button on one card.
  *
- * ⚠️ Same shape as `MerchantOrdersChangedEventName` (ui/engine/merchant-orders.js) on purpose:
- * a plain `CustomEvent` on `window`, declared by the module that RAISES it. trade-routes.js
- * already imports from this file, so listening costs it no new dependency - and this file
- * importing the tab's redraw would have made the two circular.
+ * ⚠️ Declared by the module that RAISES it, like `MerchantOrdersChangedEventName`. trade-routes.js
+ * already imports from here, so listening costs no new dependency - and importing the redraw the
+ * other way would make the two circular.
  */
 export const TradeCapacityChangedEventName = 'najane-trade-capacity-changed';
 
@@ -114,27 +87,14 @@ const WARN_CLASS = `${BUY_CLASS}-warn`;
 const IMPROVE_CLASS = `${BUY_CLASS}-improve`;
 /** "Send the merchant you already have" - the plus beside the price. */
 const SEND_CLASS = `${BUY_CLASS}-send`;
-/**
- * The limit-blocked variant of it, which carries a price and therefore is not a small square.
- *
- * ⚠️ A CLASS OF ITS OWN rather than a modifier on `SEND_CLASS`. That one is a fixed 1.7rem box
- * with a large glyph, and a modifier would spend its life overriding those back; this simply
- * joins the rules the priced buttons already share, so it cannot drift from them.
- */
+/** The limit-blocked variant: it carries a price, so it is not a small square. */
 const SEND_WIDE_CLASS = `${BUY_CLASS}-send-wide`;
 /** "Call that merchant off" - the X beside the locate pin. */
 const CANCEL_CLASS = `${BUY_CLASS}-cancel`;
 /** Holds the pin and the X side by side. */
 const ERRAND_ROW_CLASS = `${BUY_CLASS}-errand-row`;
 
-/**
- * The green of the "send a spare merchant" plus.
- *
- * ⚠️ One constant, two buttons. The bare plus and the priced one are the same offer written
- * two ways, so the mark that identifies them has to be the same green - and it had drifted
- * already, because the priced one simply inherited the price button's parchment colour and
- * nobody had said otherwise.
- */
+/** The green of the "send a spare merchant" plus - the game's own positive colour. */
 const SEND_PLUS_COLOUR = '#9ad48f';
 
 /**
@@ -152,14 +112,7 @@ export const LEADER_LINK_CLASS = 'najane-trade-leader-link';
 /** The corner of the card holding the leader portrait; see trade-routes.js. */
 const LEADER_CORNER_SELECTOR = '.absolute.top-1.right-1';
 
-/**
- * The card's title row, which trade-routes.js marks. The buttons hang on the END of it.
- *
- * ⚠️ The class itself lives in screen-parts.js rather than in either of the two modules that
- * need it: trade-routes.js applies it and this module reads it, and trade-routes imports THIS
- * module, so passing the constant the other way round would close the cycle. It used to be
- * written out twice, with a comment on each copy apologising for the other.
- */
+/** The card's title row, marked by trade-routes.js. The buttons hang on the END of it. */
 const HEAD_SELECTOR = `.${TRADE_HEAD_CLASS}`;
 
 /** The game's own map pin, the one the culture victory tab drops on the map. */
@@ -175,26 +128,16 @@ const CANCEL_ICON = 'blp:Action_Cancel.png';
 const WARN_ICON = 'blp:fonticon_attention';
 
 /**
- * Whose teardown owns these tooltips; the Trade Routes tab disposes its own and no others.
+ * Whose teardown owns these tooltips; the tab disposes its own and no others.
  *
- * ⚠️ One scope PER CARD, under the tab's own. The stack is rebuilt whenever the state changes,
- * and a framed tooltip left mounted around a discarded element floats off to the top-left
- * corner of the screen - which is what a click on the buy button did until this existed. The
- * tab's teardown passes the bare scope and takes every card's with it; see
- * `disposeFramedTooltips`.
+ * ⚠️ One scope PER CARD, under the tab's. A framed tooltip left mounted around a discarded
+ * element floats to the top-left corner of the screen - which is what a click on the buy button
+ * did until this existed.
  *
- * ⚠️ SERIAL PER STACK, NOT THE TARGET SETTLEMENT'S ID - which is what this used to key on, and
- * it was wrong. `projectPossibleTradeRoutes` returns one route PER PAIRING, so every settlement
- * of ours within reach of the same foreign settlement gets its own card, all of them naming the
- * SAME target. Keyed by that target they shared one scope, and a scope is a disposal bucket:
- * each card's rebuild called `disposeFramedTooltips` on the bucket and took its neighbours'
- * freshly mounted tooltips down with its own stale one. Only the last card rendered for a given
- * settlement kept a working tooltip; every earlier one went dead, which read on screen as "the
- * tooltips stopped working on that leader's cards" - one leader, because the several cards
- * pointing at one settlement are necessarily all that leader's.
- *
- * A serial also means a discarded stack's scope can never be reused, so a card Solid throws
- * away leaks its bucket until the tab's teardown sweeps the prefix - never onto a live card.
+ * ⚠️ SERIAL PER STACK, NOT THE TARGET SETTLEMENT'S ID. `projectPossibleTradeRoutes` returns one
+ * route PER PAIRING, so several cards name the same target; keyed by that they shared one
+ * disposal bucket and each rebuild took its neighbours' fresh tooltips down with its own stale
+ * one. On screen that read as "the tooltips stopped working on that leader's cards".
  */
 const TOOLTIP_SCOPE = 'trade-routes';
 
@@ -328,7 +271,6 @@ ${ICON_BUTTON_STYLE}
  */
 
 .${CANCEL_CLASS} { margin-left: 0.3rem; }
-
 
 .${SEND_WIDE_CLASS} { margin-top: 0.25rem; }
 .${SEND_WIDE_CLASS}__plus {
@@ -511,32 +453,18 @@ ${ICON_BUTTON_STYLE}
 .${IMPROVE_CLASS}__influence-cost { margin-right: 0.5rem; }
 `;
 
-/**
- * The purchase decision, cached for as long as the tab's route list is.
- *
- * ⚠️ Cached because `canStartQuery` is not cheap and the decorator runs from a
- * MutationObserver. Asking the engine what a merchant costs once per settlement per card per
- * DOM mutation is exactly the shape of the pass that used to cost this mod thirty seconds.
- */
+/** The purchase decision, cached for as long as the tab's route list is. */
 const siteCache = new Map();
 
-/**
- * Bumped whenever the answers go stale. A stack carries the generation it was built for, so a
- * decorate pass can tell "already there and still true" from "already there and wrong"
- * without asking the engine anything.
- */
+/** Bumped when the answers go stale; a stack carries the generation it was built for. */
 let generation = 0;
 
 /** Target settlements with a purchase in flight; see `buyAndSend`. */
 const busyTargets = new Set();
 
 /**
- * The "Improve Trade Relations" offer, cached per LEADER rather than per settlement - it is
- * the same proposal whichever of that leader's cities the card is about.
- *
- * ⚠️ Cleared on the same schedule as the merchant site cache and for the same reason: it
- * calls `canStart` under the hood, which is not free, and the decorator runs from a
- * MutationObserver.
+ * The "Improve Trade Relations" offer, cached per LEADER rather than per settlement - it is a
+ * property of the pairing, and several cards can name the same leader.
  */
 const tradeRelationsCache = new Map();
 
@@ -548,13 +476,7 @@ export function forgetMerchantOffers() {
     generation++;
 }
 
-/**
- * The prices are still good; what a merchant is DOING has changed.
- *
- * Used when an order is given, finished, or dropped because the merchant carrying it died -
- * see `MerchantOrdersChangedEventName`. Bumping the generation without clearing the caches
- * makes the next pass rebuild the buttons and ask the engine nothing.
- */
+/** The prices are still good; what a merchant is DOING has changed. */
 export function markMerchantStateStale() {
     generation++;
 }
@@ -584,14 +506,8 @@ const influenceIcon = () => yieldIcon('YIELD_DIPLOMACY');
 /**
  * Whether a merchant bought now would find a trade slot when it arrives.
  *
- * ⚠️ Counted PER LEADER and including the merchants already walking. Capacity is a per-leader
- * figure, and the card's own status was decided by a projection made before anyone set off:
- * with one slot free and a merchant already on its way to one of Amina's cities, every other
- * card of hers still says "available" and would happily sell a second merchant into a slot
- * that is already spoken for.
- *
- * The card carrying the merchant that is already walking is not warned about - it is the one
- * that will get the slot - and its button is disabled anyway.
+ * ⚠️ Asked of the LEADER, not the settlement: the trade limit is per leader, so a slot spent on
+ * one of their settlements is spent for all of them.
  */
 function capacityWarning(route, targetCity) {
     const leaderId = route?.leaderId;
@@ -660,16 +576,7 @@ function buyTooltip(site, targetCity, onTheWay, warning) {
     return Locale.compose('LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED');
 }
 
-/**
- * Buys, waits for the unit, and files its standing order.
- *
- * ⚠️ Asynchronous from end to end, because `sendRequest` only queues: the merchant does not
- * exist in the same tick the purchase is sent. See `purchaseAndCollectMerchant`.
- *
- * ⚠️ The in-flight flag is kept per TARGET SETTLEMENT rather than on the button. The stack is
- * rebuilt from scratch whenever anything changes, so a flag living on the element would be
- * thrown away mid-purchase and let a second click through.
- */
+/** Buys, waits for the unit, and files its standing order. */
 /**
  * The one thing both buttons eventually do: buy a merchant at `site` and send it to
  * `targetCity`. Shared so the two flows cannot drift apart on what "send a merchant" means.
@@ -693,11 +600,8 @@ async function buyAndSend(stack, route, targetCity) {
     }
     busyTargets.add(key);
     markMerchantStateStale();
-    /*
-     * ⚠️ Redrawn here, not left to the observer. A click is not a DOM mutation, so nothing
-     * else wakes the observer up and the button would stay bright and clickable for as long
-     * as the purchase took.
-     */
+    // ⚠️ Redrawn here, not left to the observer: a click is not a DOM mutation, so nothing else
+    // would notice.
     renderAvailableStack(stack, route, targetCity);
     try {
         await purchaseAndSend(site, targetCity);
@@ -712,14 +616,8 @@ async function buyAndSend(stack, route, targetCity) {
 }
 
 /**
- * Proposes "Improve Trade Relations" with the leader, then buys and sends a merchant anyway.
- *
- * ⚠️ The two steps are independent operations - a treaty proposal and a city purchase - and
- * neither waits on the other. The merchant does not need the treaty to have resolved to be
- * bought or to walk; it only needs it resolved to actually SIGN the route once it arrives,
- * which `merchant-orders.js` already retries on its own for as long as that takes. So this
- * fires the proposal, does not wait to see whether it is accepted, and goes straight on to
- * the purchase - waiting would only delay the one part of this that is not in question.
+ * Proposes "Improve Trade Relations", then buys and sends a merchant regardless of the answer.
+ * ⚠️ `mayMove: false` - see the note where it is passed.
  */
 async function improveAndSend(stack, route, targetCity, offer) {
     const key = cityKey(targetCity);
@@ -790,16 +688,7 @@ export function decorateLeaderLink(card, route) {
     bindActivatable(portrait, () => openDiplomacyWith(leaderId));
 }
 
-/**
- * The warning under the price: this leader has no slot left for what you are about to buy.
- *
- * ⚠️ It does not disable anything. Relations can change while a merchant walks, capacity can
- * be raised, and a player who wants to gamble on that is entitled to - the mod's job here is
- * to make sure the gamble is a choice rather than a surprise.
- *
- * Clicking it closes the screen and opens diplomacy with that leader, which is where the
- * capacity actually comes from.
- */
+/** The warning under the price: this leader has no slot left for what you are about to buy. */
 /**
  * The second half of the warning's tooltip: what clicking it actually does.
  *
@@ -827,29 +716,11 @@ function warnActionText(warning, offer) {
 }
 
 /**
- * The warning under the price, turned into the fix it warns about: propose "Improve Trade
- * Relations" with this leader right from the card the warning is on, instead of only linking
- * to diplomacy and leaving the player to find the same action themselves there.
+ * The warning turned into the fix it warns about: propose "Improve Trade Relations" from the
+ * card, without leaving the screen.
  *
- * ⚠️ Proposes the treaty ONLY - it never also buys a merchant. This card already has its own
- * gold button for that, immediately above; the two stay separate actions here because buying
- * is already on offer on this exact card, unlike the limit-blocked flow where nothing else on
- * the card can buy at all and the two have to be bundled into one click.
- *
- * ⚠️ Redraws THE WHOLE TAB once the proposal is away, not just its own stack - by raising
- * `TradeCapacityChangedEventName`, which trade-routes.js answers with one decorate pass.
- * A trade limit is per LEADER, so it is never one card's business: every other card of that
- * leader carries the same warning, the "one trade slot away" group is drawn from the same
- * numbers, and so is the total above the tabs. Redrawing only the clicked stack left all
- * three saying the old thing.
- *
- * ⚠️ In place, NOT by reopening the screen. Popping and re-pushing does rebuild the game's own
- * model - it is the only thing that does - but the entire screen blacks out and comes back,
- * which is far too much for a button on one card. Everything that actually needs to change
- * here is this mod's own drawing, and that redraws without Solid being involved at all.
- *
- * ⚠️ Only on the branch that actually proposed something - nothing changed on the branch that
- * did not, and the fallback below leaves this screen anyway.
+ * ⚠️ It goes dark once used - the proposal can only be made once per turn per leader, and a
+ * button that stayed bright and priced made the feature look broken.
  */
 function buildWarnButton(warning, scope) {
     const offer = improveOfferFor(warning.leaderId);
@@ -903,12 +774,7 @@ function buildBuyButton(stack, route, targetCity, site, onTheWay, scope) {
     const ready = Boolean(site?.offer?.canBuy) && onTheWay === 0 && !busy;
 
     const button = makeElement('div', BUY_CLASS);
-    /*
-     * One errand per settlement at a time. A second merchant bought while the first is still
-     * walking is almost always a misread of the card - and if the first one drowns, the order
-     * is dropped and this button comes back on its own; see `pruneOrders` in
-     * ui/engine/merchant-orders.js.
-     */
+/** One errand per settlement at a time; a second merchant would arrive to a spent slot. */
     button.classList.toggle(`${BUY_CLASS}--blocked`, !ready);
     button.classList.toggle(`${BUY_CLASS}--sent`, onTheWay > 0);
     button.classList.toggle(`${BUY_CLASS}--busy`, busy);
@@ -949,17 +815,8 @@ function buildBuyButton(stack, route, targetCity, site, onTheWay, scope) {
  * happened.
  */
 /**
- * Sends a merchant you already own, instead of buying one.
- *
- * Only ever built when there IS one to send - see `idleMerchants` for what counts as spare -
- * so it is never a dark button explaining an absence. A merchant left over from the previous
- * age is invisible on this screen and costs nothing; without this the only way to use it was
- * to close the screen, find it on the map, and walk it there by hand, while the card went on
- * offering to buy a second one.
- *
- * ⚠️ Nothing refreshes this button by hand. `orderMerchantTo` announces the new order, the tab
- * hears it and redraws every card - so the plus vanishes from ALL of them at once, which is
- * the only correct answer when the single spare merchant has just been spoken for.
+ * Sends a merchant you already own instead of buying one - one left over from an earlier age,
+ * say. The plus disappears everywhere the moment it is spoken for.
  */
 function buildSendSpareButton(targetCity, spare, scope) {
     const button = makeElement('div', SEND_CLASS);
@@ -987,29 +844,10 @@ function buildSendSpareButton(targetCity, spare, scope) {
     return mount;
 }
 
+/** Raise the trade limit, then send the merchant you already have. */
 /**
- * Raise the trade limit, then send the merchant you already have.
- *
- * ⚠️ The same two steps the gold button on this card performs, minus the purchase. That button
- * proposes "Improve Trade Relations" and then buys a merchant; this one proposes the identical
- * treaty and then sends a merchant already standing idle, so the Influence is spent either way
- * and only the Gold is saved. The order matters and is the same in both: the treaty first,
- * because it is what makes a slot for the route to occupy.
- *
- * ⚠️ It does NOT wait to see whether the treaty is accepted, for the reason set out in the
- * file note: the merchant knows how to wait on an uncertain outcome, and `merchant-orders.js`
- * retries opening the route every turn until a slot exists - from this treaty or any other.
- */
-/**
- * Calls a merchant off the errand this mod gave it.
- *
- * Two things, and both are needed: the journey is cancelled so it stops walking, and the
- * standing order is dropped so nothing sends it out again at the start of the next turn.
- * Cancelling alone would be undone a turn later; forgetting the order alone would leave it
- * walking to a settlement nobody is expecting it at.
- *
- * ⚠️ Only offered beside the pin, which is only drawn while a merchant really is on its way -
- * so this is never a button explaining that there is nothing to call off.
+ * Calls a merchant off the errand this mod gave it: stops the journey and drops the order,
+ * without leaving the screen. It keeps its remaining movement.
  */
 function buildCancelErrandButton(unit, targetCity, scope) {
     return makeIconButton({
@@ -1077,12 +915,10 @@ function buildSendSpareImproveButton(stack, route, targetCity, offer, scope) {
             announceTradeCapacityChange();
         }
         /*
-         * ⚠️ `mayMove: false`, and this is the whole difference between this button and the
-         * plain one. The treaty above is queued, not done - for a moment yet the engine still
-         * reports the old trade capacity and refuses the route. A spare merchant has movement
-         * in hand, so it would read that refusal as distance and walk off towards the other
-         * empire, for a journey the treaty it is waiting on was about to make pointless. It
-         * stays where it is; the order is retried when the turn begins.
+         * ⚠️ `mayMove: false`. `sendRequest` only QUEUES, so for a moment afterwards the engine
+         * still reports the old trade capacity and refuses the route - and a merchant with movement
+         * reads that refusal as "too far" and walks off for a journey the treaty was about to make
+         * unnecessary. Standing still costs nothing; the order is retried every turn.
          */
         if (orderMerchantTo(live, targetCity, { mayMove: false })) {
             log(`a spare merchant will open the route to ${Locale.compose(targetCity.name ?? '')} once the limit rises`);
@@ -1124,15 +960,8 @@ function priceRow(priceMount, targetCity, heading, scope) {
 }
 
 function buildLocateButton(unit, targetCity, scope) {
-    /*
-     * ⚠️ A SECOND PARAGRAPH, not a second control. The framed tooltip turns a blank line into
-     * its own inset card (see framed-tooltip.js), so "where is it" and "when does it get there"
-     * are two answers in one place - which is where the player is already looking when they
-     * wonder about the merchant at all.
-     *
-     * Left off entirely when the engine will not say: `turnsUntilRouteOpens` answers null when
-     * there is no path to measure, and an empty card is worse than no card.
-     */
+    // ⚠️ A SECOND PARAGRAPH, not a second control: the framed tooltip turns a blank line into its
+    // own card, so one tooltip carries both thoughts.
     const turns = turnsUntilRouteOpens(unit, targetCity.location);
     const where = Locale.compose('LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP');
     const when = turns === null
@@ -1143,12 +972,8 @@ function buildLocateButton(unit, targetCity, scope) {
         icon: LOCATE_ICON,
         title: 'LOC_NAJANE_COMMERCE_SHOW_MERCHANT',
         text: `${where}${when}`,
-        /*
-         * ⚠️ The bare number, not "3 turns". Polish alone needs three forms of the word
-         * depending on the digit, and this is a button a few characters wide - the sentence
-         * belongs in the tooltip's second card, where it has room to be right in every
-         * language. Left off entirely when there is no path to measure.
-         */
+    // ⚠️ The bare number, not "3 turns": Polish alone needs three forms of the word, and the game
+    // has no plural machinery reachable from here.
         label: turns === null ? null : String(turns),
         scope,
         className: LOCATE_CLASS,
@@ -1255,14 +1080,7 @@ function buildImproveButton(stack, route, targetCity, site, offer, onTheWay, sco
     return mount;
 }
 
-/**
- * Fills the stack for a route that is available NOW: the gold button, and a locate or a
- * capacity warning underneath it.
- *
- * ⚠️ Rebuilt rather than patched. The tooltips are the game's framed ones, which are Solid
- * components built around the button when it is created - there is no "set the text" on one.
- * A rebuild is cheap and only happens when the generation says something changed.
- */
+/** The stack for a route available NOW: the gold button, plus a locate or a cancel. */
 function renderAvailableStack(stack, route, targetCity) {
     const site = siteFor(route, targetCity);
     const heading = merchantsBoundFor(targetCity);
@@ -1272,23 +1090,15 @@ function renderAvailableStack(stack, route, targetCity) {
     const scope = scopeForStack(stack);
     disposeFramedTooltips(scope);
     clearChildren(stack);
-    /*
-     * ⚠️ No price at all while a merchant is already walking here. A second one sent to a
-     * settlement that is already spoken for is not something to offer, and a dark button that
-     * can only be pressed by mistake is not an improvement on no button. What the player wants
-     * to know instead - when the first one arrives - is on the locate button's tooltip.
-     */
+    // ⚠️ No price at all while a merchant is already walking here: a second one sent to a slot
+    // the first will take is money thrown away.
     if (heading.length === 0) {
         stack.appendChild(priceRow(
             buildBuyButton(stack, route, targetCity, site, heading.length, scope),
             targetCity, heading.length, scope,
         ));
     }
-    /*
-     * The slot under the price holds whichever of the two applies, and never both: a warning
-     * is only raised when no merchant of ours is walking to this settlement, which is exactly
-     * when there is nothing to fly the camera to.
-     */
+    // The slot under the price holds one of the two, never both.
     const warning = capacityWarning(route, targetCity);
     if (heading.length > 0) {
         stack.appendChild(errandRow(heading[0], targetCity, scope));
@@ -1298,14 +1108,7 @@ function renderAvailableStack(stack, route, targetCity) {
     stack.dataset.najaneGeneration = String(generation);
 }
 
-/**
- * Fills the stack for a route blocked by NOTHING but the trade limit: the propose-and-buy
- * button, and a locate button underneath it once a merchant is actually walking - which can
- * happen here too, on the rare turn a slot opens up and closes again before the projection
- * catches up. See the file note for why there is no warning variant here: the warning exists
- * to catch a SECOND purchase on a card that still reads as open; a limit-blocked card never
- * reads that way to begin with.
- */
+/** The stack for a route blocked by NOTHING but the trade limit. */
 function renderImproveStack(stack, route, targetCity) {
     const site = siteFor(route, targetCity);
     const offer = improveOfferFor(route.leaderId);
@@ -1315,14 +1118,8 @@ function renderImproveStack(stack, route, targetCity) {
     disposeFramedTooltips(scope);
     clearChildren(stack);
     stack.appendChild(buildImproveButton(stack, route, targetCity, site, offer, heading.length, scope));
-    /*
-     * ⚠️ Its OWN ROW under the price, not beside it like the plus on an available card. This
-     * one carries the Influence price as well, and the title row it would share is already
-     * carrying a route name that truncates - see the note on the wide send button's style.
-     *
-     * Offered on the same terms as the bare plus: only with a spare merchant to send, and not
-     * on a card already waiting for one.
-     */
+    // ⚠️ Its OWN ROW under the price, not beside it like the plus on an available card: this
+    // button carries two prices and there is no width left on the title row.
     if (heading.length === 0 && offer && nearestIdleMerchant(targetCity)) {
         stack.appendChild(buildSendSpareImproveButton(stack, route, targetCity, offer, scope));
     }
@@ -1332,27 +1129,10 @@ function renderImproveStack(stack, route, targetCity) {
     stack.dataset.najaneGeneration = String(generation);
 }
 
+/** Puts the buttons on the card, or brings the ones already there up to date. */
 /**
- * Puts the buttons in the card's corner, or brings the ones already there up to date.
- *
- * @param card            the `.trade-route-card` element
- * @param route           the entry this mod keeps for it - see `routeInfo()` in trade-routes.js
- * @param unavailableGroup 'limit' | 'range' | null - which reason the route is unavailable
- *                         for, from `unavailableGroupFor` in trade-routes.js. Only that module
- *                         has the route's full status list; this is handed the answer rather
- *                         than a second copy of the question.
- */
-/**
- * Puts the stack at the END of the title row, and puts it back there on every pass.
- *
- * ⚠️ APPENDING ONCE IS NOT ENOUGH, which is what put the prices in the middle of the line.
- * `decorate` in trade-routes.js builds the "-> destination" block into this same row and
- * appends it AFTER calling this - deliberately, so a card whose row survived a redraw still
- * gets its buttons back - so whatever this appended stops being last a moment later. Asking
- * each pass is cheap and self-correcting; guessing the order of two decorators is not.
- *
- * ⚠️ Safe to move because the stack is OURS. The row and the destination block are not, and
- * moving one of Solid's nodes is what the ⚠️ on `positionGroupHeader` is about.
+ * Puts the stack at the END of the title row, and puts it back there on every pass - the row is
+ * Solid's and a redraw discards whatever this mod added.
  */
 function keepLast(head, stack) {
     if (head.lastElementChild !== stack) {
@@ -1361,12 +1141,7 @@ function keepLast(head, stack) {
 }
 
 export function decorateBuyMerchant(card, route, unavailableGroup = null) {
-    /*
-     * ⚠️ The TITLE ROW, not the portrait's corner. See the note on `.${STACK_CLASS}` in
-     * BUY_STYLE for the layout this produces. The row is marked by trade-routes.js one line
-     * before it calls this, so it is there whenever a card has been decorated at all - and
-     * when it has not, there is nothing to hang a button on yet and the next pass will do it.
-     */
+    // ⚠️ The TITLE ROW, not the portrait's corner - the portrait owns that.
     const head = card.querySelector(HEAD_SELECTOR);
     const mode = route?.startable ? 'available' : (unavailableGroup === 'limit' ? 'improve' : null);
     if (!head || !mode) {
@@ -1374,9 +1149,7 @@ export function decorateBuyMerchant(card, route, unavailableGroup = null) {
         // by something a treaty cannot fix (being at war, say).
         const stale = card.querySelector(`.${STACK_CLASS}`);
         if (stale) {
-            // ⚠️ Disposed before it goes, like every other place a stack is discarded. A
-            // framed tooltip outliving the element it is anchored to is what draws an empty
-            // frame in the top-left corner; see `disposeFramedTooltips`.
+    // ⚠️ Disposed before it goes: a framed tooltip outliving its anchor draws in the corner.
             disposeFramedTooltips(scopeForStack(stale));
             stale.remove();
         }
@@ -1391,12 +1164,8 @@ export function decorateBuyMerchant(card, route, unavailableGroup = null) {
 
     const existing = head.querySelector(`.${STACK_CLASS}`);
     if (existing) {
-        /*
-         * ⚠️ Both checked. The generation covers a price or an order changing; the mode
-         * covers the route ITSELF changing state, which normally comes with Solid rebuilding
-         * the card from scratch (a fresh element, no stale stack to find here at all) - this
-         * is the belt for the rare pass where it does not.
-         */
+    // ⚠️ Both checked: the generation covers a price or an order changing, the mode covers the
+    // card changing what kind of card it is.
         if (existing.dataset.najaneGeneration !== String(generation) || existing.dataset.najaneMode !== mode) {
             render(existing, route, targetCity);
             existing.dataset.najaneMode = mode;
@@ -1407,18 +1176,9 @@ export function decorateBuyMerchant(card, route, unavailableGroup = null) {
 
     const stack = makeElement('div', STACK_CLASS);
     /*
-     * ⚠️ THE CARD BENEATH MUST NOT SEE THESE PRESSES, and stopping the DOM click is not enough.
-     *
-     * The title row this stack hangs in is the card's own `Activatable`, and an Activatable
-     * fires from the engine's `engine-input` action rather than from a DOM click (see
-     * 03-platform-notes.md). `bindActivatable` stops click, mousedown and mouseup - none of
-     * which is the one that matters - so every press on every button here ALSO ran the card's
-     * own handler, `model.clickCityName`, which flies the camera to the settlement the route
-     * points at. On the cancel button that was unmistakable: the merchant was called off and
-     * the screen jumped to the city it had been walking to.
-     *
-     * One listener on the stack covers every button in it, now and later. Same line, same
-     * reason, as the one on the settlement card's controls in settlement-controls.js.
+     * ⚠️ THE CARD BENEATH MUST NOT SEE THESE PRESSES, and stopping the DOM click is not enough:
+     * the card is an Activatable and reacts to the engine's `engine-input` action, which arrives
+     * separately. Both have to be stopped.
      */
     stack.addEventListener('engine-input', (event) => event.stopPropagation());
     render(stack, route, targetCity);

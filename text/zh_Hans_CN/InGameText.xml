@@ -106,6 +106,13 @@
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION" Language="zh_Hans_CN">
             <Text>金币同理：翡翠、贝币、红宝石、白银、丁香等会集中到本身金币产出最高的城市，并且刻意避开文化城市，以免两堆资源争抢同样的槽位。你已指定优先项的定居地会先得到满足。</Text>
         </Row>
+
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS" Language="zh_Hans_CN">
+            <Text>不在商业界面显示提示框</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>开启后，本模组添加到商业界面的所有说明都不再绘制：包括其自有按钮、开关和聚落控件上的带框提示，条形栏、合计、锁和贸易路线标题上的普通提示，以及帝国、工厂和宝藏卡片上的扩展资源提示。圆形“?”标记也一并消失，因为它们只是提示的载体。[N][N]游戏本身的提示不受影响。[N][N]默认关闭。下次打开商业界面时完全生效。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_SHORTCUTS" Language="zh_Hans_CN">
             <Text>鼠标快捷操作</Text>
         </Row>

@@ -1,20 +1,10 @@
 /**
- * Icons instead of words on the tab strip, with the original label as the tooltip.
+ * Icons instead of words on the tab strip, with the original label as the tooltip - the strip is
+ * 30rem wide (layout.js) and five worded tabs do not fit.
  *
- * Tabs render in the order they are declared and nothing on a tab element says which one
- * it is, so position is the identity here - and which tab sits in which position depends
- * on the age. See tabIcons().
- *
- * The BLP names are the game's own, read out of base-standard/data/icons/. Two of them
- * are already used by this very screen (`restype_empire_v2` and the treasure icon appear
- * on the Empire tab's cards), and the same set is what Trade Chooser Improvements draws
- * its resource-class filters from.
- *
- * The label is read for the tooltip and then its text nodes are removed. Collapsing them
- * with `font-size: 0` was the first attempt and it did nothing: tab labels carry
- * `font-fit-shrink`, which is `coh-font-fit-mode: shrink` - the engine sizes that text
- * itself and ignores the declared size. The rule is kept anyway, since it costs nothing
- * and covers a label that reappears before the observer gets to it.
+ * ⚠️ Attached to the tab STRIP, not to any tab: the strip outlives the Resources tab that starts
+ * this, so tearing the icons down on that tab's cleanup would put the words back the moment the
+ * player switched to Trade Routes.
  */
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
 import { watchCommerceScreen } from './screen-observer.js';
@@ -30,17 +20,9 @@ const STYLE_ID = 'najane-tab-icons-style';
 const TAB_ITEM_SELECTOR = '[data-name="TabListItem"]';
 
 /**
- * ⚠️ One scope PER TAB, and never the default one.
- *
- * The default scope is disposed when the RESOURCES tab unmounts (see `stopAssignAllButtons`),
- * and these icons deliberately outlive that - the strip belongs to the whole screen, which is
- * why this module has no teardown at all. Filed under the default they would be torn down the
- * first time the player switched to Trade Routes, leaving the icons on screen with dead
- * tooltips for the rest of the session.
- *
- * Per tab rather than one shared scope, for the reason trade-buy-merchant.js learned the hard
- * way: a scope is a disposal bucket, so a rebuild of one tab's tooltip would take its
- * neighbours' with it.
+ * ⚠️ One scope PER TAB, and never the default one. The strip is rebuilt tab by tab, and a framed
+ * tooltip left mounted around a discarded element floats to the top-left corner of the screen.
+ * Disposing the DEFAULT scope to avoid that would take every other tab's tooltips with it.
  */
 const TOOLTIP_SCOPE = 'tab-icons';
 
@@ -50,14 +32,7 @@ const EMPIRE_ICON = 'blp:restype_empire_v2'; // the orange hexagon
 const TREASURE_ICON = 'blp:restype_treasure_v3'; // the gold chest
 const FACTORY_ICON = 'blp:restype_factory_v2'; // the cog
 
-/**
- * The icons in the order the tabs render, which depends on the age.
- *
- * Position is the only identity a tab element has, and the fourth slot is not the same
- * tab in every age: Treasure exists in Exploration, the Factory tab this mod adds exists
- * in Modern, and neither exists in Antiquity. A fixed array would have put a treasure
- * chest on the factory tab.
- */
+/** The icons in the order the tabs render, which depends on the age. */
 function tabIcons() {
     const icons = [RESOURCES_ICON, TRADE_ICON, EMPIRE_ICON];
     if (isExplorationAge()) {
@@ -69,25 +44,8 @@ function tabIcons() {
     return icons;
 }
 
-/**
- * What each tab is actually for, in the same order as the icons.
- *
- * The tab's own title is not it. "Resources" does not say that the tab holds city and
- * bonus resources rather than all of them, and the Empire tab holds treasure resources too
- * once the Exploration age reclassifies them - a difference the title never mentions.
- *
- * `null` keeps the tab's own name, which is already exactly right for trade routes.
- */
-/**
- * One short line per tab saying what is ON that screen.
- *
- * ⚠️ NOT the tab's name again. The framed tooltip already puts the name in its heading, so a
- * body repeating it - which is what this drew at first - is a box that costs a hover and says
- * nothing. The heading answers "which tab is this"; the body answers "what will I find there".
- *
- * ⚠️ Same order and same length as `tabTooltips`, including the null at index 1 for the trade
- * route tab, whose HEADING comes from the game's own label rather than from a key of ours.
- */
+/** What each tab is actually for, in the same order as the icons. */
+/** One short line per tab saying what is ON that screen. */
 function tabDescriptions() {
     const keys = [
         'LOC_NAJANE_COMMERCE_TAB_RESOURCES_DESC',
@@ -154,15 +112,7 @@ let applying = false;
 
 const TEXT_NODE = 3;
 
-/**
- * Softens a SHOUTED label for tooltip use.
- *
- * Two of the tab names are stored in capitals in the localisation itself - the English
- * source for the trade tab is literally "TRADE ROUTES" - which reads as shouting once it
- * is out of the tab strip and inside a tooltip. Anything already mixed-case is left
- * exactly as it is, and so is any script without letter case at all, where uppercase and
- * lowercase are the same string.
- */
+/** Softens a SHOUTED label for tooltip use - the strip shouts, a tooltip should not. */
 function softenCaps(text) {
     if (text !== text.toUpperCase() || text === text.toLowerCase()) {
         return text;
@@ -171,13 +121,7 @@ function softenCaps(text) {
     return lowered.charAt(0).toUpperCase() + lowered.slice(1);
 }
 
-/**
- * Takes the words out of a tab, returning what they said.
- *
- * Only bare text nodes are touched - the icon this mod adds is an element, and so is
- * anything else the tab might hold. Solid does not re-render these labels once built
- * (the titles are static strings), but the observer covers it if that ever changes.
- */
+/** Takes the words out of a tab, returning what they said. */
 function stripLabel(item) {
     let label = '';
     for (const node of Array.from(item.childNodes)) {
@@ -229,22 +173,12 @@ function applyIcons() {
         const iconElement = makeElement('div', ICON_CLASS);
         iconElement.style.backgroundImage = `url(${icon})`;
 
-        /*
-         * ⚠️ The FRAMED tooltip, the same one every other control this mod adds now carries -
-         * a heading over an inset card rather than the bare box `data-tooltip-content` draws.
-         *
-         * ⚠️ It hangs on OUR icon, not on the tab item. The frame has to enclose its trigger,
-         * and the tab item is Solid's; moving one of those is what the ⚠️ on
-         * `positionGroupHeader` in trade-routes.js is about. The icon is ours and safe to wrap.
-         */
+    // ⚠️ The FRAMED tooltip, as everywhere else in this mod - not `data-tooltip-content`, which
+    // draws a bare box beside controls that draw a frame.
         const scope = `${TOOLTIP_SCOPE}:${index}`;
         disposeFramedTooltips(scope);
         const mount = makeElement('div', `${ICON_CLASS}-mount`);
-        /*
-         * ⚠️ The heading is the tab's NAME and the body is what is on it - never the same
-         * string twice. Where this mod has no name of its own for a tab (the trade routes
-         * one), the game's own label is already composed, which `L10n.Stylize` handles.
-         */
+    // ⚠️ Heading = the tab's NAME, body = what is on it. Never the same words twice.
         const description = descriptions[index];
         appendWithFramedTooltip(mount, iconElement, {
             scope,
@@ -275,13 +209,8 @@ function run() {
 }
 
 /**
- * Deliberately has no counterpart in the tab's cleanup.
- *
- * The tab strip belongs to the whole screen, not to the Resources tab that starts this;
- * tearing the icons down when that tab unmounts would put the words back the moment the
- * player switched to Trade Routes. Instead the watcher is attached to the tab strip
- * itself, so when the screen closes and that element is discarded the observer stops
- * receiving anything - and reopening the screen re-attaches to the new one.
+ * ⚠️ Deliberately has no counterpart in the tab's cleanup; see the header. The watcher is attached
+ * to the strip itself, so closing the screen discards it and reopening re-attaches.
  */
 export function startTabIcons() {
     styleElement = ensureStyle(STYLE_ID, STYLE);
@@ -289,15 +218,10 @@ export function startTabIcons() {
     const list = document.querySelector(TAB_LIST_SELECTOR);
     if (!list) {
         /*
-         * The screen's content is behind a Suspense boundary and may not be built yet, so
-         * wait for the strip to appear.
-         *
-         * ⚠️ On the SHARED screen watcher, and it gives up when the screen goes away. This
-         * used to be its own `MutationObserver` on `document.body` with only one way out -
-         * finding the strip - so closing the Commerce screen before its content had finished
-         * rendering left a subtree observer on the whole HUD, running a `querySelector` on
-         * every DOM change anywhere in the game, for the rest of the session. There is no
-         * `stopTabIcons` to have taken it down; see the note below for why.
+         * The content is behind a Suspense boundary and may not be built yet, so wait for the
+         * strip. ⚠️ On the SHARED screen watcher, and it gives up when the screen goes away: its
+         * own `document.body` observer had only one way out - finding the strip - so closing the
+         * screen early left it watching the whole HUD for the rest of the session.
          */
         if (!unwatchBootstrap) {
             unwatchBootstrap = watchCommerceScreen(() => {
@@ -335,8 +259,4 @@ export function startTabIcons() {
     observer.observe(list, { childList: true, subtree: true });
 }
 
-/**
- * There is deliberately no stopTabIcons(): the tab strip outlives any single tab, and
- * the icons are re-applied by the observer whenever it is rebuilt. One existed, was never
- * called, and would have removed the icons from a strip that was still on screen.
- */
+/** ⚠️ No stopTabIcons(): one existed, was never called, and would have stripped a live strip. */

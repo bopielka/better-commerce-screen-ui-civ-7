@@ -1,22 +1,13 @@
 /**
- * Turning a resource the player holds into its `ResourceType`, without asking the database
- * the same question over and over.
+ * A resource the player holds -> its `ResourceType`, memoised.
  *
- * ⚠️ `GameInfo.Resources.lookup(...)` IS A DATABASE CALL, and this exact line -
+ * ⚠️ `GameInfo.Resources.lookup(...)` IS A DATABASE CALL. The placement loop rebuilds the board
+ * before every resource it places, so a full empire rebuild made thousands of these for a
+ * column in a static table.
  *
- *     GameInfo.Resources.lookup(resource.uniqueResource?.resource)?.ResourceType
- *
- * - was written out in six places, three of them walking the same list one after another.
- * The placement loop rebuilds the board before every single resource it places, so a full
- * empire rebuild made thousands of these calls for an answer that is a column in a static
- * table and cannot change while the game is running.
- *
- * ⚠️ Answered THROUGH `lookup`, not by pre-building a map of every row. The hash is what the
- * engine hands over today; keying the memo on whatever arrives, and resolving it through the
- * call that always resolved it, means a patch that changes the shape breaks nothing here.
- *
- * ⚠️ A failed lookup is remembered too - as null. Otherwise a resource the tables do not
- * describe is the one that gets asked about on every pass, forever.
+ * ⚠️ Answered THROUGH `lookup` and keyed on whatever hash the engine hands over, so a patch
+ * that changes the shape breaks nothing. A failed lookup is remembered as null, or the
+ * resources the tables do not describe are the ones asked about forever.
  */
 
 const typeByHash = new Map();
@@ -41,12 +32,8 @@ export function resourceTypeFromHash(hash) {
 }
 
 /**
- * The same, for an entry as the engine hands it over.
- *
- * That is anything out of `player.Resources.getResources()` or
- * `city.Resources.getAssignedResources()` - both carry the resource as
- * `uniqueResource.resource`, which is the unwrapping the game's own
- * `trade-routes-model.js` does to draw its icons.
+ * The same, for an entry out of `player.Resources.getResources()` or
+ * `city.Resources.getAssignedResources()` - both carry it as `uniqueResource.resource`.
  */
 export function heldResourceType(held) {
     return resourceTypeFromHash(held?.uniqueResource?.resource);

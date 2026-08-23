@@ -2,37 +2,20 @@
  * The Resource Allocation button in the HUD dock: coloured when the screen is worth opening,
  * pulsing when there is actually something to place.
  *
- * The dock draws that button in the same grey as every other one whether or not anything is
- * waiting behind it, so the one screen this whole mod is about is the one thing on the HUD
- * that never asks to be looked at. Two signals, and they are deliberately different questions:
- *
- *   coloured   assignment is unlocked at all — the screen will let you do something
- *   pulsing    an unassigned resource of yours would actually be accepted somewhere
- *
- * The second is the useful one and is the reason this is worth doing here rather than
- * elsewhere: the count the game already prints on the button is how many resources are in the
- * pool, which is not the same as whether any of them can go anywhere. A pool full of resources
- * that every settlement would refuse still prints a number. `anythingCanBePlaced` is the test
- * `assign-notification.js` already had to build for exactly this distinction.
+ * Two deliberately different questions - coloured means assignment is unlocked at all, pulsing
+ * means an unassigned resource would actually be ACCEPTED somewhere. The second is the useful
+ * one: the count the game prints is how many are in the pool, which is not the same thing.
  *
  * ⚠️ Written to sit alongside beezany's **Ready or Not**, which colours the same button.
- * Nothing here assumes it is absent, and nothing fights it if it is present:
- *
- *   - `Controls.decorate` keeps a LIST of decorators (`addDecorator` in
- *     core/ui/component-support.js), so both mods decorate the dock and both run. Neither
- *     replaces the other.
- *   - The colouring rule below is Ready or Not's rule, to the same image at the same size,
- *     under a class of our own. With both mods on, both classes land on the button and set
- *     the same picture, so whichever wins the cascade the result is identical. With only this
- *     mod on, the button still colours.
- *   - The pulse is ours alone and touches nothing Ready or Not sets.
+ * `Controls.decorate` keeps a LIST of decorators, so both run and neither replaces the other; the
+ * colouring rule here is Ready or Not's rule under a class of our own, so whichever wins the
+ * cascade the result is identical. The pulse is ours alone.
  *
  * ⚠️ THE DOCK IS OLD-FRAMEWORK, which is the only reason any of this is possible -
- * `Controls.decorate` does nothing to a `ui-next` component. See 03-platform-notes.md; the
- * same fact is what lets `assign-notification.js` patch `PanelAction`.
+ * `Controls.decorate` does nothing to a `ui-next` component.
  */
 import { anythingCanBePlaced } from './assign-notification.js';
-import { isSomeoneElses } from '../engine/events.js';
+import { onEngineEvents, stopEngineEvents } from '../engine/events.js';
 import { ensureStyle } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -142,18 +125,7 @@ const STYLE = `
 /** Where the resources button lives, for the pass that runs before the component hands it over. */
 const RESOURCES_BUTTON_SELECTOR = '.resources';
 
-/**
- * Events after which the answer can differ.
- *
- * The unlock state moves on settlements and trade routes (Ready or Not watches the same three
- * for the same reason); what can be PLACED moves on top of that whenever the pool or a
- * settlement's slots change.
- *
- * ⚠️ Every name here is one the shipped UI actually subscribes to - checked, because an
- * invented name does not fail, it simply never fires and leaves a stale button that looks
- * like a logic bug. `ResourceCapChanged` is the engine's spelling; there is no
- * "ResourceCapacityChanged" and no "ResourceAddedToPlayer".
- */
+/** Events after which the answer can differ. */
 const REFRESH_EVENTS = [
     'CityInitialized',
     'TradeRouteAddedToMap',
@@ -181,16 +153,8 @@ class DockResourceButton {
         this.refresh = this.refresh.bind(this);
         this.refreshSoon = this.refreshSoon.bind(this);
         this.refreshFrame = null;
-        /*
-         * ⚠️ Kept, because `listenForEngineEvent` remembers the function it was given and the
-         * filter has to be that function - see `afterAttach`.
-         */
-        this.onLocalPlayerEvent = (data) => {
-            if (isSomeoneElses(data)) {
-                return;
-            }
-            this.refreshSoon();
-        };
+        /** The shared-dispatcher handles, kept so `afterDetach` can hand them back. */
+        this.subscriptions = [];
     }
 
     /** The dock's own button, or whatever is on screen if it has not published it yet. */
@@ -200,14 +164,11 @@ class DockResourceButton {
             ?? null;
     }
 
-    /**
-     * Coalesces a burst into one refresh, on the next frame.
-     *
-     * ⚠️ `anythingCanBePlaced` is the most expensive call in this mod, and the events below
-     * arrive in clumps - a turn boundary raises several at once, and an assignment pass raises
-     * one per resource. The 250ms answer cache covers a clump that lands together; this covers
-     * the rest, and costs one frame on a button nothing is waiting for.
-     */
+/**
+ * Coalesces a burst into one refresh, on the next frame. ⚠️ `anythingCanBePlaced` is the most
+ * expensive call in this mod and these events arrive in clumps - a turn boundary raises several
+ * at once, an assignment pass one per resource.
+ */
     refreshSoon() {
         if (this.refreshFrame !== null) {
             return;
@@ -233,13 +194,8 @@ class DockResourceButton {
             const unlocked = isUnlocked(player);
             button.classList.toggle(READY_CLASS, unlocked);
             const placeable = unlocked && anythingCanBePlaced();
-            /*
-             * ⚠️ Only while unlocked. A pulsing grey button would be inviting the player to
-             * open a screen that cannot do anything for them yet, and `anythingCanBePlaced`
-             * is the expensive call in this mod - not worth making for an answer that cannot
-             * be acted on. It caches for 250ms, so the several events that arrive together
-             * on a turn boundary still cost one pass.
-             */
+        // ⚠️ Only while unlocked: a pulsing grey button would invite the player to open a screen
+        // that will not let them do anything.
             button.classList.toggle(ASSIGNABLE_CLASS, placeable);
         } catch (error) {
             warn(`could not update the resources button on the dock: ${error}`);
@@ -251,25 +207,18 @@ class DockResourceButton {
     afterAttach() {
         ensureStyle(STYLE_ID, STYLE);
         /*
-         * ⚠️ Filtered by whose event it is. `ResourceAssigned` and friends are raised for EVERY
-         * player - place.js says so where it refuses to wait on one - so an AI rearranging its
-         * empire used to run this mod's single most expensive call, once per resource, all the
-         * way through everybody else's turn, to decide whether YOUR button should pulse.
-         * Payloads that name nobody are let through; see engine/events.js.
+         * ⚠️ Filtered by whose event it is - `ResourceAssigned` is raised for EVERY player, so an
+         * AI rearranging its empire used to run this mod's most expensive call once per resource.
+         * ⚠️ Through this mod's own dispatcher rather than `Root.listenForEngineEvent`, which would
+         * be a SECOND `engine.on` for names three other modules already listen for; `afterDetach`
+         * does the cleanup the component's version would have done.
          */
-        for (const name of REFRESH_EVENTS) {
-            try {
-                this.Root.listenForEngineEvent(name, this.onLocalPlayerEvent);
-            } catch (error) {
-                // An event this build does not raise is not worth a warning; the rest still
-                // fire, and the button is refreshed on activation and turn begin regardless.
-            }
-        }
-        /*
-         * ⚠️ Also straight after a click. Assigning something is the one change that happens
-         * behind the Commerce screen while the dock is not being told anything, so without
-         * this the pulse can outlive the work it was asking for until the next event.
-         */
+        // Attach without a matching detach is not something to rely on being impossible; the
+        // leak it would otherwise leave is the one fixed in assign-all-buttons.js.
+        stopEngineEvents(this.subscriptions);
+        this.subscriptions = onEngineEvents(REFRESH_EVENTS, this.refreshSoon);
+        // ⚠️ Also straight after a click: assigning is the one change that happens behind the
+        // Commerce screen while the dock is told nothing.
         this.button()?.addEventListener('action-activate', this.refresh);
         this.refresh();
     }
@@ -278,6 +227,7 @@ class DockResourceButton {
 
     afterDetach() {
         this.button()?.removeEventListener('action-activate', this.refresh);
+        stopEngineEvents(this.subscriptions);
         if (this.refreshFrame !== null) {
             cancelAnimationFrame(this.refreshFrame);
             this.refreshFrame = null;
@@ -289,10 +239,7 @@ class DockResourceButton {
 
 let started = false;
 
-/**
- * ⚠️ Registered once, from the entry point. `Controls.decorate` appends to a list and never
- * de-duplicates, so calling this twice would build two decorators onto every dock.
- */
+// ⚠️ Registered once: `Controls.decorate` appends to a list and never de-duplicates.
 export function startDockResourceButton() {
     if (started) {
         return;

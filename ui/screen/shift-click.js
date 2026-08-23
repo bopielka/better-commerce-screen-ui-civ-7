@@ -1,23 +1,12 @@
 /**
  * Left-clicking with Shift held.
  *
- * The screen's `Activatable` - which is what makes resources and settlement cards
- * clickable - fires `onActivate` from the engine's `mousebutton-left` action:
+ * ⚠️ The engine WITHHOLDS its mouse actions while a modifier is held, and `Activatable` fires
+ * `onActivate` from the engine's `mousebutton-left` action - so with Shift down the whole screen
+ * stops responding to clicks. That is why Shift-assigning worked when dragging but not clicking.
  *
- *     if (inputEvent.detail.name == "mousebutton-left" || ...) props.onActivate?.()
- *
- * and the engine withholds its mouse actions while a modifier is held (the same thing
- * that made Shift + right-click look broken, see right-click-unassign.js). So with
- * Shift down the whole screen simply stops responding to clicks - which is why
- * Shift-assigning worked when dragging but not when clicking.
- *
- * The fix is to do what Activatable would have done, from the native DOM event, and
- * only while Shift is held. Without Shift nothing here runs and the screen behaves
- * exactly as the game wrote it.
- *
- * Each branch calls the same model method the corresponding Activatable calls, so the
- * result is the game's own behaviour - including bulk-assign.js, which is layered on
- * `slotSelectedResource` and therefore applies to this route too.
+ * The fix is to do what Activatable would have done, from the native DOM event, and only while
+ * Shift is held. Each branch calls the same model method the corresponding Activatable calls.
  */
 import {
     findAvailableResourceAtPoint,
@@ -91,17 +80,11 @@ function onMouseUp(event) {
     pressed = false;
 
     /*
-     * ⚠️ NOT `event.shiftKey` ALONE. In this build the native mouse events carry
-     * `shiftKey: false` even with Shift plainly held - traced in UI.log, every mousedown and
-     * mouseup, while `Input.isShiftDown()` said true throughout. That is why the Shift
-     * highlight kept working while Shift-clicking did nothing: the highlight asks
-     * `isShiftHeld()`, this asked the event, and only one of the two was being told.
-     *
-     * The engine's answer is the one to trust, and `isShiftHeld` already falls back to DOM key
-     * events if it is ever unavailable. The event's own flag is kept as the first term because
-     * it costs nothing and was observed to be true on an earlier build (see the input spy
-     * transcript in 03-platform-notes.md) - the same belt-and-braces `resources-tab.js` has
-     * always used for right-click unassign, which is precisely why that path never broke.
+     * ⚠️ NOT `event.shiftKey` ALONE. In this build the native mouse events carry `shiftKey: false`
+     * with Shift plainly held - traced in UI.log - while `Input.isShiftDown()` said true throughout.
+     * That is why the Shift highlight kept working while Shift-clicking did nothing: the highlight
+     * asks `isShiftHeld()`, this asked the event. The flag is kept as the first term because it
+     * costs nothing and was true on an earlier build.
      */
     if (!(event.shiftKey || isShiftHeld()) || dragged) {
         return;
