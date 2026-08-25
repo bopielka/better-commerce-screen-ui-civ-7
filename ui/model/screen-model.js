@@ -186,8 +186,9 @@ export function findSettlementAtPoint(x, y) {
     const name = cardElement.getAttribute('data-name')?.slice(0, -CITY_ACTIVATABLE_SUFFIX.length) ?? '';
     for (const section of settlementSections(model)) {
         for (const settlement of section.cityResources ?? []) {
-            const city = Cities.get(settlement.cityID);
-            if (city && Locale.compose(city.name) === name) {
+            // ⚠️ Through the cache, like `settlementCards`: this used to be a `Cities.get` and a
+            // `Locale.compose` per settlement per HIT TEST, and the hit test runs off the mouse.
+            if (settlementName(settlement.cityID) === name) {
                 return { settlement, cardElement };
             }
         }
@@ -260,37 +261,167 @@ export function pooledResources(model) {
     return resources;
 }
 
+function cityKeyOf(cityID) {
+    return String(cityID?.id ?? '');
+}
+
 /**
- * Deletes rows from the screen's unassigned pool for resources the game has since assigned.
+ * Puts the screen's copy of the board back the way the engine has it.
  *
- * ⚠️ The pool is maintained purely DIFFERENTIALLY and cannot heal itself: the model splices one
- * resource per event, and two events in the same tick produce one splice. The settlement cards
- * re-read live state and do heal, which is why only this half needs repairing.
+ * ⚠️ BOTH HALVES ARE DIFFERENTIAL AND NEITHER HEALS. `commerce-screen-model.js` turns
+ * `ResourceAssigned` and `ResourceUnassigned` into `createSignal()`s holding only the LATEST
+ * payload, and each effect splices ONE resource - so two of either in the same engine tick produce
+ * one splice. `availableSlots` and the yield deltas are re-read from the engine and do heal; the
+ * list of tiles on a card does NOT, and neither does the pool.
  *
- * ⚠️ Written into the model's store rather than the DOM - the rows are Solid's.
+ * ⚠️ Entries are MOVED, never rebuilt. A tile carries `resourceProps`, `yieldTypes` and a swap
+ * memo that only the screen knows how to make, and a missed pair is missed TOGETHER - both halves
+ * live in one effect - so the object the card is missing is still sitting in the pool.
+ *
+ * ⚠️ An entry with nowhere to go is LEFT WHERE IT IS. Showing a resource in the wrong place is a
+ * display fault the player can undo; making it vanish is not.
+ *
+ * @param assignedTo resourceValue -> cityID, read from the engine.
+ * @returns `{ moved, returned, dropped }` - tiles put onto a card, put back into the pool, and
+ *          duplicates discarded.
  */
-export function pruneAssignedFromPool(assignedValues) {
+export function reconcileScreenWithEngine(assignedTo) {
     const model = currentModel;
     if (!model) {
-        return 0;
+        return { moved: 0, returned: 0, dropped: 0 };
     }
-    let removed = 0;
+
+    const cards = new Map();
+    for (const settlement of allSettlements(model)) {
+        cards.set(cityKeyOf(settlement.cityID), settlement);
+    }
+    const poolSubsections = [];
     for (const section of model.data?.resourceTabData?.availableResourceSectionData ?? []) {
         for (const subsection of section.subSections ?? []) {
-            const slots = subsection.resourceSlotData;
-            if (!slots) {
-                continue;
-            }
-            // Backwards, because splicing shifts everything after the index.
-            for (let index = slots.length - 1; index >= 0; index--) {
-                if (assignedValues.has(slots[index].resourceValue)) {
-                    slots.splice(index, 1);
-                    removed++;
-                }
+            if (subsection.resourceSlotData) {
+                poolSubsections.push(subsection);
             }
         }
     }
-    return removed;
+
+    /** resourceValue -> `{ entry, list }`, taken out of wherever the screen had it wrong. */
+    const orphans = new Map();
+
+    // ⚠️ Backwards through every list: splicing shifts everything after the index.
+    for (const settlement of cards.values()) {
+        const slotted = settlement.slottedResources;
+        if (!slotted) {
+            continue;
+        }
+        for (let index = slotted.length - 1; index >= 0; index--) {
+            const entry = slotted[index];
+            const belongsTo = assignedTo.get(entry.resourceValue);
+            if (belongsTo && cityKeyOf(belongsTo) === cityKeyOf(settlement.cityID)) {
+                continue;
+            }
+            slotted.splice(index, 1);
+            orphans.set(entry.resourceValue, { entry, list: slotted });
+        }
+    }
+    for (const subsection of poolSubsections) {
+        const slots = subsection.resourceSlotData;
+        for (let index = slots.length - 1; index >= 0; index--) {
+            const entry = slots[index];
+            if (!assignedTo.has(entry.resourceValue)) {
+                continue;
+            }
+            slots.splice(index, 1);
+            orphans.set(entry.resourceValue, { entry, list: slots });
+        }
+    }
+
+    let moved = 0;
+    for (const [resourceValue, cityID] of assignedTo) {
+        const settlement = cards.get(cityKeyOf(cityID));
+        const slotted = settlement?.slottedResources;
+        if (!slotted || slotted.some((entry) => entry.resourceValue === resourceValue)) {
+            continue;
+        }
+        const orphan = orphans.get(resourceValue);
+        if (!orphan) {
+            continue;
+        }
+        orphans.delete(resourceValue);
+        orphan.entry.cityID = settlement.cityID;
+        slotted.push(orphan.entry);
+        moved++;
+    }
+
+    let returned = 0;
+    let dropped = 0;
+    for (const [resourceValue, { entry, list }] of orphans) {
+        /*
+         * ⚠️ The engine HAS this one placed and the card already showed it, so this copy is a
+         * duplicate the pool failed to splice out - the one case where discarding an entry is
+         * right. Everything below is a resource the engine holds nowhere.
+         */
+        if (assignedTo.has(resourceValue)) {
+            dropped++;
+            continue;
+        }
+        const home = poolSubsectionFor(poolSubsections, entry.resourceType);
+        /*
+         * ⚠️ Put back where it came from when no subsection will take it. Showing a resource in
+         * the wrong place is a display fault the player can undo; dropping it would delete the
+         * only tile on screen for something the engine still says they own.
+         */
+        if (!home) {
+            list.push(entry);
+            continue;
+        }
+        entry.cityID = undefined;
+        home.resourceSlotData.push(entry);
+        returned++;
+    }
+
+    refreshAvailableSlots(cards);
+    return { moved, returned, dropped };
+}
+
+/** ⚠️ The pool's subsections are keyed by resource CLASS, which is a lookup, so it is memoised. */
+const classByResourceType = new Map();
+
+function poolSubsectionFor(subsections, resourceType) {
+    if (!resourceType) {
+        return null;
+    }
+    let className = classByResourceType.get(resourceType);
+    if (className === undefined) {
+        try {
+            className = GameInfo.Resources.lookup(resourceType)?.ResourceClassType ?? null;
+        } catch (error) {
+            className = null;
+        }
+        classByResourceType.set(resourceType, className);
+    }
+    return className ? subsections.find((subsection) => subsection.type === className) ?? null : null;
+}
+
+/**
+ * ⚠️ Re-read for EVERY settlement, not just the one the last event named - which is all the model
+ * itself does. A card whose event was swallowed keeps the free-slot count from before it.
+ */
+function refreshAvailableSlots(cards) {
+    for (const settlement of cards.values()) {
+        try {
+            const resources = Cities.get(settlement.cityID)?.Resources;
+            if (!resources) {
+                continue;
+            }
+            const free = Math.max(0, (resources.getAssignedResourcesCap() ?? 0)
+                - (resources.getAssignedResources()?.length ?? 0));
+            if ((settlement.availableSlots?.length ?? -1) !== free) {
+                settlement.availableSlots = Array.from({ length: free }, (_, index) => index);
+            }
+        } catch (error) {
+            // A settlement the engine will not describe is one this pass leaves alone.
+        }
+    }
 }
 
 /** The unassigned resource under this screen point, if any. */

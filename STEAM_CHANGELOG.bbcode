@@ -3,6 +3,22 @@
 Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the source repository.
 
 [hr][/hr]
+[h2]1.10[/h2]
+[list]
+[*][b]Nothing on screen changes and no setting moves.[/b] Like 1.9, this is about what the mod costs the game — the second sweep over the same ground, because 1.9 fixed the subscriptions and left the work behind them alone.
+[*][b]Fixed: a Treasure Convoy asked the pathfinder about every plot you own.[/b] The same mistake 1.9 fixed for Merchants, in the module nobody looked at afterwards — four to eight hundred full pathfinder queries per convoy, three times a turn, at the moment the turn begins. Most of them were land plots, which a naval unit can never enter, and a search that fails is the expensive one. Automatic return is on by default, so this was running for everybody.
+[*][b]Settlement priorities are no longer read from disk tens of thousands of times per layout.[/b] A settlement you never set a priority on was the one answer the mod refused to remember, and the scoring asks once per resource-and-settlement pair for every single resource it places.
+[*][b]Three more answers were being worked out again for every pair[/b] — whether a conditional bonus applies here, which settlement a requirement is about, and what a settlement's yields stand at.
+[*][b]Emptying settlements no longer waits half a second for messages that are not coming[/b], once per resource and once per settlement.
+[*][b]Fixed: a wait for your own resource could be ended by another empire's[/b], letting the next step read a board that had not finished changing.
+[*][b]Fixed: a padlock on an imported Resource was never dropped when the Resource left.[/b] The mod was filing its own events as somebody else's, because it read the owner of the plot rather than the settlement the event names.
+[*][b]Fixed: the Commerce screen could end up disagreeing with the game after a bulk assignment.[/b] Its own model applies one resource per event and keeps only the latest when several arrive together, so tiles went missing from settlement cards. The mod used to give the display a frame after every single placement to try to keep up — a hundred redraws over a full empire, and it did not fix it. The run now goes at full speed and the whole board is put right once, at the end, cards included.
+[*][b]The Commerce screen stopped re-asking the game for answers that never change.[/b] Icons were fetched every time one was drawn; the padlock on every assigned Resource composed its own tooltip every frame; each settlement card rebuilt the eight priority names and their explanations from scratch; the GDP figure re-counted every building in the empire several times a second; and Shift was read from the engine on every mouse movement. All of it is remembered now.
+[*][b]The Trade Routes tab stops listening when you leave it[/b], instead of keeping five engine subscriptions for the rest of the session.
+[*][b]A trade route card asked the same three questions of your whole army[/b] — a tab of forty cards walked it over a hundred times per redraw. It is one walk now.
+[*][b]The Empire and Factory tabs no longer rebuild a static index on every visit[/b], and the layout watcher stops watching the whole HUD once it has what it was waiting for.
+[/list]
+
 [h2]1.9[/h2]
 [list]
 [*][b]One new option; otherwise nothing on screen changes.[/b] This release is about what the mod costs the game — every other feature behaves exactly as it did in 1.8.
@@ -15,46 +31,4 @@ Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the sourc
 [*][b]The HUD's Resource Allocation button no longer recomputes on other empires' assignments[/b] — that check is the most expensive thing this mod does.
 [*][b]Fixed: leaks that grew for as long as the session did.[/b] The GDP readout, the settlement cards and the tab strip each left listeners or observers behind on every visit to the Commerce screen.
 [*][b]Fixed: automatic assignment could not resume after being blocked.[/b] A trigger arriving while the Commerce screen was open was meant to be held and retried; it was being lost instead.
-[/list]
-
-[h2]1.8[/h2]
-[list]
-[*][b]Send a spare Merchant[/b] — a plus beside the price on a route card, shown only while you actually have a Merchant with nothing to do (one left over from an earlier Age, say). Sends that one instead of buying another; the plus disappears everywhere the moment it is spoken for.
-[*][b]A Merchant bought for a route it could already open no longer walks off.[/b] From the Modern Age it can open a route from where it stands — it only has to wait for next turn, because a unit bought this turn has no movement. It now waits instead of setting off across the map.
-[*][b]The settlement card's return button reads "Unassign all in Berlin"[/b], matching the buttons at the top of the screen, instead of the game's oddly-phrased "Return all assignments from the city of Berlin".
-[*][b]Every tooltip this mod adds is now the game's framed one[/b] — settlement controls, the factory button and the tab icons included. A tab icon's tooltip says what is on that screen rather than repeating the tab's name twice.
-[*][b]A card with a Merchant already on the way drops the price[/b] and the locate button shows how many turns until it arrives.
-[*][b]An X beside the locate pin calls a Merchant off[/b] — stops the journey and cancels the errand, without leaving the Commerce screen. It keeps its remaining movement and is free to be sent elsewhere.
-[*][b]Merchants in Antiquity and Exploration now actually set off.[/b] The turn-begin event fires before units get their movement back, so the one pass allowed to start a journey always saw a Merchant with nothing to travel on. The mod now also acts when movement is restored.
-[*][b]The age rule is explicit:[/b] Antiquity and Exploration, the Merchant must reach the settlement; Modern, it opens the route from anywhere once it has movement — and never travels needlessly.
-[*][b]Cancelling a Merchant's journey now clears its order in the Modern age too[/b], so the plus button offers it straight away.
-[*][b]A Merchant bought this turn can be given a job the same turn[/b] — the plus buttons no longer treat "no movement left" as busy. The route opens when the turn begins.
-[*][b]The "raise the limit and send" button no longer walks the Merchant across the map[/b] — the treaty it proposes takes a moment to take effect, and the Merchant used to set off before it did.
-[*][b]A Merchant is judged by what it is doing[/b], not by what the mod wrote down — so the plus appears after reloading a save, and a Merchant you call back stops being reported as "already on its way", and drops its standing order instead of being re-sent next turn.
-[*][b]Fixed:[/b] that button ignored resource locks — a padlocked Resource was swept away by it even though "Unassign all" spared it.
-[/list]
-
-[h2]1.7[/h2]
-[list]
-[*][b]Proposing "Improve Trade Relations" redraws the whole tab[/b], not just the button clicked. A trade limit is per leader, so every card of that leader, the group headers and the total above the tabs all went stale.
-[*][b]The propose button goes dark the moment it is pressed.[/b] It can only be used once per turn per leader, and staying bright and priced made the feature look broken.
-[/list]
-
-[h2]1.6[/h2]
-[list]
-[*][b]Per-resource locks.[/b] A padlock on any assigned Resource keeps it in place through [b]Unassign all[/b] and [b]Reassign all[/b]. Locks survive a reload, and can be switched off entirely in Options → Mods.
-[*][b]Treasure Convoys can send themselves home[/b] — on by default, with a checkbox on the Treasure tab. A loaded convoy sails to your nearest Homeland Settlement and unloads at the first tile of your own territory it reaches. Steer it yourself and it stays where you put it.
-[*][b]Shift moves a whole kind of Resource in every direction[/b], not only out of the pool — settlement to settlement and settlement to pool now work too.
-[*][b]The HUD's Resource Allocation button says when it is worth opening[/b] — full colour once assignment is unlocked, and a gentle pulse while something in the pool would actually be accepted somewhere. Built to sit alongside [b]Ready or Not[/b].
-[*][b]Trade route cards laid out in three plain pieces[/b]: name and prices on one row, resources below, portrait in its own corner.
-[*][b]"Return the factory resources" is one button[/b] instead of three things wide.
-[*][b]Fixed:[/b] Shift-clicking stopped doing anything at all; clicks beside a Resource behaved as clicks on it.
-[/list]
-
-[h2]1.5[/h2]
-[list]
-[*][b]Blocked only by the trade limit?[/b] One button proposes "Improve Trade Relations" with that leader [i]and[/i] buys and sends a Merchant regardless of the answer — priced in both Influence and Gold up front.
-[*][b]The capacity warning can now fix what it warns about[/b], proposing the same treaty straight from the card.
-[*][b]A blocked route's title tooltip says why[/b] — out of range, at war, or capacity full, in the game's own wording.
-[*][b]Fixed:[/b] "Factories first" ignored how many copies of each Factory Resource the pool held; buying a Merchant killed the tooltips on other cards; the Trade Routes tab could be dragged sideways.
 [/list]

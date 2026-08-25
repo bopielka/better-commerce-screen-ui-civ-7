@@ -68,18 +68,45 @@ let unwatch = null;
 let injecting = false;
 let styleElement = null;
 
+/**
+ * The four strings a padlock can carry, composed once.
+ *
+ * ⚠️ `Locale.compose` is a call into the game, and `paint` runs for EVERY padlock on EVERY pass
+ * over the screen - one per assigned resource in the empire, so a hundred and twenty of them a
+ * frame, for four strings that cannot change while the game runs.
+ */
+const wording = new Map();
+
+function composed(key) {
+    let text = wording.get(key);
+    if (text === undefined) {
+        text = Locale.compose(key);
+        wording.set(key, text);
+    }
+    return text;
+}
+
 function paint(lock, cityID, resourceValue) {
     const locked = isResourceLocked(cityID, resourceValue);
+    /*
+     * ⚠️ Nothing is written when nothing changed. Both attributes below are DOM mutations inside
+     * the element the screen watcher is watching, so repainting a padlock that already reads
+     * correctly is a write per padlock per frame for no visible difference.
+     */
+    if (lock.dataset.najaneLocked === String(locked)) {
+        return;
+    }
+    lock.dataset.najaneLocked = String(locked);
     lock.classList.toggle(LOCKED_CLASS, locked);
     setTooltip(
         lock,
-        Locale.compose(locked
+        composed(locked
             ? 'LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK_TOOLTIP'
             : 'LOC_NAJANE_COMMERCE_RESOURCE_LOCK_TOOLTIP'),
     );
     lock.setAttribute(
         'aria-label',
-        Locale.compose(locked
+        composed(locked
             ? 'LOC_NAJANE_COMMERCE_RESOURCE_UNLOCK'
             : 'LOC_NAJANE_COMMERCE_RESOURCE_LOCK'),
     );

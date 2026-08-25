@@ -2,6 +2,124 @@
 
 Notable changes to **Better Commerce Screen UI**. Newest first.
 
+## 1.10
+
+Nothing on screen changes and no setting moves. Like 1.9, this release is about what the mod
+costs the game — and it is the second sweep over the same ground, because 1.9 fixed the
+subscriptions and left the work behind them alone.
+
+### Turn time
+
+- **A Treasure Convoy no longer asks the pathfinder about every plot you own.** This is the
+  same mistake 1.9 fixed for Merchants, in the module nobody looked at afterwards. Sailing home
+  built a list of *every plot every homeland settlement owns* — four to eight hundred on a
+  developed empire — and put them through `canStart(MOVE_TO)`, a full pathfinder query each,
+  until one was accepted. Three attempts per convoy per turn, all synchronous, all at the moment
+  the turn begins. And most of that list was land: a convoy is a naval unit, so every land plot
+  was a search that could only ever fail, and a failing search is the expensive one — it has to
+  exhaust everything the unit can reach before it can say no. It now considers only water and
+  settlement centres, probes the twelve nearest, and otherwise waits a turn. Automatic return is
+  on by default, so this was running for everybody. Same destinations, same attempt cap, same
+  behaviour.
+- **Settlement priorities are no longer read from disk hundreds of times per resource placed.**
+  A settlement you have never set a priority on is the normal case, and it was the one answer
+  the mod refused to remember: every ask went through `UI.getOption`. The scoring asks once per
+  *(kind of resource × settlement)* pair and re-plans from scratch after every single placement,
+  so laying out a full empire made tens of thousands of them. The answer is now remembered the
+  first time, exactly as resource locks already were.
+- **Three more answers that were being worked out again for every pair.** Whether a resource's
+  conditional bonus applies here walked all of its modifiers each time while the two caches
+  beside it did not; every requirement it tested fetched the settlement from the engine afresh;
+  and a settlement's yields were re-read for the whole empire before each placement rather than
+  for the one settlement that had just changed.
+- **The factory summary no longer builds the entire board to write a log line that is switched
+  off.** "Factories first" ships on, so every assignment run began by walking every settlement
+  and every resource in the pool to compose a diagnostics message that ships disabled.
+- **Emptying settlements no longer waits half a second for messages that are not coming.**
+  Every release waited for the engine to confirm — including the ones the engine had just
+  refused, which raise nothing. Chained one per resource and one per settlement, a "Reassign
+  all" over an empire where nothing could move spent the full timeout on each.
+
+### Fixed
+
+- **A wait for one of your own resources could be ended by another empire's.** The waits that
+  chain the unassign steps together listened to every player's events, so an AI rearranging its
+  empire on the far side of the map released a step early and the next one read a board that had
+  not finished changing.
+- **A padlock on an imported resource was never dropped when the resource left.** Events about
+  resources were attributed to whoever owns the *plot* the resource sits on, which for something
+  bought over a trade route is the empire you bought it from — so the mod filed its own events
+  as somebody else's and skipped them. They are now attributed to the settlement the event
+  names.
+
+### The screen is put right once, instead of chased all the way
+
+- **Placing resources no longer waits a frame for the screen after every single one.** With the
+  Commerce screen open, each placement gave the display a frame to catch up — a hundred-odd
+  redraws over a full empire, and it did not work: the screen's own model turns `ResourceAssigned`
+  into a signal holding only the **latest** payload, so when the engine delivers several in one of
+  its own ticks the model applies one and forgets the rest, however slowly the mod goes. The run
+  now goes at full speed and the board is reconciled once, at the end.
+- **And the reconciliation now repairs the settlement cards, not just the pool.** Both halves of
+  the screen's board are maintained differentially and *neither* heals itself — the free-slot
+  counts and yield figures are re-read from the game, but the list of resource tiles on a card is
+  not. Previously the mod repaired the pool and could only print a warning about the cards. It now
+  moves the tile the card is missing out of the pool, where a swallowed event always leaves it,
+  puts back anything the game says is unassigned, discards duplicates, and re-reads every
+  settlement's free-slot count rather than only the one the last event named.
+
+### Answers the mod worked out again every time
+
+Everything here is a question whose answer cannot change while the game is running, asked over
+and over because nobody had written it down. None of them is dramatic on its own; together they
+are most of what the Commerce screen costs per frame.
+
+- **Icons were fetched from the game every time one was drawn.** `UI.getIcon` is a lookup, not a
+  constant, and nothing in this mod remembered what it said. The settlement priority picker is
+  the worst of it: its "Balanced" mark is a cluster of seven yield icons and its menu draws
+  fifteen more, per settlement card, every time the cards are rebuilt.
+- **The padlocks composed their own tooltip text on every pass over the screen.** One padlock sits
+  on every assigned resource in the empire, and each one asked the game for two strings — out of a
+  set of four that never change — every frame in which anything on the screen moved. They also
+  rewrote their tooltip and label whether or not anything about them had changed; now they are
+  only touched when the lock actually turns.
+- **Each settlement card composed the priority names, their explanations and its own "Unassign
+  all in Berlin" from scratch.** Eight names, eight explanations and three settlement labels per
+  card, each a database lookup or a translation or both.
+- **The GDP figure re-counted every building in the empire several times a second.** It refreshes
+  on a short delay after any resource event, so an assignment run with the screen open rebuilt it
+  dozens of times, and each rebuild walked every constructible of every settlement to find the
+  ones paying gold.
+- **Shift was read from the engine on every mouse movement** over the Commerce screen, rather than
+  once per frame, by the highlight that previews what Shift-click would move.
+- **The resource tooltips, the blocked-route reasons and the factory GDP rate** each re-asked the
+  game for something fixed — a table scan, an atlas lookup or a translation — per card drawn.
+
+### Background cost
+
+- **The Trade Routes tab stops listening when you leave it.** Opening it once took five engine
+  subscriptions — two of them raised for every player in the game — and kept them for the rest
+  of the session, throwing away caches nothing was going to read.
+- **A trade route card asked the same three questions of your whole army.** "Is a merchant
+  coming here", "how many are promised to this leader" and "is one spare" each read every unit
+  you own and asked the engine about every merchant in it, and one card asks all three — so a
+  tab of forty cards walked your army over a hundred times per redraw. It is one walk now.
+- **What a merchant's standing order says is read from disk once**, not on every question asked
+  about that merchant.
+- **The Empire and Factory tabs no longer rebuild a static index on every visit.** Both dropped
+  the mod's map of what each game modifier does — thousands of rows joined from two tables, and
+  data no game can change — "for a fresh reading", taking the planner's copy with it.
+- **The layout watcher stops once it has what it was waiting for.** Until the Commerce screen's
+  own element exists there is nothing narrower to watch than the whole HUD, and it kept watching
+  it afterwards.
+- **Unit ids left over from a previous game are dropped when a new one loads**, along with the
+  hit-test cost of finding which settlement card is under the cursor.
+- **The Treasure tab's age check went round the memo** every time the tab strip was drawn, hashing
+  the age name afresh where every other caller in the mod reads it once.
+- **Fixed: reopening the Commerce screen before the old one had finished closing** left the
+  previous screen's model permanently wrapped by the Shift-assign shortcut, and its own cleanup
+  could no longer find it.
+
 ## 1.9
 
 One new option; otherwise nothing on screen changes. Every feature behaves exactly as it did

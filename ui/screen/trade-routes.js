@@ -334,7 +334,6 @@ let routesByCityName = null;
 /** Leaders we could sign a route with right now; filled by the same pass as the map. */
 let startableLeaders = null;
 
-/** Every projected route, keyed by the name on the card. */
 /** The resources a projected route would deliver, as type names. */
 function importedResourceTypes(route) {
     const types = [];
@@ -649,17 +648,32 @@ function unavailableGroupFor(route) {
  * Why a route cannot be started, in the game's OWN words - the FailureReasons `canStart` returns
  * are localisation keys the game shows elsewhere. Nothing here invents a reason.
  */
+/**
+ * ⚠️ Three fixed strings, and `decorate` asked the game to compose them again for every blocked
+ * card on every pass over the screen. None of them takes an argument.
+ */
+const reasonText = new Map();
+
+function reason(key) {
+    let text = reasonText.get(key);
+    if (text === undefined) {
+        text = Locale.compose(key);
+        reasonText.set(key, text);
+    }
+    return text;
+}
+
 function blockedReasons(route) {
     const status = route.status ?? [];
     const reasons = [];
     if (status.includes(TradeRouteStatus.NEED_MORE_FRIENDSHIP)) {
-        reasons.push(Locale.compose('LOC_COMMERCE_TRADE_STATUS_CAPACITY_TOOLTIP'));
+        reasons.push(reason('LOC_COMMERCE_TRADE_STATUS_CAPACITY_TOOLTIP'));
     }
     if (status.includes(TradeRouteStatus.DISTANCE)) {
-        reasons.push(Locale.compose('LOC_COMMERCE_TRADE_STATUS_IN_RANGE_TOOLTIP'));
+        reasons.push(reason('LOC_COMMERCE_TRADE_STATUS_IN_RANGE_TOOLTIP'));
     }
     if (status.includes(TradeRouteStatus.AT_WAR)) {
-        reasons.push(Locale.compose('LOC_COMMERCE_TRADE_STATUS_AT_PEACE_TOOLTIP'));
+        reasons.push(reason('LOC_COMMERCE_TRADE_STATUS_AT_PEACE_TOOLTIP'));
     }
     return reasons;
 }
@@ -942,6 +956,10 @@ function onCorePlaybackComplete() {
 export function stopTradeRoutes() {
     unwatch?.();
     unwatch = null;
+    // Nothing is drawing a route any more, so nothing needs telling that one changed.
+    stopListeningForRouteChanges();
+    stopWatchingForCorePlayback();
+    awaitingCore = false;
     if (decorateFrame !== null) {
         cancelAnimationFrame(decorateFrame);
         decorateFrame = null;
@@ -997,18 +1015,31 @@ const originalFactory = TradeRouteCard.factory;
 const overridePriority = (TradeRouteCard.overridePriority ?? 0) + 100;
 
 let liveCards = 0;
-let listening = false;
+
+/**
+ * ⚠️ HANDED BACK WHEN THE TAB GOES. These used to be taken once and kept for the session: a flag
+ * said "already listening" and nothing ever cleared it, so after one visit to this tab five
+ * UNFILTERED subscriptions - `TradeRouteChanged` and `DiplomacyQueueChanged` are raised for every
+ * player in the game - went on throwing away caches nothing was going to read.
+ */
+let routeSubscriptions = [];
 
 function listenForRouteChanges() {
-    if (listening) {
+    if (routeSubscriptions.length > 0) {
         return;
     }
-    listening = true;
     // Through the shared dispatcher; `LocalPlayerTurnBegin` alone has five subscribers across
     // this mod and used to be five separate `engine.on` calls. See engine/events.js.
     for (const name of ROUTE_EVENTS) {
-        onEngineEvent(name, onRoutesChanged);
+        const handle = onEngineEvent(name, onRoutesChanged);
+        if (handle) {
+            routeSubscriptions.push(handle);
+        }
     }
+}
+
+function stopListeningForRouteChanges() {
+    stopEngineEvents(routeSubscriptions);
 }
 
 /**

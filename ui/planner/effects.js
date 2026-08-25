@@ -127,6 +127,28 @@ function meetsRequirement(entry, settlement, city) {
     return entry.inverse ? !met : met;
 }
 
+/**
+ * The settlement's own City object, remembered against the settlement it came from.
+ *
+ * ⚠️ `Cities.get` is a call into the game and this was one per REQUIREMENT per (resource,
+ * settlement) pair - the planner scores hundreds of pairs and re-plans after every placement.
+ *
+ * ⚠️ A WeakMap keyed on the settlement OBJECT, which is what scopes it: the planner rebuilds
+ * every settlement before each placement, so an entry cannot outlive the board it describes.
+ * A plain property would not do - some callers hand over the screen's Solid store objects, and
+ * writing to one of those wakes the effects reading it.
+ */
+const cityBySettlement = new WeakMap();
+
+function cityOf(settlement) {
+    let city = cityBySettlement.get(settlement);
+    if (city === undefined) {
+        city = Cities.get(settlement.cityID) ?? null;
+        cityBySettlement.set(settlement, city);
+    }
+    return city;
+}
+
 /** Would this modifier actually do anything in this settlement? */
 export function modifierApplies(modifierId, settlement) {
     const requirements = indexRequirements().get(modifierId);
@@ -134,7 +156,7 @@ export function modifierApplies(modifierId, settlement) {
         return true;
     }
     try {
-        const city = Cities.get(settlement.cityID);
+        const city = cityOf(settlement);
         const results = requirements.entries.map((entry) => meetsRequirement(entry, settlement, city));
         return requirements.all ? results.every(Boolean) : results.some(Boolean);
     } catch (error) {
@@ -159,13 +181,13 @@ export function resourceModifiers(resourceType) {
 }
 
 /*
- * ---------------------------------------------------------------------------------------
- * What a modifier DOES, and to whom.
+ * What a modifier DOES, and to whom. Here rather than beside either caller: the empire and
+ * factory totals both need it, and neither owns the other's index.
  *
- * Lives here rather than beside either of its callers: the empire-resource totals and the
- * factory-resource totals both need it, and neither is the natural owner of the other's
- * index.
- * ---------------------------------------------------------------------------------------
+ * ⚠️ BUILT ONCE AND KEPT. `GameInfo.Modifiers` joined to `GameInfo.DynamicModifiers` is static
+ * schema, thousands of rows each. The Empire and Factory tabs used to drop it per render "for a
+ * fresh reading", re-scanning both tables and taking the planner's copy with it; what actually
+ * moves between visits is which resources the player HOLDS, read elsewhere.
  */
 let effectTypeByModifier = null;
 let collectionByModifier = null;
@@ -212,10 +234,4 @@ export function effectTypeOf(modifierId) {
 export function collectionOf(modifierId) {
     indexModifiers();
     return collectionByModifier.get(modifierId) ?? '';
-}
-
-/** Called when a tab is opened, so a fresh reading is taken each time. */
-export function forgetModifierIndex() {
-    effectTypeByModifier = null;
-    collectionByModifier = null;
 }

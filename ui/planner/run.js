@@ -25,30 +25,24 @@ async function clearEmpire() {
 }
 
 /**
- * Guards every entry point: only one of these loops may run at a time.
- *
- * ⚠️ `model` is optional. The automatic path has no Commerce screen and therefore no model,
- * and it used to keep its own copy of this guard - which meant a pass could start while a
- * button was still running. There is nothing to deselect and nothing to wait for when the
- * screen is shut, so the two conditions are simply skipped.
- *
- * ⚠️ Hands back whatever the work returned - for the placing entry points, HOW MANY resources
- * landed - and `false` when it refused to start or threw. Answering a plain "did it start"
- * is not enough: auto-assign.js only forgets a newly acquired resource once something has
- * actually been placed, and a run that started and placed nothing would otherwise look like
- * success and swallow the arrival.
- */
-/**
  * How long a run may take before it is reported even with diagnostics off.
  *
- * ⚠️ `warn`, not `log`, and that is the point. A pass that takes half a minute is indis-
- * tinguishable from the game having hung, and the automatic path runs from
- * `LocalPlayerTurnBegin` - so what the player sees is "the turn takes a minute to load", with
- * nothing anywhere saying what did it. Every entry point goes through here, so one line here
- * covers all four; the breakdown of WHERE the time went is in place.js and needs diagnostics.
+ * ⚠️ `warn`, not `log`: the automatic path runs from `LocalPlayerTurnBegin`, so a slow pass
+ * reaches the player as "the turn takes a minute to load" with nothing saying what did it. The
+ * breakdown of WHERE the time went is in place.js and needs diagnostics.
  */
 const SLOW_RUN_MS = 5000;
 
+/**
+ * Guards every entry point: only one of these loops may run at a time.
+ *
+ * ⚠️ `model` is optional - the automatic path has no screen. It used to keep a second copy of
+ * this guard, so a pass could start while a button was still running.
+ *
+ * ⚠️ Hands back what the work returned - HOW MANY resources landed - and `false` when it refused
+ * to start or threw. auto-assign.js only forgets an arrival once something was actually placed,
+ * so a plain "did it start" would let a run that placed nothing swallow it.
+ */
 async function runExclusively(model, work, label = 'assignment') {
     if (assignmentInProgress) {
         return false;

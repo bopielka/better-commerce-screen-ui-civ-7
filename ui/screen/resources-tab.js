@@ -2,19 +2,16 @@
  * Right-click an assigned resource to send it back to the pool; Shift + right-click sends back
  * every resource of that kind in that settlement.
  *
- * ⚠️ HOW IT HOOKS IN. The Commerce screen is Solid (`ui-next`), so there is no `Controls.decorate`.
- * The framework's own mod hook is the component registry: register under an existing name with a
- * higher `overridePriority` and every render site switches. The original factory is captured at
- * import time and called at the end - the ui-next equivalent of a decorator.
+ * ⚠️ HOW IT HOOKS IN: the screen is Solid, so there is no `Controls.decorate`. Register under the
+ * existing component name with a higher `overridePriority` and every render site switches; the
+ * original factory is captured at import time and called at the end.
  *
- * ⚠️ THE WORK HAPPENS ON A DOM EVENT, NOT AN ENGINE ACTION, because the engine does not emit
- * `mousebutton-right` while a modifier is held. Traced with an input spy: a plain right-click
- * gives both the DOM event and the engine action, Shift + right-click gives only the DOM event.
- * Two earlier attempts at reading Shift looked broken for this reason - neither `event.shiftKey`
- * nor `Input.isShiftDown()` was at fault, the event being listened to never arrived.
+ * ⚠️ THE WORK HAPPENS ON A DOM EVENT, NOT AN ENGINE ACTION: the engine does not emit
+ * `mousebutton-right` while a modifier is held, so Shift + right-click gives only the DOM event.
+ * Neither `event.shiftKey` nor `Input.isShiftDown()` was ever at fault.
  *
  * The engine action is still handled for one reason: a plain right-click is `isCancelInput()` and
- * the panel closes the whole screen on it, so it has to be swallowed when the click was ours.
+ * the panel closes the screen on it, so it must be swallowed when the click was ours.
  *
  * ⚠️ `overridePriority` is `existing + 100`, not a fixed number: Resource+ wraps the same component
  * at 1100, and calling `originalFactory` keeps its wrapper alive whatever the load order.

@@ -44,7 +44,6 @@ function tabIcons() {
     return icons;
 }
 
-/** What each tab is actually for, in the same order as the icons. */
 /** One short line per tab saying what is ON that screen. */
 function tabDescriptions() {
     const keys = [

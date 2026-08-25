@@ -26,20 +26,41 @@ import { areModTooltipsHidden } from '../engine/tooltip-setting.js';
 import { makeElement, setTooltip } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
 
+/**
+ * ⚠️ Three lookups per resource card - the resource table and the atlas twice - and every one of
+ * them describes the resource TYPE, which cannot change while the game runs. Only the description
+ * varies by caller, so it is layered on top rather than cached with the rest.
+ */
+const propsByType = new Map();
+
+function baseProps(resourceType) {
+    let props = propsByType.get(resourceType);
+    if (props === undefined) {
+        const definition = GameInfo.Resources.lookup(resourceType);
+        if (!definition) {
+            props = null;
+        } else {
+            const classType = definition.ResourceClassType;
+            props = {
+                resourceName: definition.Name,
+                resourceIcon: `url(blp:${UI.getIconBLP(definition.ResourceType)})`,
+                resourceType: `LOC_${classType}_NAME`,
+                resourceTypeIcon: `url(blp:${UI.getIconBLP(classType)})`,
+                tooltipText: definition.Tooltip,
+            };
+        }
+        propsByType.set(resourceType, props);
+    }
+    return props;
+}
+
 /** The props the game's tooltip reads, built the way the game builds them. */
 export function resourceTooltipProps(resourceType, { description = null } = {}) {
-    const definition = GameInfo.Resources.lookup(resourceType);
-    if (!definition) {
+    const props = baseProps(resourceType);
+    if (!props) {
         return null;
     }
-    const classType = definition.ResourceClassType;
-    return {
-        resourceName: definition.Name,
-        resourceIcon: `url(blp:${UI.getIconBLP(definition.ResourceType)})`,
-        resourceType: `LOC_${classType}_NAME`,
-        resourceTypeIcon: `url(blp:${UI.getIconBLP(classType)})`,
-        tooltipText: description ?? definition.Tooltip,
-    };
+    return description === null ? props : { ...props, tooltipText: description };
 }
 
 /** The class header: "CITY RESOURCE", with the little class icon before it. */

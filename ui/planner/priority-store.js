@@ -74,6 +74,15 @@ function writeFallback(cityKey, code) {
     }
 }
 
+/**
+ * Whether the store can be read at all yet.
+ * ⚠️ Before the game seed is available every answer is "never chosen", and a caller that
+ * remembers that would hide the real choices for the rest of the session. See `getPriority`.
+ */
+export function isPriorityStoreReady() {
+    return currentGameKey() !== null;
+}
+
 /** @returns the stored priority, `null` for an explicit Balanced, or undefined if unset. */
 export function storedPriority(cityKey) {
     if (currentGameKey() === null) {

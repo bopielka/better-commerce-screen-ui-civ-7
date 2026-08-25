@@ -42,6 +42,7 @@ import {
 } from '../engine/merchant.js';
 import {
     clearMerchantOrder,
+    forgetMerchantState,
     merchantsBoundFor,
     merchantsBoundForPlayer,
     nearestIdleMerchant,
@@ -468,16 +469,40 @@ const busyTargets = new Set();
  */
 const tradeRelationsCache = new Map();
 
+/**
+ * How many turns a merchant still needs, per (merchant, destination).
+ *
+ * ⚠️ `turnsUntilRouteOpens` is a FULL PATHFINDER QUERY - see MAX_PATH_PROBES in merchant.js. It is
+ * bounded by the number of merchants under an order rather than by the number of cards, because
+ * only a card with one already walking to it draws this. But a redraw repeats it for nothing, and
+ * the cards redraw on every generation bump.
+ */
+const arrivalCache = new Map();
+
+function turnsUntilArrival(unit, targetCity) {
+    const key = `${String(unit?.id?.id ?? '')}:${cityKey(targetCity)}`;
+    let turns = arrivalCache.get(key);
+    if (turns === undefined) {
+        turns = turnsUntilRouteOpens(unit, targetCity.location);
+        arrivalCache.set(key, turns);
+    }
+    return turns;
+}
+
 export function forgetMerchantOffers() {
     siteCache.clear();
     tradeRelationsCache.clear();
     // The prices themselves live one layer down, and the two go stale together.
     forgetEngineOffers();
-    generation++;
+    markMerchantStateStale();
 }
 
 /** The prices are still good; what a merchant is DOING has changed. */
 export function markMerchantStateStale() {
+    // ⚠️ The engine layer's reading of what every merchant is doing goes with it - a card asks
+    // three questions that all come out of that one walk. See `merchantStates`.
+    forgetMerchantState();
+    arrivalCache.clear();
     generation++;
 }
 
@@ -962,7 +987,7 @@ function priceRow(priceMount, targetCity, heading, scope) {
 function buildLocateButton(unit, targetCity, scope) {
     // ⚠️ A SECOND PARAGRAPH, not a second control: the framed tooltip turns a blank line into its
     // own card, so one tooltip carries both thoughts.
-    const turns = turnsUntilRouteOpens(unit, targetCity.location);
+    const turns = turnsUntilArrival(unit, targetCity);
     const where = Locale.compose('LOC_NAJANE_COMMERCE_SHOW_MERCHANT_TOOLTIP');
     const when = turns === null
         ? ''

@@ -2,7 +2,7 @@
  * What each settlement should be fed first. The picker is screen/settlement-controls.js and the
  * storage is ./priority-store.js; this is the meaning in between.
  */
-import { forgetLoadedGame, storePriority, storedPriority } from './priority-store.js';
+import { forgetLoadedGame, isPriorityStoreReady, storePriority, storedPriority } from './priority-store.js';
 
 export const PRIORITY_OPTIONS = [
     { type: null },
@@ -15,13 +15,24 @@ export const PRIORITY_OPTIONS = [
     { type: 'YIELD_DIPLOMACY' },
 ];
 
-/** The name to show for a priority. */
+/**
+ * The name to show for a priority.
+ *
+ * ⚠️ A database lookup and a compose, and the picker asks it for all eight options on every
+ * settlement card it builds. Neither answer can change while the game runs.
+ */
+const labelByType = new Map();
+
 export function priorityLabel(type) {
-    if (!type) {
-        return Locale.compose('LOC_NAJANE_COMMERCE_PRIORITY_BALANCED');
+    const key = type ?? '';
+    let label = labelByType.get(key);
+    if (label === undefined) {
+        label = type
+            ? Locale.compose(GameInfo.Yields.lookup(type)?.Name ?? type)
+            : Locale.compose('LOC_NAJANE_COMMERCE_PRIORITY_BALANCED');
+        labelByType.set(key, label);
     }
-    const definition = GameInfo.Yields.lookup(type);
-    return Locale.compose(definition?.Name ?? type);
+    return label;
 }
 
 const priorityByCity = new Map();
@@ -43,19 +54,27 @@ export function cityKey(cityID) {
 export const DEFAULT_CITY_PRIORITY = 'YIELD_PRODUCTION';
 export const DEFAULT_TOWN_PRIORITY = 'YIELD_FOOD';
 
-/** What the player chose, or null for Balanced - including "never chose anything". */
+/**
+ * What the player chose, or null for Balanced - including "never chose anything".
+ *
+ * ⚠️ "NOBODY CHOSE ONE" IS REMEMBERED TOO, and that is a performance fix. It used to fall
+ * through, so every settlement without a priority - the normal case - cost a `UI.getOption` on
+ * every call. The scoring asks this once per (resource kind x settlement) pair and plans a fresh
+ * pass for every resource it places, so a full empire made tens of thousands of them.
+ *
+ * ⚠️ But only once the store can actually be READ; see `isPriorityStoreReady`.
+ */
 export function getPriority(cityID) {
     const key = cityKey(cityID);
     if (priorityByCity.has(key)) {
         return priorityByCity.get(key);
     }
     // Chosen in an earlier session? Take it, and keep it in memory from now on.
-    const remembered = storedPriority(key);
-    if (remembered !== undefined) {
+    const remembered = storedPriority(key) ?? null;
+    if (isPriorityStoreReady()) {
         priorityByCity.set(key, remembered);
-        return remembered;
     }
-    return null;
+    return remembered;
 }
 
 /** The yield the scoring should feed this settlement first - never null. */

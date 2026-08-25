@@ -1,20 +1,17 @@
 /**
  * One `MutationObserver` for the whole Commerce screen, instead of one per feature.
  *
- * ⚠️ It replaces four observers on `document.body` with `subtree: true`. The cost was not the
- * observers but what they watched: every unit flag, notification and yield banner in the HUD
- * woke four callbacks that then searched the Commerce screen for nothing. This is scoped to the
- * `screen-resource-allocation` element - `document.body` only until that exists, because the
- * content renders behind a ThrobberSuspense.
+ * ⚠️ Scoped to `screen-resource-allocation`, falling back to `document.body` only until that
+ * exists (the content renders behind a ThrobberSuspense). The cost of the four body-wide
+ * observers this replaced was not the observers but what they watched: every unit flag,
+ * notification and yield banner in the HUD woke all four.
  *
- * ⚠️ One pass per FRAME, and the frame is a crash fix, not a nicety. A MutationObserver callback
- * is a microtask, and so is Solid's effect queue; writing to the DOM from inside one lands mid-
- * render and the next `reconcileArrays` throws `NotFoundError: insertBefore`. rAF runs after the
- * microtask queue has drained.
+ * ⚠️ One pass per FRAME, and the frame is a CRASH FIX. A MutationObserver callback is a microtask
+ * and so is Solid's effect queue, so writing to the DOM from inside one lands mid-render and the
+ * next `reconcileArrays` throws `NotFoundError: insertBefore`. rAF runs after the queue drains.
  *
  * ⚠️ `takeRecords()` after the pass is what stops the loop: every subscriber writes to the DOM
- * being watched, so each pass would queue the next. Safe because nothing can run between the
- * last subscriber returning and that call.
+ * being watched, so each pass would queue the next.
  */
 import { isAssignmentInProgress } from '../planner/run.js';
 import { warn } from '../support/diagnostics.js';

@@ -8,16 +8,35 @@
  */
 import { warn } from '../support/diagnostics.js';
 
+/**
+ * ⚠️ `UI.getIcon` IS A LOOKUP, not a constant, and its answer cannot change while the game runs -
+ * so it is asked once per name. Nothing here was memoised, and the callers are the hot ones: the
+ * priority picker draws seven yield icons for its "Balanced" cluster and another fifteen for its
+ * menu, per settlement card, every time Solid rebuilds the cards.
+ *
+ * ⚠️ A FAILED lookup is remembered as null too, or the names the atlas does not carry are the
+ * ones asked about forever.
+ */
+const iconByName = new Map();
+
 /** @returns a URL ready to go inside `url(...)`, or null. */
 export function gameIcon(name, context = null) {
     if (!name) {
         return null;
     }
-    try {
-        return (context ? UI.getIcon(name, context) : UI.getIcon(name)) ?? null;
-    } catch (error) {
-        return null;
+    const key = context ? `${name}|${context}` : name;
+    const cached = iconByName.get(key);
+    if (cached !== undefined) {
+        return cached;
     }
+    let icon = null;
+    try {
+        icon = (context ? UI.getIcon(name, context) : UI.getIcon(name)) ?? null;
+    } catch (error) {
+        icon = null;
+    }
+    iconByName.set(key, icon);
+    return icon;
 }
 
 /** The icon for a yield. */
@@ -42,13 +61,23 @@ export function iconBackground(name, context = null) {
  * ⚠️ Read from the RESOURCE's own class, never from the tab it is drawn on: the same resource
  * is an empire resource in one age and a treasure one in the next.
  */
+const classBackgroundByType = new Map();
+
 export function resourceClassBackground(resourceType) {
+    // ⚠️ Two lookups deep - the resource table and then the atlas - and it is asked once per
+    // resource tile drawn on the Empire, Factory and Treasure tabs. Neither answer can change.
+    const cached = classBackgroundByType.get(resourceType);
+    if (cached !== undefined) {
+        return cached;
+    }
+    let background = null;
     try {
         const classType = GameInfo.Resources.lookup(resourceType)?.ResourceClassType;
         const blp = classType && UI.getIconBLP(classType);
-        return blp ? `url(blp:${blp})` : null;
+        background = blp ? `url(blp:${blp})` : null;
     } catch (error) {
         warn(`could not read the class of ${resourceType}: ${error}`);
-        return null;
     }
+    classBackgroundByType.set(resourceType, background);
+    return background;
 }

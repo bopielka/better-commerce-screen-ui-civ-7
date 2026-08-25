@@ -1,20 +1,16 @@
 /**
- * Treasure Convoys that sail home and unload themselves.
+ * Treasure Convoys that sail home and unload themselves. Switch in ./treasure-return-setting.js.
  *
- * A loaded convoy is worth nothing until it reaches the homeland and unloads, and the only skill
- * a player exercises over one is remembering it exists several turns after the screen that
- * produced it closed. The errand: sail towards the nearest homeland settlement, stop at the FIRST
- * tile of our own territory, unload there. Switch in ./treasure-return-setting.js.
+ * The errand: sail towards the nearest homeland settlement, stop at the FIRST tile of our own
+ * territory, unload there.
  *
  * ⚠️ The stop is a step of its own because a convoy is a NAVAL unit. Unloading is legal anywhere
  * inside our borders, but the only plots of a settlement a ship can be SENT to are its water and
- * its centre - so a convoy left to finish its course sails past perfectly good owned water for
- * several more turns. See `stopJourney`.
+ * its centre - so a convoy left to finish its course sails past owned water for several more
+ * turns. See `stopJourney`.
  *
- * Same shape as ./merchant-orders.js: try to UNLOAD first and only sail when refused (no distance
- * is computed - `canStart` is the only thing that knows what "within the borders" means), store
- * nothing (every loaded convoy has the same errand, so intent is re-derived each pass), and leave
- * the unit alone the moment it has no cargo.
+ * Same shape as ./merchant-orders.js: UNLOAD first and only sail when refused, store nothing
+ * (every loaded convoy has the same errand), leave the unit alone once it has no cargo.
  *
  * ⚠️ THE ATTEMPT CAP IS NOT TIDINESS - WITHOUT IT THE GAME FREEZES. Same trap as merchant-orders:
  * the engine answers a move it cannot honour with `UnitOperationsCleared`, which is what this
@@ -69,8 +65,8 @@ function unloadArgs() {
 
 /**
  * What a convoy is carrying, or 0 for a unit that is not one.
- * ⚠️ This is how the GAME identifies a treasure fleet - `unit-flags.js` draws the number from
- * exactly this call. Matching the type name is worse: UNIT_TREASURE_FLEET is not the only one.
+ * ⚠️ How the GAME identifies a treasure fleet (`unit-flags.js` draws the number from this call).
+ * Matching the type name is worse: UNIT_TREASURE_FLEET is not the only one.
  */
 function cargoAmount(unit) {
     try {
@@ -172,8 +168,61 @@ function plotDistance(from, to) {
     }
 }
 
-/** Everywhere a convoy could unload, nearest first. */
-function homeTargets(unit) {
+/**
+ * How many destinations one attempt may put through the pathfinder.
+ *
+ * ⚠️ A PERFORMANCE FIX, and the same one `MAX_PATH_PROBES` in merchant.js records.
+ * `canStart(MOVE_TO)` is a full pathfinder query, and this used to run one for EVERY plot every
+ * homeland settlement owns - four to eight hundred on a developed empire - three times a turn per
+ * convoy, all synchronous at `LocalPlayerTurnBegin`.
+ *
+ * ⚠️ And the FAILING case is the expensive one: a search that succeeds stops at the target, one
+ * that fails must exhaust everything the unit can reach first. A blockaded convoy paid the worst
+ * possible query hundreds of times over. Nearest-first is what makes the cap safe rather than
+ * merely cheap - the plots probed first are the ones on the convoy's own side.
+ */
+const MAX_MOVE_PROBES = 12;
+
+/** ⚠️ `GameInfo.Units.lookup` is a DATABASE call, and this is asked per convoy per pass. */
+const seaDomainByType = new Map();
+
+function travelsBySea(unit) {
+    const type = unit?.type;
+    const cached = seaDomainByType.get(type);
+    if (cached !== undefined) {
+        return cached;
+    }
+    let sea = false;
+    try {
+        sea = GameInfo.Units.lookup(type)?.Domain === 'DOMAIN_SEA';
+    } catch (error) {
+        sea = false;
+    }
+    seaDomainByType.set(type, sea);
+    return sea;
+}
+
+function isWaterPlot(location) {
+    try {
+        return GameplayMap.isWater(location.x, location.y) === true;
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * Everywhere a convoy could unload, unsorted and shared.
+ *
+ * ⚠️ Built once per PASS, not once per convoy: the list is the same for all of them and only the
+ * ordering below is per unit. It walks every settlement and every plot each owns.
+ */
+let homeDestinations = null;
+
+function forgetHomeDestinations() {
+    homeDestinations = null;
+}
+
+function buildHomeDestinations() {
     const player = Players.get(GameContext.localPlayerID);
     const locations = new Map();
 
@@ -185,22 +234,44 @@ function homeTargets(unit) {
             if (!isHomeland(player, city.location)) {
                 continue;
             }
-            const add = (location) => {
+            const add = (location, isCentre) => {
                 if (location && PlotCoord.isValid(location) && isHomeland(player, location)) {
-                    locations.set(`${location.x},${location.y}`, { x: location.x, y: location.y });
+                    locations.set(`${location.x},${location.y}`, {
+                        x: location.x,
+                        y: location.y,
+                        // Carried rather than asked again: the list is walked once per convoy.
+                        water: isWaterPlot(location),
+                        centre: isCentre,
+                    });
                 }
             };
-            add(city.location);
+            add(city.location, true);
             for (const plotIndex of city.getPurchasedPlots?.() ?? []) {
-                add(GameplayMap.getLocationFromIndex(plotIndex));
+                add(GameplayMap.getLocationFromIndex(plotIndex), false);
             }
         }
     } catch (error) {
         warn(`could not find a homeland settlement for a treasure convoy: ${error}`);
     }
 
-    return Array.from(locations.values())
-        .sort((first, second) => plotDistance(unit.location, first) - plotDistance(unit.location, second));
+    return Array.from(locations.values());
+}
+
+/** Everywhere THIS convoy could be sent, nearest first. */
+function homeTargets(unit) {
+    homeDestinations ??= buildHomeDestinations();
+    /*
+     * ⚠️ A convoy is a NAVAL unit, and the only plots of a settlement a ship can be SENT to are
+     * its water and its centre - the same fact the header records. Every other owned plot is a
+     * pathfinder query that was always going to fail, and failure is the expensive answer.
+     */
+    const reachable = travelsBySea(unit)
+        ? homeDestinations.filter((entry) => entry.water || entry.centre)
+        : homeDestinations;
+
+    return [...reachable].sort(
+        (first, second) => plotDistance(unit.location, first) - plotDistance(unit.location, second),
+    );
 }
 
 function moveArgs(location) {
@@ -241,7 +312,15 @@ function sailHome(unit) {
     if (!mayAttempt(unitKey(unit.id))) {
         return false;
     }
+    let probes = 0;
     for (const location of homeTargets(unit)) {
+        // ⚠️ The cap, not a break in disguise: the convoy simply waits and tries again next
+        // turn rather than paying for a search of everything it can reach. See MAX_MOVE_PROBES.
+        if (probes >= MAX_MOVE_PROBES) {
+            log(`no reachable homeland plot among the ${probes} nearest; the convoy holds for a turn`);
+            return false;
+        }
+        probes++;
         try {
             if (!Game.UnitOperations.canStart(unit.id, UnitOperationTypes.MOVE_TO, moveArgs(location), false).Success) {
                 continue;
@@ -266,6 +345,8 @@ function processConvoys(maySail) {
         return;
     }
     processing = true;
+    // A settlement taken, lost or grown since the last pass changes where home is.
+    forgetHomeDestinations();
     try {
         const player = Players.get(GameContext.localPlayerID);
         for (const unit of localConvoys()) {
@@ -334,10 +415,9 @@ export function startTreasureConvoys() {
     started = true;
 
     /*
-     * ⚠️ THESE EVENTS ARE NOT ABOUT YOUR CONVOYS, AND MOSTLY NOT ABOUT YOU. `UnitMoved` is raised
-     * once per tile per unit for every player. Two filters before any work: whose unit it is, and
-     * whether it is a convoy at all - one `Units.get` and two calls about that ONE unit, against
-     * the whole list. `LocalPlayerTurnBegin` keeps the unfiltered pass as the safety net.
+     * ⚠️ NOT ABOUT YOUR CONVOYS, AND MOSTLY NOT ABOUT YOU - `UnitMoved` is raised once per tile per
+     * unit for every player. Two filters before any work: whose unit it is, and whether it is a
+     * convoy at all. `LocalPlayerTurnBegin` keeps the unfiltered pass as the safety net.
      */
     const listenPerUnit = (name, maySail) =>
         onLocalPlayerEvent(name, (data) => {

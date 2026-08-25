@@ -155,17 +155,25 @@ export function absoluteWorth(yieldType, percent, applied) {
  */
 const FACTORY_GDP_SCORING = 'VICTORY_TRACKER_SLOTTED_FACTORY';
 
+/** ⚠️ A full scan of the scoring table, and it was one per call. gdp.js memoises the same table. */
+let slottedRate;
+
 export function gdpPerSlottedResource() {
+    if (slottedRate !== undefined) {
+        return slottedRate;
+    }
+    slottedRate = 0;
     try {
         for (const scoring of GameInfo.VictoryScorings ?? []) {
             if (scoring.ScoringId === FACTORY_GDP_SCORING) {
-                return Number(scoring.Points) || 0;
+                slottedRate = Number(scoring.Points) || 0;
+                break;
             }
         }
     } catch (error) {
         warn(`could not read the GDP rate for factory resources: ${error}`);
     }
-    return 0;
+    return slottedRate;
 }
 
 /** Which copies are in a factory, and where. */

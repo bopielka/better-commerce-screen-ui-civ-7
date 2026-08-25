@@ -288,22 +288,19 @@ function plotDistance(from, to) {
 }
 
 /**
- * How many plots this will put through the pathfinder, and how many hits are enough to stop.
+ * How many plots this puts through the pathfinder, and how many hits are enough to stop.
  *
- * ⚠️ A PERFORMANCE FIX, and it matters most in Exploration. `Units.getPathTo` is a full
- * pathfinder query, and this used to run one for EVERY plot the target settlement owns - thirty
- * to fifty for a developed city - after which `advance` put every plot through `moveMerchant`,
- * which pathfinds again inside `canStart`. Eighty searches per merchant per attempt.
+ * ⚠️ A PERFORMANCE FIX. `Units.getPathTo` is a full pathfinder query and this ran one for EVERY
+ * plot the target owns - thirty to fifty - after which `advance` put each through `moveMerchant`,
+ * which pathfinds again inside `canStart`: eighty searches per merchant per attempt, three
+ * attempts a turn, synchronous at `LocalPlayerTurnBegin`. Tens of seconds on a big map.
  *
- * ⚠️ And the FAILING case is the expensive one: a search that succeeds stops at the target, one
- * that fails must exhaust everything the unit can reach first. A merchant that cannot get there
- * paid the worst possible query forty times over, three times a turn, for every merchant under an
- * order - all synchronous, all at `LocalPlayerTurnBegin`. Tens of seconds on a big map.
+ * ⚠️ The FAILING case is the expensive one: a search that succeeds stops at the target, one that
+ * fails must exhaust everything the unit can reach.
  *
- * ⚠️ Nearest-first is what makes the cap safe rather than merely cheap: sorted by distance FROM
- * THE UNIT, the plots probed first are on the unit's own side - which for a ship approaching an
- * inland capital are the coastal ones. When the cap bites the centre is still handed back, the
- * engine still refuses, and the attempt is still counted.
+ * ⚠️ Nearest-first is what makes the cap safe rather than merely cheap - sorted by distance FROM
+ * THE UNIT, the plots probed first are on the unit's own side. When the cap bites the centre is
+ * still handed back and the attempt is still counted.
  */
 const MAX_PATH_PROBES = 10;
 const ENOUGH_REACHABLE = 3;
@@ -402,16 +399,16 @@ export function hasSpentItsTurn(unit) {
     }
 }
 
-/** Stops a merchant where it stands, dropping whatever journey it still had queued. */
-/**
- * Whether a merchant can open a route from wherever it stands - true in the Modern age only.
- * ⚠️ Named for the factory age because that is this mod's existing name for Modern.
- */
 /**
  * How many turns before this merchant can open the route, or null when it cannot be said.
+ *
  * ⚠️ Read from the engine's own pathfinder: `Units.getPathTo` answers with a `turns` array, one
- * entry per plot, so the last is the arrival turn. Currently unused - see the note on
- * MAX_PATH_PROBES before calling it from anything that draws many cards.
+ * entry per plot, so the last is the arrival turn.
+ *
+ * ⚠️ A FULL PATHFINDER QUERY - see MAX_PATH_PROBES. Its one caller draws the "arrives in N" label
+ * on a trade route card, which exists only where a merchant is ALREADY walking there, so it is
+ * bounded by the merchants under an order rather than by the number of cards. It is answered from
+ * a cache on that side; do not call it from anything that iterates settlements or routes.
  */
 export function turnsUntilRouteOpens(unit, location) {
     if (routesOpenFromAnywhere()) {
@@ -430,10 +427,15 @@ export function turnsUntilRouteOpens(unit, location) {
     }
 }
 
+/**
+ * Whether a merchant can open a route from wherever it stands - the Modern age only.
+ * ⚠️ Named for the factory age because that is this mod's existing name for Modern.
+ */
 export function routesOpenFromAnywhere() {
     return isFactoryAge();
 }
 
+/** Stops a merchant where it stands, dropping whatever journey it still had queued. */
 export function stopMerchant(unit) {
     try {
         if (!Units.getQueuedOperationDestination?.(unit.id)) {

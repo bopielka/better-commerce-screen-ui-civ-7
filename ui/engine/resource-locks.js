@@ -1,24 +1,18 @@
 /**
- * Resources pinned where they are, so a bulk rearrangement leaves them alone. A lock says: this
- * resource, in this settlement, stays.
+ * Resources pinned where they are, so a bulk rearrangement leaves them alone: this resource, in
+ * this settlement, stays. Same unit of locking and same padlock as **Resource+**, deliberately.
  *
- * The mechanism is the one **Resource+** arrived at (`br4d-resource-lock`), deliberately - same
- * unit of locking, same padlock, same rule that the bulk clear may only be used on a settlement
- * holding nothing locked.
- *
- * ⚠️ THESE SURVIVE A RELOAD, which is where this parts company with Resource+: a lock that
- * evaporated on load would be worse than none, because the button it guards is the one you press
+ * ⚠️ THESE SURVIVE A RELOAD, unlike Resource+'s: the button they guard is the one you press
  * without looking.
  *
- * ⚠️ And it needs NO key list to do it. Nothing here ever asks "which pairs are locked" - every
- * question is about a pair already in hand - so each is a direct lookup and the `localStorage`
- * mirror merchant-orders.js needs is not needed here.
+ * ⚠️ And it needs NO key list. Nothing here asks "which pairs are locked" - every question is
+ * about a pair already in hand - so the localStorage mirror merchant-orders.js needs is not.
  *
- * ⚠️ Keyed by the game seed, like every per-game thing this mod stores. Both halves survive a
- * save: `resourceValue` is the resource's PLOT INDEX and a settlement's component id is game state.
+ * ⚠️ Keyed by the game seed. Both halves survive a save: `resourceValue` is the resource's PLOT
+ * INDEX and a settlement's component id is game state.
  *
- * ⚠️ In engine/, not screen/, because engine/unassign.js has to obey it and engine may only import
- * support. The padlock itself is screen/resource-locks-ui.js.
+ * ⚠️ In engine/, not screen/, because engine/unassign.js must obey it. The padlock itself is
+ * screen/resource-locks-ui.js.
  */
 import { onLocalPlayerEvent } from './events.js';
 import { log, warn } from '../support/diagnostics.js';

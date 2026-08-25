@@ -1,15 +1,13 @@
 /**
  * Every `engine.on` this mod makes, and the "is this event even mine?" filter.
  *
- * ⚠️ Engine events are raised for EVERY player. `UnitMoved` and friends arrive in their
- * thousands during an AI turn, so a handler that does not filter runs thousands of times to
- * conclude that somebody else's scout moved. Same check `panel-action.ts` opens `onUnitMoved`
- * with. An UNKNOWN owner is never filtered out - a dropped trigger looks exactly like a
- * feature that does nothing.
+ * ⚠️ Engine events are raised for EVERY player - `UnitMoved` and friends arrive in thousands per
+ * AI turn - so an unfiltered handler runs thousands of times to conclude somebody else's scout
+ * moved. Same check `panel-action.ts` opens `onUnitMoved` with. An UNKNOWN owner is never filtered
+ * out: a dropped trigger looks exactly like a feature that does nothing.
  *
- * ⚠️ ONE engine subscription per event name, however many listeners want it. Six modules here
- * want the same handful; `LocalPlayerTurnBegin` alone had six. The owner is resolved at most
- * once per event, lazily.
+ * ⚠️ ONE engine subscription per event name, however many listeners want it. The owner is resolved
+ * at most once per event, lazily.
  *
  * ⚠️ The HANDLE is the identity, not the function: `engine.off` only ever sees the shared
  * dispatcher, so a listener that must be removable has to keep its handle.
@@ -32,6 +30,10 @@ function eventOwner(data) {
         data.constructible?.owner ??
         data.cityID?.owner ??
         data.city?.owner ??
+        // ⚠️ `ResourceUnassigned` names the settlement the resource LEFT and nothing else, so
+        // without this its owner came from the resource's PLOT - which for an import is somebody
+        // else's land, and the event was filtered out as theirs.
+        data.targetCity?.owner ??
         data.player ??
         data.owner;
     if (typeof direct === 'number') {

@@ -2,14 +2,9 @@
  * The placement loop: one resource at a time, re-planned after each. ONE loop for both paths -
  * the buttons, and the automatic placement that runs with the screen shut.
  *
- * ⚠️ IT DOES NOT GO THROUGH THE SCREEN'S MODEL, and that is measured. The first version drove the
- * screen (`clickAvailableResource` / `slotSelectedResource` / `deselectSelectedResource`, then
- * poll the model): 111 resources cost 30.7 s of which only 1.6 s was deciding anything. Each of
- * the three model calls mutates a Solid store and re-renders, so every resource paid for three
- * redraws it had no use for, plus a fourth it then waited on.
- *
- * So this talks to the engine and reads the engine back. The screen still redraws - it listens to
- * the same events - but nothing here waits for it.
+ * ⚠️ IT DOES NOT GO THROUGH THE SCREEN'S MODEL, and that is MEASURED: driving the screen cost
+ * 30.7 s for 111 resources, of which 1.6 s was deciding anything. Each model call mutates a Solid
+ * store and re-renders. This talks to the engine and reads the engine back.
  *
  * ⚠️ Do not "optimise" this into a batch. Each choice is made against the board the previous one
  * left behind; that is what makes the happiness rescue level out and the factories fill one kind
@@ -20,12 +15,12 @@ import {
     buildAvailableResources,
     buildHeadlessModel,
     buildSettlements,
-    forgetSettlementBuildings,
+    forgetSettlementFacts,
 } from '../model/headless-model.js';
 import { bestAssignment, forgetEligibility, startPlacementRun } from './scoring.js';
 import { isFactoryFirstEnabled } from './factory-first-setting.js';
 import { isImportedResource, resourceClassOf, resourceType } from './facts.js';
-import { allSettlements, getCommerceModel, pruneAssignedFromPool } from '../model/screen-model.js';
+import { allSettlements, getCommerceModel, reconcileScreenWithEngine } from '../model/screen-model.js';
 import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
 
 /**
@@ -68,18 +63,13 @@ function awaitAssignment(cityID, resourceValue) {
 }
 
 /**
- * Letting the Commerce screen keep up, when it happens to be open.
+ * One frame for the Commerce screen, when it happens to be open.
  *
- * ⚠️ The screen updates INCREMENTALLY and CAN MISS EVENTS. `commerce-screen-model.ts` turns
- * `ResourceAssigned` into a plain `createSignal()`, which holds only the LATEST payload, and the
- * effect reading it splices that one resource in - so two events in the same tick produce one
- * splice. This loop provokes exactly that by polling every 4ms and moving on before the event is
- * delivered. Leaving the screen and coming back shows the correct layout, which is what makes it
- * look like an assignment bug when it is a display one.
- *
- * ⚠️ There is no way to ask the screen to rebuild - `updateSlottedResources()` is private. So the
- * fix is not to refresh afterwards but not to outrun it: one frame per placement is enough.
- * ⚠️ Only while the screen is OPEN; the automatic path runs at full speed.
+ * ⚠️ NOT USED TO PACE THE LOOP ANY MORE, and that was a dead end worth recording. The screen loses
+ * events whatever speed this runs at - the engine delivers `ResourceAssigned` in bursts on its own
+ * tick and the model's signal holds only the LATEST payload - so a frame per placement bought a
+ * hundred-odd redraws and still let the display drift. The board is reconciled ONCE at the end
+ * instead; see `verifyScreenMatchesEngine`.
  */
 function letTheScreenCatchUp() {
     if (!getCommerceModel()) {
@@ -105,7 +95,7 @@ const CITY_RESOURCE_CLASS = 'RESOURCECLASS_CITY';
 export async function placeResources({ scope = null, targetCityID = null, label = 'assign' } = {}) {
     // Whatever was remembered describes a board that has since moved on.
     forgetEligibility();
-    forgetSettlementBuildings();
+    forgetSettlementFacts();
     // The culture and gold settlements are chosen once here and held for the whole run;
     // see the note on hoardTargets for why they must not be re-picked every pass.
     startPlacementRun();
@@ -156,7 +146,7 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         // Only this settlement's answers changed: it has one fewer free slot, or two more
         // if that was a camel. Every other settlement's remain valid and are kept.
         forgetEligibility(plan.settlement.cityID);
-        forgetSettlementBuildings(plan.settlement.cityID);
+        forgetSettlementFacts(plan.settlement.cityID);
         // ⚠️ One line per placement, naming the TIER that won it: "why did Tin end up in my
         // culture capital instead of Silk" has at least four possible answers and the board looks
         // the same in all of them.
@@ -175,16 +165,11 @@ export async function placeResources({ scope = null, targetCityID = null, label 
             placed--;
             warn(`the engine took ${plan.resource.resourceType} but it never arrived; skipping it`);
         }
-        // One frame, and only with the screen open; see letTheScreenCatchUp.
-        await letTheScreenCatchUp();
         waitingMs += Date.now() - mark;
     }
 
-    // ⚠️ Explained whenever ANYTHING is left, not only when the run placed nothing - "it placed
-    // most of them and left three" is the case a player actually reports. Gated here rather than
-    // inside `log`: the walk and up to eight `canStart` calls are the expensive part.
-    // ⚠️ Gated here, not inside `log`: the walk and up to eight `canStart` calls are the
-    // expensive part, and `canStart` is the most expensive call in this mod.
+    // ⚠️ Whenever ANYTHING is left, not only when the run placed nothing. Gated here, not inside
+    // `log`: the walk and up to eight `canStart` calls are the expensive part.
     if (leftInPool > 0 && DIAGNOSTICS) {
         explainWhyNothingFits(scope, refused);
     }
@@ -207,15 +192,18 @@ export async function placeResources({ scope = null, targetCityID = null, label 
 }
 
 /**
- * Brings the screen back into line with the game, and says so if it could not.
+ * Puts the screen back the way the game has it - ONCE, after the run.
  *
- * ⚠️ BOTH halves, because they fail differently. The settlement cards heal themselves - their
- * handler re-reads live state on every event - so comparing only the assigned count reported "all
- * good" while the pool on the left still showed a resource that had been placed. The pool is
- * maintained purely differentially and cannot heal, so it is REPAIRED here rather than reported.
+ * ⚠️ THIS IS THE ONLY THING KEEPING THE DISPLAY HONEST. Both halves of the screen's board are
+ * maintained differentially and neither heals; see `reconcileScreenWithEngine`. Pacing the loop to
+ * one frame per placement was the earlier attempt and did not work - the losses happen inside the
+ * engine's own tick.
  *
- * ⚠️ Exported for screen/bulk-assign.js too: anything driving the engine directly leaves the pool
- * to be repaired afterwards.
+ * ⚠️ Two frames first, so the model has processed whatever it did receive; reconciling on top of a
+ * half-applied burst would undo work that was about to land anyway.
+ *
+ * ⚠️ Exported for screen/bulk-assign.js too: anything driving the engine directly leaves the
+ * screen to be put right afterwards.
  */
 export async function verifyScreenMatchesEngine() {
     const model = getCommerceModel();
@@ -225,27 +213,29 @@ export async function verifyScreenMatchesEngine() {
     await letTheScreenCatchUp();
     await letTheScreenCatchUp();
     try {
-        const settlements = buildSettlements();
-        const assignedValues = new Set();
-        for (const settlement of settlements) {
+        const assignedTo = new Map();
+        for (const settlement of buildSettlements()) {
             for (const resource of settlement.slottedResources) {
-                assignedValues.add(resource.resourceValue);
+                assignedTo.set(resource.resourceValue, settlement.cityID);
             }
         }
 
-        const ghosts = pruneAssignedFromPool(assignedValues);
-        if (ghosts > 0) {
-            log(`removed ${ghosts} resource(s) the screen still showed as unassigned after placing them`);
+        const { moved, returned, dropped } = reconcileScreenWithEngine(assignedTo);
+        if (moved > 0 || returned > 0 || dropped > 0) {
+            log(
+                `screen reconciled: ${moved} tile(s) put on a settlement, ${returned} back in the ` +
+                    `pool, ${dropped} duplicate(s) discarded`,
+            );
         }
 
         const onScreen = allSettlements(model).reduce(
             (total, settlement) => total + (settlement.slottedResources?.length ?? 0),
             0,
         );
-        if (onScreen !== assignedValues.size) {
+        if (onScreen !== assignedTo.size) {
             warn(
                 `the Commerce screen shows ${onScreen} assigned resource(s) but the game has ` +
-                    `${assignedValues.size}; the assignment is correct and the screen is behind - ` +
+                    `${assignedTo.size}; the assignment is correct and the screen is behind - ` +
                     'reopen the screen to see the real layout',
             );
         }
@@ -264,10 +254,8 @@ function settlementName(cityID) {
 
 /**
  * Says, per resource, why the engine will not take it anywhere. Diagnostics only.
- *
- * ⚠️ One settlement per resource is enough: the common reasons repeat across every settlement, and
- * asking all of them would multiply the most expensive call in this mod by the size of the empire
- * for the sake of a log line.
+ * ⚠️ ONE settlement per resource: the reasons repeat, and asking all of them would multiply this
+ * mod's most expensive call by the size of the empire for a log line.
  */
 function explainWhyNothingFits(scope, refused) {
     try {
@@ -281,11 +269,8 @@ function explainWhyNothingFits(scope, refused) {
         }
 
         const withRoom = settlements.filter((settlement) => settlement.availableSlots?.length);
-        /*
-         * ⚠️ Cities counted separately, because that is the answer most of the time. "3 in the
-         * pool, 7 of 15 settlements have room" reads like a bug in this mod; what it meant was
-         * that the three left were CITY resources and all seven with room were TOWNS.
-         */
+        // ⚠️ Cities counted separately, because that is usually the answer: "3 in the pool, 7 of
+        // 15 have room" meant the three were CITY resources and all seven with room were TOWNS.
         const citiesWithRoom = withRoom.filter((settlement) => !settlement.settlementNameData?.isTown);
 
         const byClass = new Map();
@@ -338,12 +323,16 @@ function explainWhyNothingFits(scope, refused) {
     }
 }
 
-/**
- * One line on the state of the factories at the start of a run. Diagnostics only: "factories
- * first placed nothing" has three quite different causes that look identical from outside.
- */
+/** One line on the factories at the start of a run. Diagnostics only: "factories first placed
+ *  nothing" has three causes that look identical from outside. */
 function logFactoryState() {
-    if (!isFactoryFirstEnabled()) {
+    /*
+     * ⚠️ DIAGNOSTICS FIRST, and it was missing. "Factories first" ships ON, so this used to build
+     * the whole board - every settlement, every resource in the pool - at the start of every run,
+     * to feed a `log()` that does nothing with diagnostics off. Gated here rather than inside
+     * `log` because the walk is the expensive part, exactly as in `logHappinessState`.
+     */
+    if (!DIAGNOSTICS || !isFactoryFirstEnabled()) {
         return;
     }
     try {

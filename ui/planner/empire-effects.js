@@ -20,7 +20,7 @@
  * ⚠️ Effects this cannot total are LEFT OUT rather than guessed at. The card still carries the
  * game's own description in its tooltip, so nothing goes missing - it just gets no number.
  */
-import { collectionOf, effectTypeOf, forgetModifierIndex, modifierApplies, modifierRequirements, resourceModifiers } from './effects.js';
+import { collectionOf, effectTypeOf, modifierApplies, modifierRequirements, resourceModifiers } from './effects.js';
 import { buildSettlements } from '../model/headless-model.js';
 import { warn } from '../support/diagnostics.js';
 
@@ -29,16 +29,10 @@ const COMBAT_STRENGTH_CAP = 6;
 
 /*
  * ⚠️ ALL FOUR SUFFIXES SCALE WITH COPIES - `PER_RESOURCE`, `PER_AVAILABLE_RESOURCE_TYPE`,
- * `PER_RESOURCE_TYPE`, `PER_SLOTTED_RESOURCE`. An earlier version read the `_TYPE` names as the
- * counting rule and concluded they pay once for the whole empire; play says otherwise - improving
- * one more copy of Gold raised income by roughly the settlement count. Wine showed +10 Culture
- * whether you held one bottle or six for a round longer than that.
- *
- * What actually distinguishes PER_RESOURCE_TYPE is its SCOPE: it pays the PLAYER rather than each
- * settlement, which the collection already says.
- *
- * The lesson is bigger than the number: a name in the data is a hypothesis, and a measurement in
- * the running game outranks it.
+ * `PER_RESOURCE_TYPE`, `PER_SLOTTED_RESOURCE`. Reading the `_TYPE` names as "once for the whole
+ * empire" is wrong: measured in play, one more copy of Gold raised income by the settlement count.
+ * What distinguishes PER_RESOURCE_TYPE is its SCOPE - it pays the PLAYER, which the collection
+ * already says.
  */
 const PER_TYPE_YIELD = 'ADJUST_YIELD_PER_AVAILABLE_RESOURCE_TYPE';
 const PER_TYPE_PLAYER_YIELD = 'PLAYER_ADJUST_YIELD_PER_RESOURCE_TYPE';
@@ -346,8 +340,11 @@ export function empireEffectTotals(resourceType, copies, settlements = null) {
     return totals;
 }
 
-/** Called when the tab is opened, so a fresh reading is taken each time. */
+/**
+ * Called when the tab is opened, so a fresh reading is taken each time.
+ * ⚠️ THE ARMY, and nothing else. The modifier index this file reads through is static schema and
+ * is built once for the session; see the note on it in effects.js.
+ */
 export function forgetEmpireEffects() {
-    forgetModifierIndex();
     unitsByClass = null;
 }

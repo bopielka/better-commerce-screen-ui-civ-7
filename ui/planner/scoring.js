@@ -172,18 +172,16 @@ function factoryTypeInSettlement(settlement) {
 }
 
 /**
- * The score for a factory resource in a settlement with a factory, or null when the pair is not
- * that.
+ * The score for a factory resource in a settlement with a factory, or null.
  *
- * ⚠️ THE GAME'S RULE DECIDES THE SHAPE: "Only one type of Factory Resource can be assigned to a
- * Settlement at a time" (LOC_PEDIA_CONCEPTS_FACTORY_RESOURCES_TOOLTIP). So spreading one apiece -
- * the first version, by analogy with the happiness rescue - is the worst thing to do: every
- * factory commits to a different kind and most of the pool becomes unplaceable. Instead keep
- * feeding a running factory, and start an empty one on the kind with the most copies waiting.
+ * ⚠️ THE GAME'S RULE DECIDES THE SHAPE: only ONE type of factory resource per settlement
+ * (LOC_PEDIA_CONCEPTS_FACTORY_RESOURCES_TOOLTIP). Spreading one apiece is therefore the worst
+ * thing to do - every factory commits to a different kind and most of the pool becomes
+ * unplaceable. Keep feeding a running factory; start an empty one on the kind with most copies.
  *
- * ⚠️ Weighed by how many would actually LAND - min(stock, free slots) - not by raw stock. Two
- * factories with 3 and 10 free slots, Coffee x10 and Cocoa x3: starting Coffee in the 3-slot one
- * places 10 where 13 would fit.
+ * ⚠️ Weighed by how many would actually LAND - min(stock, free slots) - not by raw stock. With
+ * 3 and 10 free slots and Coffee x10, Cocoa x3, starting Coffee in the 3-slot one places 10
+ * where 13 would fit.
  */
 function factoryFirstScore(resource, settlement, factoryStock, scoreContext) {
     if (!isFactoryFirstEnabled()) {
@@ -237,10 +235,27 @@ function settlementYieldTotals(settlement) {
  */
 const boostsThisPass = new Map();
 const scoresThisPass = new Map();
+/**
+ * ⚠️ The third one, and it was the one missing. `conditionalBoostStrength` walks every effect of
+ * the resource through `modifierApplies`, and the main loop asked it for EVERY pair - while its
+ * two neighbours above were already answered from a cache.
+ */
+const conditionalsThisPass = new Map();
 
 function startPlanningPass() {
     boostsThisPass.clear();
     scoresThisPass.clear();
+    conditionalsThisPass.clear();
+}
+
+function conditionalStrengthOf(resource, settlement) {
+    const key = passKey(resource, settlement);
+    let strength = conditionalsThisPass.get(key);
+    if (strength === undefined) {
+        strength = conditionalBoostStrength(resource, settlement);
+        conditionalsThisPass.set(key, strength);
+    }
+    return strength;
 }
 
 function passKey(resource, settlement) {
@@ -280,7 +295,7 @@ function computeYieldBoosts(resource, settlement) {
     }
 
     const boosts = new Map();
-    const conditionalStrength = conditionalBoostStrength(resource, settlement);
+    const conditionalStrength = conditionalStrengthOf(resource, settlement);
     groupedEffects.forEach((candidates) => {
         const values = candidates.map((candidate) => candidate.value);
         let value = conditionalStrength > 0 ? Math.max(...values) : Math.min(...values);
@@ -395,7 +410,6 @@ function computePairScore(resource, settlement, scoreContext = null) {
     );
 }
 
-/** How far below zero each settlement's happiness sits right now. */
 /** The happiness a settlement currently produces, as the scoring reads it. */
 export function settlementHappiness(settlement) {
     return settlementYieldTotal(settlement, HAPPINESS_YIELD);
@@ -463,15 +477,11 @@ function bareYield(settlement, yieldType, scoreContext) {
 /**
  * The one culture settlement and the one gold settlement, chosen ONCE for a whole run.
  *
- * ⚠️ Exactly ONE holds each role. The gold pile used to have no target: it scored every non-
- * culture city weighted by its own gold, which is "spread gold around" and not "build a gold
- * settlement" - visibly so in play, with Jade taking a capital slot at the gathering tier while
- * Silk could only reach the conditional tier there and stayed in the pool.
+ * ⚠️ Exactly ONE holds each role. Scoring every non-culture city weighted by its own gold is
+ * "spread gold around", not "build a gold settlement".
  *
- * ⚠️ But it is a ROLE, not a fixed settlement: when the holder runs out of room the next-best
- * city takes over, or a culture city with two free slots lets the other twelve scatter.
- *
- * ⚠️ Only KEYS are cached - the settlement objects are rebuilt before every pass.
+ * ⚠️ But it is a ROLE, not a fixed settlement: when the holder runs out of room the next-best city
+ * takes over. ⚠️ Only KEYS are cached - the settlement objects are rebuilt before every pass.
  */
 let hoardRankingThisRun = null;
 let lastLoggedTargets = '';
@@ -660,7 +670,7 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
                   )
                 : null;
 
-            const conditionalStrength = conditionalBoostStrength(resource, settlement);
+            const conditionalStrength = conditionalStrengthOf(resource, settlement);
             const priority = effectivePriority(settlement.cityID, settlement.settlementNameData?.isTown);
             const priorityBoost = positiveYieldBoost(resource, settlement, priority);
 

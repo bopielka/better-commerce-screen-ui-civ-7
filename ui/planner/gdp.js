@@ -47,18 +47,52 @@ function rateFor(scoringId) {
     return rates.get(scoringId) ?? 0;
 }
 
-/** The `AGE_*` type of the age being played, for comparing against a building's `Age`. */
+/**
+ * The `AGE_*` type of the age being played, for comparing against a building's `Age`.
+ * ⚠️ Memoised on the same reasoning as `isFactoryAge` in engine/age.js: the age cannot change
+ * without the UI being reloaded, and `GameInfo.Ages.lookup` is a database call.
+ */
+let ageType;
+
 function currentAgeType() {
-    try {
-        return GameInfo.Ages.lookup(Game.age)?.AgeType ?? null;
-    } catch (error) {
-        warn(`could not read the current age: ${error}`);
-        return null;
+    if (ageType === undefined) {
+        try {
+            ageType = GameInfo.Ages.lookup(Game.age)?.AgeType ?? null;
+        } catch (error) {
+            warn(`could not read the current age: ${error}`);
+            ageType = null;
+        }
     }
+    return ageType;
 }
+
+/**
+ * How many paying gold buildings each settlement has.
+ *
+ * ⚠️ THE WALK IS THE COST: every constructible of every settlement, and each one is a
+ * `Constructibles.getByComponentID` plus a `GameInfo.Constructibles.lookup`. `gdpPerTurn` is
+ * rebuilt on a 400ms debounce after any resource event, so an assignment run with the screen
+ * open did this from scratch dozens of times over while nothing about the buildings changed.
+ *
+ * ⚠️ Wall-clock, because there is no event this module hears. Buildings change on the scale of
+ * turns; the burst of refreshes this exists to collapse is over in a second.
+ */
+const goldBuildingsByCity = new Map();
+const BUILDINGS_CACHE_MS = 2000;
+let buildingsReadAt = 0;
 
 /** Gold buildings that actually pay, in this city. */
 function goldBuildings(city, ageType) {
+    if (Date.now() - buildingsReadAt > BUILDINGS_CACHE_MS) {
+        goldBuildingsByCity.clear();
+        buildingsReadAt = Date.now();
+    }
+    const key = String(city.id.id);
+    const cached = goldBuildingsByCity.get(key);
+    if (cached !== undefined) {
+        return cached;
+    }
+
     let count = 0;
     try {
         city.Constructibles?.getIds().forEach((id) => {
@@ -78,6 +112,7 @@ function goldBuildings(city, ageType) {
     } catch (error) {
         warn(`could not count gold buildings: ${error}`);
     }
+    goldBuildingsByCity.set(key, count);
     return count;
 }
 

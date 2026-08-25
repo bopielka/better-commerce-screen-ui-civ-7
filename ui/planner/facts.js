@@ -18,9 +18,8 @@ let yieldTypeByIcon = null;
 
 /**
  * Which yield a `yieldIconSrc` belongs to.
- * ⚠️ Built by asking `UI.getIcon` for every yield and indexing the answers. Resource+ pattern-
- * matched the string with /YIELD_[A-Z_]+/, which never matches - the icon for YIELD_HAPPINESS is
- * `blp:Yield_Happiness`, in mixed case - so every yield total it read came back 0.
+ * ⚠️ Built by indexing `UI.getIcon` for every yield. Pattern-matching the string with
+ * /YIELD_[A-Z_]+/ never matches - `blp:Yield_Happiness` is mixed case - and read every total as 0.
  */
 export function yieldTypeFromIcon(iconSource) {
     if (!yieldTypeByIcon) {
@@ -55,13 +54,9 @@ export function resourceType(resource) {
 }
 
 /**
- * ⚠️ Cached by type, because the fast path here is not as fast as it looks.
- *
- * The headless model precomputes `yieldTypes` and most callers hit that first line - but a
- * resource whose list is EMPTY fails the `?.length` test and falls through, so every resource
- * that pays no yield used to re-scan `GameInfo.Resource_YieldChanges` from the top. That is a
- * full table scan per resource per settlement per planning pass, for the answer "none",
- * which is exactly the answer that cannot change.
+ * ⚠️ Cached by type: a resource whose list is EMPTY fails the `?.length` fast path below and used
+ * to re-scan `GameInfo.Resource_YieldChanges` per resource per settlement per pass, for the one
+ * answer that cannot change.
  */
 const resourceYieldTypeCache = new Map();
 
@@ -210,14 +205,12 @@ export function isAssignableToSettlement(resource) {
 /**
  * Did this COPY arrive over a trade route from another leader?
  *
- * ⚠️ The game's own test, from `getResourcePropsFromDefinition` - it is what draws the foreign
- * flag on the icon: `originCity.owner !== GameContext.localPlayerID`. The CURRENT owner, not
- * `originalOwner`: a city you have since captured stops being an import.
+ * ⚠️ The game's own test, from `getResourcePropsFromDefinition`: `originCity.owner !==
+ * GameContext.localPlayerID`. The CURRENT owner, not `originalOwner` - a city you have since
+ * captured stops being an import.
  *
- * ⚠️ A property of the COPY, not of the type - your own Silk and a bought Silk are the same type
- * and a different thing, which is why `groupByResourceType` keys on this too.
- *
- * Cached for one placement run: a city changing hands cannot happen mid-assignment.
+ * ⚠️ A property of the COPY, not of the type, which is why `groupByResourceType` keys on it.
+ * Cached for one run: a city cannot change hands mid-assignment.
  */
 const importOriginCache = new Map();
 
@@ -286,24 +279,20 @@ function bestBoostsAnywhere(resource) {
 }
 
 /**
- * How strongly a resource's CONDITIONAL bonus applies here. 0 means this is not a place the
- * resource is especially rewarded; higher is a better fit. Scoring lifts a resource onto its own
- * tier when this is above zero, so it has to mean "this is the good branch".
+ * How strongly a resource's CONDITIONAL bonus applies here. 0 means "not especially rewarded";
+ * above zero lifts the resource onto its own scoring tier, so it must mean "the good branch".
  *
- * ⚠️ Asked of the DATA, not of a table of names. Resource+ used a hand-written per-age table that
- * disagreed with the game - it returned "conditions met" for gypsum, kaolin and pearls when a
- * settlement was NOT the capital, the exact opposite of REQUIREMENT_CITY_IS_CAPITAL, and 31
- * conditional resources were missing from it altogether.
+ * ⚠️ Asked of the DATA, never of a table of names. Resource+'s hand-written table disagreed with
+ * the game - inverted for gypsum, kaolin and pearls, and missing 31 conditional resources.
  *
- * ⚠️ But "has a gated bonus this settlement satisfies" is NOT enough, and asking only that sent
- * Fish to portless towns. The game writes an either/or bonus as TWO gated modifiers, one the
- * inverse of the other - `MOD_FISH_PORT_FOOD` +8 requires a port, `MOD_FISH_NON_PORT_FOOD` +4
- * requires none - so a portless settlement satisfies the CONSOLATION branch and was lifted onto
- * the conditional tier just as a port city is. Same shape for Furs, Pearls, Silk, Tobacco,
- * Truffles, Tin, Wild Game, Gypsum, Kaolin; see knowledge-base/27-resources.md.
+ * ⚠️ "Has a gated bonus this settlement satisfies" is NOT enough. The game writes an either/or
+ * bonus as TWO gated modifiers, one the inverse of the other (`MOD_FISH_PORT_FOOD` +8 needs a
+ * port, `MOD_FISH_NON_PORT_FOOD` +4 needs none), so a portless town satisfied the CONSOLATION
+ * branch and was lifted as if it were the good one. Same shape for Furs, Pearls, Silk, Tobacco,
+ * Truffles, Tin, Wild Game, Gypsum, Kaolin.
  *
  * So the test is: a gated bonus applies here AND this settlement gets the best that resource can
- * pay for that yield anywhere. The consolation branch scores on its amount like any other.
+ * pay for that yield anywhere.
  */
 export function conditionalBoostStrength(resource, settlement) {
     // Warehouse-scaling resources are worth one multiple of their bonus per warehouse,

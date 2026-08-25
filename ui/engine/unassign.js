@@ -64,8 +64,16 @@ async function release(settlement, doomed) {
     const queue = companionCandidates(settlement, doomed);
     let released = 0;
     for (const resource of doomed) {
-        released += await releaseOne(resource, queue);
-        await waitForEngineEvent(UNASSIGNED_EVENT);
+        const count = await releaseOne(resource, queue);
+        released += count;
+        /*
+         * ⚠️ Only when something was actually SENT. A release the engine refused raises no event,
+         * so waiting for one was a full timeout spent on a message that could not arrive - once
+         * per resource, and these are chained.
+         */
+        if (count > 0) {
+            await waitForEngineEvent(UNASSIGNED_EVENT);
+        }
     }
     return released;
 }
@@ -104,7 +112,6 @@ export function unassignOne(settlement, slottedResource) {
     return release(settlement, [slottedResource]);
 }
 
-/** Empties every settlement the local player owns, sparing anything locked. */
 /** Empties ONE settlement, sparing anything the player has locked. */
 export async function unassignSettlement(cityID) {
     const city = Cities.get(cityID);
@@ -130,7 +137,10 @@ export async function unassignSettlement(cityID) {
             }
         }
     }
-    await waitForEngineEvent(UNASSIGNED_EVENT);
+    // ⚠️ Nothing went to the engine, so nothing is coming back; see `release`.
+    if (cleared > 0) {
+        await waitForEngineEvent(UNASSIGNED_EVENT);
+    }
     log(`returned ${cleared} resource(s) from one settlement (${assigned.length - doomed.length} locked)`);
     return cleared;
 }
@@ -158,18 +168,24 @@ export async function unassignEverySettlement() {
             continue;
         }
 
+        let sent = 0;
         if (doomed.length === assigned.length && requestClearSettlement(city.id)) {
-            cleared += assigned.length;
+            sent = assigned.length;
         } else {
             for (const resource of doomed) {
                 if (unassignIfAllowed(city.id, resource.value)) {
-                    cleared++;
+                    sent++;
                 } else {
                     warn(`failed to request unassign for resource ${resource.value}`);
                 }
             }
         }
-        await waitForEngineEvent(UNASSIGNED_EVENT);
+        cleared += sent;
+        // ⚠️ Only when something was actually sent, and these are chained one per settlement -
+        // a whole empire of refusals used to cost the full timeout apiece. See `release`.
+        if (sent > 0) {
+            await waitForEngineEvent(UNASSIGNED_EVENT);
+        }
     }
 
     return cleared;

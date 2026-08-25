@@ -26,7 +26,7 @@ import { prepareTradeTabData } from './trade-routes.js';
 import { TreasureConvoysContainer, withoutHomelandIdlers } from './treasure-tab.js';
 import { COMMERCE_PANEL_CONTEXT } from './close-screen.js';
 import { COMMERCE_SCREEN_SELECTOR } from './screen-parts.js';
-import { isFactoryAge } from '../engine/age.js';
+import { isExplorationAge, isFactoryAge } from '../engine/age.js';
 
 const CommerceScreenWithFactoryTab = (_props) => {
     const model = createCommerceScreenModel();
@@ -114,7 +114,7 @@ const CommerceScreenWithFactoryTab = (_props) => {
                                 }),
                                 createComponent(Show, {
                                     get when() {
-                                        return Game.age == Database.makeHash('AGE_EXPLORATION');
+                                        return isExplorationAge();
                                     },
                                     get children() {
                                         return createComponent(Tab.Item, {

@@ -81,11 +81,17 @@ function recompute() {
 }
 
 function scheduleRecompute() {
-    // Nothing is marked and Shift is up: there is no work to do and no state to fix.
-    if (!isShiftHeld() && !marked) {
+    /*
+     * ⚠️ THE FRAME GUARD COMES FIRST, and the order is the point. `isShiftHeld` asks the ENGINE,
+     * and this runs off `mousemove` - so the question was being put across the boundary sixty to
+     * a hundred times a second while the cursor moved over the screen. A pass is already
+     * scheduled, and `recompute` asks again for itself, so there is nothing to learn here.
+     */
+    if (frame !== null) {
         return;
     }
-    if (frame !== null) {
+    // Nothing is marked and Shift is up: there is no work to do and no state to fix.
+    if (!isShiftHeld() && !marked) {
         return;
     }
     frame = requestAnimationFrame(() => {

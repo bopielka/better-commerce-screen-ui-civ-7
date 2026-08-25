@@ -443,7 +443,6 @@ function totalElement(total, useOneCopy) {
     return element;
 }
 
-/** One line of totals, optionally labelled and read as a single copy's worth. */
 /**
  * The figures, built as COLUMNS rather than as two rows.
  *

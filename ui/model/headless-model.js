@@ -52,8 +52,36 @@ function resourceTypeOf(resourceValue) {
     }
 }
 
-/** What every yield of a settlement currently stands at. */
+/**
+ * What every yield of a settlement currently stands at.
+ *
+ * ⚠️ Cached per settlement per RUN, and dropped for the one settlement a placement lands in -
+ * the same rule and the same lifetime as `buildingsByCity` beside it. `buildSettlements()` runs
+ * once per placement, so this was `getYields()` plus one `GameInfo.Yields[index]` per yield per
+ * settlement, multiplied by the size of the empire twice over.
+ */
+const yieldsByCity = new Map();
+
+/**
+ * ⚠️ THE BACKSTOP, not the invalidation. What actually drops an entry is a placement landing in
+ * that settlement. But `buildSettlements()` is also called from outside a run - the Empire tab,
+ * the Factory tab, the GDP total - and nothing tells this cache that a turn has passed since.
+ * A placement loop is microseconds between iterations, so a second still collapses a whole run.
+ */
+const YIELD_CACHE_MS = 1000;
+let yieldsReadAt = 0;
+
 function cityYieldTotals(city) {
+    if (Date.now() - yieldsReadAt > YIELD_CACHE_MS) {
+        yieldsByCity.clear();
+        yieldsReadAt = Date.now();
+    }
+    const key = String(city.id.id);
+    const cached = yieldsByCity.get(key);
+    if (cached) {
+        return cached;
+    }
+
     const totals = new Map();
     try {
         const yields = city.Yields?.getYields();
@@ -66,6 +94,7 @@ function cityYieldTotals(city) {
     } catch (error) {
         warn(`could not read yields for a settlement: ${error}`);
     }
+    yieldsByCity.set(key, totals);
     return totals;
 }
 
@@ -94,15 +123,22 @@ function settlementNameOf(city) {
     return name;
 }
 
-/** @param cityID the settlement to re-read next time, or nothing to re-read them all. */
-export function forgetSettlementBuildings(cityID = null) {
+/**
+ * Everything remembered about a settlement between placements: its buildings, its name and its
+ * yields.
+ * @param cityID the settlement to re-read next time, or nothing to re-read them all.
+ */
+export function forgetSettlementFacts(cityID = null) {
     if (!cityID) {
         buildingsByCity.clear();
         nameByCity.clear();
+        yieldsByCity.clear();
         return;
     }
-    buildingsByCity.delete(String(cityID.id));
-    nameByCity.delete(String(cityID.id));
+    const key = String(cityID.id);
+    buildingsByCity.delete(key);
+    nameByCity.delete(key);
+    yieldsByCity.delete(key);
 }
 
 /**

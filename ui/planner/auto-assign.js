@@ -1,28 +1,23 @@
 /**
- * Assigning newly acquired resources by itself, with the Commerce screen closed. Off by
- * default; how far it goes is one four-step setting in ui/options/najane-commerce-options.js.
+ * Assigning newly acquired resources by itself, with the Commerce screen closed. Off by default;
+ * how far it goes is one four-step setting in ui/options/najane-commerce-options.js.
  *
- * ⚠️ This module decides WHEN and nothing else - the work goes through run.js, the same entry
- * points the buttons use. It used to place resources itself with its own "is a pass running"
- * flag, and two flags meant two answers: an automatic pass could start while Reassign All was
- * halfway through emptying the empire.
+ * ⚠️ Decides WHEN and nothing else - the work goes through run.js, the same entry points the
+ * buttons use, so there is ONE "is a pass running" flag. Two flags meant an automatic pass could
+ * start while Reassign All was halfway through emptying the empire.
  *
- * ⚠️ Only NEW resources are touched. A player who left something unassigned did that on purpose,
- * so `known` records every resource owned and only unseen values are candidates. It is seeded as
- * soon as the game can answer, NOT on the first event - seeding on the first event swallowed it,
- * and that was usually the very thing the player was waiting to see work.
+ * ⚠️ Only NEW resources are touched: what the player left unassigned they left on purpose. `known`
+ * is seeded as soon as the game can answer, NOT on the first event - that swallowed it.
  *
- * ⚠️ There is no "resource acquired" engine event, so a spread of cheap ones is watched and each
- * asks two questions: has the resource set grown, and has the empire gained room? Behind them a
- * periodic sweep, because the event list was wrong three times running and every gap looks
- * identical to the player. Events make it feel instant, the sweep makes it correct.
+ * ⚠️ There is no "resource acquired" event, so cheap ones are watched and each asks whether the
+ * resource set grew or the empire gained room. The sweep behind them is the safety net; the event
+ * list was wrong three times running and every gap looks identical to the player.
  *
- * ⚠️ A trigger that cannot be acted on yet is HELD, not dropped - screen open, button mid-run,
- * pass in flight. Closing the screen raises no engine event, so it asks again. Returning early
- * instead was the likeliest cause of "automatic assignment does nothing at all".
+ * ⚠️ A trigger that cannot be acted on yet is HELD, not dropped. Closing the screen raises no
+ * engine event, so it asks again; returning early was the likeliest cause of "it does nothing".
  *
- * ⚠️ The trigger fires BEFORE the resource is in your hands: `ConstructibleBuildCompleted` says
- * the improvement finished, the resource appears a moment later. Hence the late-arrival retries.
+ * ⚠️ Triggers fire BEFORE the resource is in your hands - `ConstructibleBuildCompleted` means the
+ * improvement finished. Hence the late-arrival retries.
  */
 import { assignAll, isAssignmentInProgress, reassignAll } from './run.js';
 import { isAssignableToSettlement } from './facts.js';
@@ -78,21 +73,14 @@ const LATE_ARRIVAL_DELAYS_MS = [600, 1500, 3000];
 const SEED_RETRY_MS = 1000;
 const SEED_ATTEMPTS = 30;
 
-/**
- * How often to look again while something is in the way.
- *
- * ⚠️ A trigger arriving while the Commerce screen is open used to be DROPPED - the likeliest
- * cause of "automatic assignment does nothing". Closing the screen raises no engine event, so
- * this asks again instead. One set comparison per interval, and only while blocked.
- */
+/** How often to look again while something is in the way. One set comparison, only while
+ *  blocked; see the ⚠️ on holding triggers at the top of the file. */
 const BLOCKED_RETRY_MS = 1500;
 
 /**
  * The safety net: look again every so often, whatever did or did not fire.
- *
- * ⚠️ Added after the THIRD time an event turned out to be missing from the list above. Chasing
- * them one at a time is a losing game - each fix is right and the next gap is still out there.
- * Costs one walk over the resources and one over the cities, no `canStart` calls.
+ * ⚠️ Added after the THIRD missing event. Costs one walk over the resources and one over the
+ * cities, no `canStart` calls.
  */
 const SWEEP_MS = 15000;
 
@@ -101,11 +89,9 @@ let knownCapacity = null;
 let running = false;
 
 /**
- * Whether a pass is in flight, or about to be. Read by the icon filter, which is why it can hide
- * the icon before it is ever drawn.
- *
- * ⚠️ `lastTriggerAt` is here because of event ORDER: the engine raises the notification and these
- * triggers in the same burst, and nothing promises which lands first.
+ * Whether a pass is in flight or about to be; the icon filter reads it to hide the icon before it
+ * is drawn. ⚠️ `lastTriggerAt` exists because of event ORDER - the notification and these triggers
+ * arrive in one burst and nothing promises which lands first.
  */
 const TRIGGER_GRACE_MS = 1500;
 
@@ -132,10 +118,9 @@ let lastTriggerAt = 0;
 
 /**
  * The resources the player owns that this module could act on.
- *
- * ⚠️ Empire and treasure resources are left out - they are never assigned to a settlement, so
- * one arriving produced a pass that could place nothing, and because an arrival is only
- * forgotten after a pass that placed SOMETHING it was retried forever.
+ * ⚠️ Empire and treasure resources are left out: they never go into a settlement, so one arriving
+ * produced a pass that placed nothing - and an arrival is only forgotten after something lands,
+ * so it was retried forever.
  */
 function currentResourceValues() {
     const player = Players.get(GameContext.localPlayerID);
@@ -314,11 +299,8 @@ function clearBlockedRetry() {
 }
 
 /**
- * Looks again shortly after a trigger that found nothing.
- *
- * Not a poll: a fixed handful of follow-ups, cancelled the moment anything is found, and
- * cancelled again by the next real trigger. Each one costs a set comparison over the
- * player's resources, which is the same work the trigger itself does.
+ * Looks again shortly after a trigger that found nothing. Not a poll: a fixed handful, cancelled
+ * the moment anything is found or the next real trigger arrives.
  */
 function scheduleLateArrivalChecks(trigger, quiet) {
     clearLateArrivalChecks();

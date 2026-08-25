@@ -1,13 +1,10 @@
 /**
- * The game's framed tooltip - a bordered frame with a title over inset cards - for this mod's own
- * buttons and controls, which otherwise drew a bare box beside controls that drew a frame.
+ * The game's framed tooltip for this mod's own buttons, which otherwise drew a bare box beside
+ * controls that drew a frame. Multi-paragraph text becomes one CARD PER PARAGRAPH.
  *
- * Multi-paragraph text becomes one CARD PER PARAGRAPH. ⚠️ Paragraphs are found by splitting the
- * COMPOSED text on a blank line, so nothing new is needed in the localisation files.
- *
- * ⚠️ These triggers live OUTSIDE Solid's tree - injected into elements the game owns, from an
- * observer, so there is no component and no owner. Each tooltip is created in its own `createRoot`
- * so the reactive scope has somewhere to live and something to dispose it.
+ * ⚠️ These triggers live OUTSIDE Solid's tree - injected from an observer into elements the game
+ * owns - so there is no component and no owner. Each gets its own `createRoot` to give the
+ * reactive scope somewhere to live and something to dispose it.
  */
 import { createComponent, createRoot } from '/core/vendor/solid-js/dist/solid.js';
 import { insert } from '/core/vendor/solid-js/web/dist/web.js';
@@ -32,10 +29,8 @@ const DEFAULT_SCOPE = 'screen';
 
 /**
  * Disposes a scope and everything filed under it - "trade-routes" takes "trade-routes:1234" too.
- *
- * ⚠️ Disposing before discarding a trigger is NOT optional: a framed tooltip is anchored to the
- * element it was built around, and removing that element while the frame is open leaves the frame
- * on screen with nothing to measure against, drawn in the top-left corner.
+ * ⚠️ NOT optional before discarding a trigger: the frame is anchored to that element, and losing
+ * it leaves the frame on screen with nothing to measure against, in the top-left corner.
  */
 export function disposeFramedTooltips(scope = DEFAULT_SCOPE) {
     const prefix = `${scope}:`;
@@ -88,12 +83,11 @@ export function appendWithFramedTooltip(
     { title = null, text = '', scope = DEFAULT_SCOPE } = {},
 ) {
     /*
-     * ⚠️ The trigger still goes in - every caller is putting a BUTTON on screen and describing it
-     * in the same breath, so returning early would take the button away with its explanation.
+     * ⚠️ The trigger still goes in: every caller is putting a BUTTON on screen, so returning early
+     * would take the button away with its explanation.
      *
-     * ⚠️ Decided when the control is BUILT, which is why throwing the switch takes full effect on
-     * the next visit: a framed tooltip mounts its trigger INSIDE the Solid root it creates, so
-     * disposing one to undo it would remove the button too.
+     * ⚠️ Decided when the control is BUILT, which is why the switch takes full effect on the next
+     * visit - the trigger mounts INSIDE the Solid root, so disposing it removes the button too.
      */
     if (areModTooltipsHidden()) {
         parent.appendChild(trigger);

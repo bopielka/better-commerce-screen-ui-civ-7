@@ -1,23 +1,18 @@
 /**
- * Hiding "Resource Assignments Available" when there is nothing you could do about it.
+ * Hiding "Resource Assignments Available" when nothing could be done about it.
  *
- * The row in `notification.xml` is HIGH severity with `ExpiresEndOfTurn="False"`, so once raised
- * it holds the turn button until acted on. ⚠️ What RAISES it is engine-side and appears nowhere
- * in the data - the two triggers are observed in play, and an earlier guess at them reached a
- * player-facing tooltip before anyone checked.
+ * The `notification.xml` row is HIGH severity with `ExpiresEndOfTurn="False"`, so it holds the
+ * turn button until acted on. ⚠️ What RAISES it is engine-side and appears nowhere in the data.
  *
- * ⚠️ The test is whether any UNASSIGNED resource would be ACCEPTED anywhere - not "are there free
- * slots", which was the first version and almost never fired, and not "can nothing be done",
- * which would be untrue since the player can always rearrange.
+ * ⚠️ The test is whether an unassigned resource would be ACCEPTED somewhere - not "are there free
+ * slots" (almost never fired) and not "can nothing be done" (untrue; the player can rearrange).
  *
- * ⚠️ TWO places draw this notification and they do not share a source. The notification TRAIN
- * takes only non-blocking notifications; the ICON in the end-turn ring (`panel-action`) reads
- * `Game.Notifications.getIdsForPlayer` directly and takes only blocking ones. This one blocks,
- * so suppressing it in the model removed it from a list it was never in. The way to the icon is
- * `panel-action`'s own `getNotificationInfo`: returning null for an id hides it. `panel-action`
- * is an old-framework component, so its prototype can be wrapped.
+ * ⚠️ The icon and the notification train do not share a source. The train takes only NON-blocking
+ * notifications; the end-turn ring reads `Game.Notifications.getIdsForPlayer` and takes only
+ * blocking ones, so suppressing this in the model removed it from a list it was never in. The way
+ * in is `panel-action`'s `getNotificationInfo` - old framework, so its prototype can be wrapped.
  *
- * ⚠️ Nothing is dismissed and turn blocking is untouched - this only declines to draw.
+ * ⚠️ Nothing is dismissed and turn blocking is untouched; this only declines to draw.
  */
 import { PanelAction } from '/base-standard/ui/action/panel-action.js';
 
@@ -48,11 +43,9 @@ function hiddenNotificationType() {
 }
 const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
 /**
- * ⚠️ Cannot go into a Town at all, and the engine's refusal for that pair carries no reason -
- * `place.js` records the same thing where it explains why a pass placed nothing. Asking about
- * it anyway is the most expensive call in this mod spent on an answer written in the pedia:
- * "City Resources must be assigned to a City with available Resource Capacity"
- * (LOC_PEDIA_CONCEPTS_CITY_RESOURCES_TOOLTIP).
+ * ⚠️ Cannot go into a Town at all, and the engine's refusal carries no reason. Asking anyway
+ * spends this mod's most expensive call on something the pedia states outright
+ * (LOC_PEDIA_CONCEPTS_CITY_RESOURCES_TOOLTIP); place.js records the same fact.
  */
 const CITY_RESOURCE_CLASS = 'RESOURCECLASS_CITY';
 
@@ -70,16 +63,14 @@ function suppressionEnabled() {
 const ACTION_PANEL = 'panel-action';
 
 /**
- * ⚠️ `panel-action` does NOT listen for resource events - its refresh is driven by notification
- * and unit events - so without these the icon keeps whatever it decided last, which after an
- * automatic pass is always "show".
- */
-/**
  * The ones that can change the ANSWER, and therefore throw the cached one away.
  *
- * ⚠️ The two city events are here because nothing else covers them. Taking or losing a
- * settlement changes which settlements have room, which is half of what the answer is made
- * of, and it raises none of the resource events above.
+ * ⚠️ `panel-action` does NOT listen for resource events - its refresh runs off notification and
+ * unit events - so without these the icon keeps whatever it last decided, which after an
+ * automatic pass is always "show".
+ *
+ * ⚠️ The two city events are here because nothing else covers them: taking or losing a
+ * settlement changes which settlements have room, and raises none of the resource events.
  */
 const BOARD_EVENTS = [
     'ResourceAssigned',
@@ -92,12 +83,9 @@ const BOARD_EVENTS = [
 /**
  * The ones that change only WHETHER TO ASK, and must not throw the answer away.
  *
- * ⚠️ `NotificationAdded` used to sit in the list above, and that is what made the cache
- * almost worthless. A notification appearing cannot change whether a resource you hold would
- * be accepted somewhere - but it fires constantly, and every one of them threw away an answer
- * that `anythingCanBePlaced` then had to work out again from scratch: in the worst case one
- * `canStart` per unassigned resource per settlement with room, several times a second, for
- * the whole game. The re-check it asks for is still worth doing; the forgetting was not.
+ * ⚠️ `NotificationAdded` belongs HERE, not in the list above. It cannot change whether a resource
+ * would be accepted, it fires constantly, and in the list above every one of them threw away an
+ * answer costing a `canStart` per unassigned resource per settlement with room.
  */
 const RECHECK_ONLY_EVENTS = [
     // The notification itself: it is raised after the resource lands, so without this the
@@ -114,30 +102,23 @@ let recheckTimer = null;
 let refreshing = false;
 
 /**
- * Could anything the player holds actually be placed somewhere?
- *
- * Settlements with room are tried first and it stops at the first accepted pair, so the normal
- * case costs one call. The expensive case is "no" - which is also when the notification is about
- * to be hidden for the rest of the turn.
+ * Could anything the player holds actually be placed somewhere? Stops at the first accepted pair,
+ * so the normal case costs one call and "no" is the expensive answer.
  *
  * ⚠️ Full settlements are skipped rather than asked: `canAssign` goes through
  * `Game.PlayerOperations.canStart`, the most expensive call in this mod.
  *
- * ⚠️ A PURE question about the board, with no view on timing. It used to answer "yes" while a
- * pass was pending, which leaked: the dismissal path asks the same question and was told "yes"
- * during the grace window, so it never dismissed anything.
+ * ⚠️ A PURE question about the board, with no view on timing. Answering "yes" while a pass was
+ * pending leaked: the dismissal path asks the same question, so it never dismissed anything.
  */
 let cachedAnswer = null;
 let cachedAt = 0;
 
 /**
- * How long an answer stays good WITHOUT anything having happened.
- *
- * ⚠️ This is the safety net, not the invalidation. What actually throws the answer away is
- * `forgetPlaceability`, wired to every event that can change it - see `BOARD_EVENTS`. At 250ms
- * this timer was doing the invalidating instead, which meant the most expensive call in this
- * mod ran four times a second forever while the board sat still. Long enough now to be the
- * backstop it was meant to be.
+ * How long an answer stays good with nothing having happened.
+ * ⚠️ The safety net, NOT the invalidation - `forgetPlaceability` on BOARD_EVENTS is that. At
+ * 250ms this timer did the invalidating, running the mod's most expensive call four times a
+ * second while the board sat still.
  */
 const ANSWER_CACHE_MS = 3000;
 
@@ -147,10 +128,8 @@ export function forgetPlaceability() {
 
 /**
  * Whether any unassigned resource of ours would actually be accepted somewhere.
- *
- * ⚠️ Exported for `dock-resource-button.js`, which pulses the HUD button on this answer. The
- * cache below is what makes that safe to call from an event handler: several engine
- * events arrive together on a turn boundary and this is the most expensive call in the mod.
+ * ⚠️ Also drives the HUD pulse in dock-resource-button.js. The cache is what makes it safe to
+ * call from an event handler: several events arrive together on a turn boundary.
  */
 export function anythingCanBePlaced() {
     if (cachedAnswer !== null && Date.now() - cachedAt < ANSWER_CACHE_MS) {

@@ -113,8 +113,19 @@ export function startLayout() {
         return;
     }
 
+    /*
+     * ⚠️ STOPS THE MOMENT IT HAS ITS BAR. The content renders behind a Suspense, so this can only
+     * fall back to `document.body` with `subtree: true` - and it used to throw the answer away and
+     * keep watching, so every unit flag, notification and yield banner in the HUD woke it for the
+     * rest of the screen's life. That is the cost screen-observer.js exists to avoid.
+     */
     const screen = document.querySelector(COMMERCE_SCREEN_SELECTOR) ?? document.body;
-    observer = new MutationObserver(() => tryAttachToHeaderBar());
+    observer = new MutationObserver(() => {
+        if (tryAttachToHeaderBar()) {
+            observer?.disconnect();
+            observer = null;
+        }
+    });
     observer.observe(screen, { childList: true, subtree: true });
 }
 

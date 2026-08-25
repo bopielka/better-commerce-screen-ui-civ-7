@@ -8,7 +8,7 @@
  * at sixty, three at ten, and never if the frame loop is not running - which is where these are
  * chained: one per settlement from the automatic pass at LocalPlayerTurnBegin, between turns.
  */
-import { onEngineEvent, stopEngineEvents } from './events.js';
+import { onLocalPlayerEvent, stopEngineEvents } from './events.js';
 
 /** Half a second: what 30 frames was meant to be before the framerate got a say. */
 const DEFAULT_TIMEOUT_MS = 500;
@@ -32,9 +32,16 @@ export function waitForEngineEvent(eventName, timeoutMs = DEFAULT_TIMEOUT_MS) {
             resolve();
         };
 
-        // Shared dispatcher, so a chain of these does not churn a subscription on a name four
-        // other modules already listen for.
-        const handle = onEngineEvent(eventName, finish);
+        /*
+         * Shared dispatcher, so a chain of these does not churn a subscription on a name four
+         * other modules already listen for.
+         *
+         * ⚠️ AND FILTERED BY WHOSE EVENT IT IS. Unfiltered, an AI unassigning something on the far
+         * side of the map released the wait early - the same trap `awaitAssignment` in place.js
+         * avoids by asking the settlement instead. An UNKNOWN owner still counts as ours, so the
+         * worst this can do is behave as it did before.
+         */
+        const handle = onLocalPlayerEvent(eventName, finish);
         if (handle) {
             handles.push(handle);
         }

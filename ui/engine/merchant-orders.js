@@ -1,11 +1,9 @@
 /**
  * The standing order a bought merchant carries: "go to that settlement and open the route".
  *
- * A purchase is one click but the journey is several turns, so something has to remember where
- * this merchant was going and try the command again the moment it becomes legal. An order is
- * (merchant, target settlement), STORED rather than held in a closure, so it outlives the screen.
- * Every pass tries to SIGN first and only walks when signing is refused - distance is computed
- * nowhere, because `canStart` is the only thing that knows how far is close enough.
+ * An order is (merchant, target settlement), STORED rather than held in a closure, so it outlives
+ * the screen. Every pass tries to SIGN first and only walks when signing is refused - distance is
+ * computed nowhere, because `canStart` is the only thing that knows how far is close enough.
  *
  * ⚠️ THE ATTEMPT CAP IS NOT TIDINESS - WITHOUT IT THE GAME FREEZES. The engine answers a move it
  * cannot honour with `UnitOperationsCleared`/`UnitOperationDeactivated`, which is exactly what
@@ -120,11 +118,9 @@ function writeFallback(key, code) {
 
 /**
  * Which merchants have an order, as a set of unit keys.
- *
- * ⚠️ Kept because `UI.getOption` cannot be enumerated. Without a list of names, an order
- * belonging to a merchant that has since drowned can never be found again - and unit ids are
- * recycled, so the next merchant born with that id would inherit it. Seeded from the localStorage
- * mirror, the only channel that can be read back whole.
+ * ⚠️ Kept because `UI.getOption` cannot be ENUMERATED: without a list of names, the order of a
+ * merchant that has since drowned can never be found again - and ids are recycled, so the next
+ * merchant born with that id inherits it. Seeded from the localStorage mirror.
  */
 let orderedKeys = null;
 
@@ -167,13 +163,34 @@ function writeOrder(key, code) {
     } else {
         knownOrderedKeys().delete(key);
     }
+    // This module is the only writer, so the cache is repaired rather than thrown away.
+    orderByKey.set(key, Number(code) > 0 ? Number(code) - 1 : -1);
+    forgetMerchantState();
     announceChange();
 }
 
+/**
+ * What every order says, read through to storage ONCE per merchant.
+ *
+ * ⚠️ `UI.getOption` is a lookup, and this is asked per merchant per pass AND per merchant per
+ * trade-route card - a card asks three questions that each walked the whole list. Written only
+ * by `writeOrder`, which repairs the entry rather than dropping it.
+ *
+ * ⚠️ Negative answers are cached too: "this merchant has no errand" is the common case and was
+ * the one paying for a lookup every time. Same rule as `readLock` in resource-locks.js.
+ */
+const orderByKey = new Map();
+
 /** @returns the plot index of the settlement this merchant is heading for, or -1. */
 function readOrder(key) {
+    // ⚠️ NOT cached: before the seed is readable every answer is "no order", and remembering
+    // that would strand every merchant in a game loaded mid-session.
     if (currentGameKey() === null) {
         return -1;
+    }
+    const cached = orderByKey.get(key);
+    if (cached !== undefined) {
+        return cached;
     }
     let code = null;
     try {
@@ -185,7 +202,9 @@ function readOrder(key) {
         code = readFallback(key);
     }
     const plotIndex = Number(code) - 1;
-    return Number.isInteger(plotIndex) && plotIndex >= 0 ? plotIndex : -1;
+    const order = Number.isInteger(plotIndex) && plotIndex >= 0 ? plotIndex : -1;
+    orderByKey.set(key, order);
+    return order;
 }
 
 /** The settlement an order points at, or -1. */
@@ -204,12 +223,9 @@ const commandedAt = new Map();
 
 /**
  * Merchants seen with a journey queued on the last pass.
- *
- * ⚠️ THIS IS WHAT MAKES "THE PLAYER STOPPED IT" A FACT RATHER THAN A GUESS. A cancelled journey
- * and a turn's ordinary housekeeping both arrive as `UnitOperationsCleared` on a merchant with
- * nothing queued. What tells them apart is the step before: one HAD a journey a moment ago.
- * Without the distinction the order was wiped on the turn rollover, and a cancelled-and-resent
- * merchant sat doing nothing for the rest of the game.
+ * ⚠️ THIS IS WHAT MAKES "THE PLAYER STOPPED IT" A FACT RATHER THAN A GUESS. A cancellation and a
+ * turn's housekeeping both arrive as `UnitOperationsCleared` on a merchant with nothing queued;
+ * only the step before tells them apart. Without it the order was wiped on turn rollover.
  */
 const wasTravelling = new Set();
 
@@ -399,6 +415,8 @@ function processOrders(mayMove) {
         return;
     }
     processing = true;
+    // A pass is exactly when a merchant has moved, arrived or been lost.
+    forgetMerchantState();
     try {
         const merchants = readMerchants();
         pruneOrders(merchants);
@@ -498,8 +516,6 @@ export function orderMerchantTo(unit, city, { mayMove = true } = {}) {
     return true;
 }
 
-/** The merchants already walking to this settlement. */
-/** The merchants walking to any settlement of one leader - the trade limit is per leader. */
 /** Whether this mod has told this merchant to go somewhere. */
 function hasStandingOrder(unit) {
     return readOrder(unitKey(unit.id)) >= 0;
@@ -508,18 +524,12 @@ function hasStandingOrder(unit) {
 /**
  * Whether this merchant is actually going somewhere right now.
  *
- * ⚠️ THE ONE PLACE THE UNIT'S REAL STATE IS READ. "Which merchants are free" and "which are on
- * their way there" are opposites, and answered separately they drifted into claiming the same
- * merchant was both idle and en route.
+ * ⚠️ THE ONE PLACE THE UNIT'S REAL STATE IS READ. "Free" and "on its way" are opposites; answered
+ * separately they drifted into claiming the same merchant was both.
  *
- * ⚠️ The standing order is NOT evidence of travel. Orders live in the user options, outside the
- * save, so they outlive a reload - and the player can stop or turn a merchant around without the
- * store hearing. Both were reported: buttons missing after a reload, and merchants "on the way"
- * long after being called back.
- *
- * Two questions, both about the unit and both about now: a queued destination (what the game's
- * own map decoration reads to draw the remaining path), and no movement left - the conservative
- * half, which errs towards leaving a merchant alone.
+ * ⚠️ The standing order is NOT evidence of travel. Orders live outside the save and outlive a
+ * reload, and the player can stop a merchant without the store hearing - which was reported as
+ * missing buttons after a reload and merchants "on the way" long after being called back.
  */
 function isTravelling(unit) {
     try {
@@ -539,9 +549,44 @@ function isTravelling(unit) {
     return hasStandingOrder(unit) && Number(unit?.Movement?.movementMovesRemaining ?? 0) <= 0;
 }
 
+/**
+ * What every merchant of ours is doing, in ONE walk.
+ *
+ * ⚠️ THIS EXISTS BECAUSE OF THE TRADE ROUTE CARDS. `idleMerchants`, `merchantsBoundFor` and
+ * `merchantsBoundForPlayer` each read the player's whole unit list and asked the engine about
+ * every merchant in it - and one card calls all three, so a tab of forty cards walked the unit
+ * list a hundred and twenty times over per redraw.
+ *
+ * ⚠️ Two ways out, and both are needed: `forgetMerchantState` for anything this mod does (an
+ * order written, a merchant sent), and the wall-clock backstop for everything it is not told
+ * about - a merchant the player moved. Short enough that nothing on screen can look stale,
+ * long enough that one pass over the cards is one reading.
+ */
+const STATE_CACHE_MS = 250;
+
+let merchantState = null;
+let merchantStateAt = 0;
+
+export function forgetMerchantState() {
+    merchantState = null;
+}
+
+function merchantStates() {
+    if (merchantState && Date.now() - merchantStateAt < STATE_CACHE_MS) {
+        return merchantState;
+    }
+    merchantState = localMerchants().map((unit) => ({
+        unit,
+        plotIndex: readOrder(unitKey(unit.id)),
+        travelling: isTravelling(unit),
+    }));
+    merchantStateAt = Date.now();
+    return merchantState;
+}
+
 /** Merchants of ours with nothing to do; see `isTravelling` for what "nothing" means. */
 export function idleMerchants() {
-    return localMerchants().filter((unit) => !isTravelling(unit));
+    return merchantStates().filter((state) => !state.travelling).map((state) => state.unit);
 }
 
 /** The spare merchant that would reach `city` soonest, or null when there is none. */
@@ -573,11 +618,11 @@ export function merchantsBoundForPlayer(leaderId) {
     if (leaderId === undefined || leaderId === null) {
         return [];
     }
-    return localMerchants().filter((unit) => {
-        const plotIndex = readOrder(unitKey(unit.id));
+    return merchantStates()
         // Same rule as `merchantsBoundFor`: a halted merchant is not spoken for.
-        return plotIndex >= 0 && isTravelling(unit) && cityAtPlot(plotIndex)?.owner === leaderId;
-    });
+        .filter((state) => state.plotIndex >= 0 && state.travelling
+            && cityAtPlot(state.plotIndex)?.owner === leaderId)
+        .map((state) => state.unit);
 }
 
 export function merchantsBoundFor(city) {
@@ -592,9 +637,9 @@ export function merchantsBoundFor(city) {
     }
     // ⚠️ The order AND the unit, never the order alone: a merchant the player called back keeps
     // neither.
-    return localMerchants().filter(
-        (unit) => readOrder(unitKey(unit.id)) === plotIndex && isTravelling(unit),
-    );
+    return merchantStates()
+        .filter((state) => state.plotIndex === plotIndex && state.travelling)
+        .map((state) => state.unit);
 }
 
 let listening = false;
@@ -631,11 +676,19 @@ export function startMerchantOrders() {
             }
         });
     }
-    // A game loaded mid-session brings its own seed, and with it its own orders.
+    /*
+     * A game loaded mid-session brings its own seed, and with it its own orders.
+     * ⚠️ ALL FIVE, not just the attempts. Unit ids are recycled between games, so anything keyed
+     * by one describes a unit that no longer exists - and these grew for the whole session.
+     */
     onEngineEvent('GameStarted', () => {
         gameKey = null;
         orderedKeys = null;
         attempts.clear();
+        commandedAt.clear();
+        wasTravelling.clear();
+        orderByKey.clear();
+        forgetMerchantState();
     });
     // A load lands mid-journey as often as not: sign straight away, and let the turn beginning
     // restart anyone still short of the target. Forced, because this is where a loaded game first

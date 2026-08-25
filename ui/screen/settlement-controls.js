@@ -332,14 +332,53 @@ function framedText(button, className, label, text) {
     return mount;
 }
 
+/**
+ * The two strings naming a settlement, per settlement.
+ *
+ * ⚠️ Between them these were a `Cities.get` and two `Locale.compose` calls THREE TIMES per card -
+ * the label is asked for twice - every time the controls are rebuilt. A settlement's name does
+ * not change while the screen is open, which is the same reasoning screen-model.js already uses.
+ */
+const labelsByCity = new Map();
+
+function unassignLabels(settlement) {
+    const key = String(settlement.cityID?.id ?? '');
+    let labels = labelsByCity.get(key);
+    if (!labels) {
+        const name = Locale.compose(Cities.get(settlement.cityID)?.name ?? '');
+        labels = {
+            label: Locale.compose('LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN', name),
+            tooltip: Locale.compose('LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP', name),
+        };
+        labelsByCity.set(key, labels);
+    }
+    return labels;
+}
+
+/**
+ * The explanation under one option in the picker.
+ * ⚠️ Eight of these are composed per settlement card, and the answer depends only on the option.
+ */
+const optionTooltipByType = new Map();
+
+function optionTooltip(type, label) {
+    const key = type ?? '';
+    let text = optionTooltipByType.get(key);
+    if (text === undefined) {
+        text = type
+            ? Locale.compose(PRIORITY_OPTION_TOOLTIP, label)
+            : Locale.compose(PRIORITY_BALANCED_TOOLTIP);
+        optionTooltipByType.set(key, text);
+    }
+    return text;
+}
+
 function unassignLabel(settlement) {
-    const city = Cities.get(settlement.cityID);
-    return Locale.compose('LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN', Locale.compose(city?.name ?? ''));
+    return unassignLabels(settlement).label;
 }
 
 function unassignTooltip(settlement) {
-    const city = Cities.get(settlement.cityID);
-    return Locale.compose('LOC_NAJANE_COMMERCE_SETTLEMENT_UNASSIGN_TOOLTIP', Locale.compose(city?.name ?? ''));
+    return unassignLabels(settlement).tooltip;
 }
 
 function closeMenus(except = null) {
@@ -377,9 +416,7 @@ function createControl(settlement) {
         const item = makeElement('div', `${CONTROL_CLASS}__option`, {
             title: label,
             'aria-label': label,
-            'data-tooltip-content': option.type
-                ? Locale.compose(PRIORITY_OPTION_TOOLTIP, label)
-                : Locale.compose(PRIORITY_BALANCED_TOOLTIP),
+            'data-tooltip-content': optionTooltip(option.type, label),
             });
         const icon = makeElement('div', `${CONTROL_CLASS}__icon-host`);
         renderPriorityIcon(icon, option.type);
@@ -562,6 +599,9 @@ export function startSettlementControls() {
 export function stopSettlementControls() {
     unwatch?.();
     unwatch = null;
+    // ⚠️ Names belong to the screen being open, not to the session: a settlement can be renamed
+    // or change hands between visits. Same lifetime as `nameByCity` in screen-model.js.
+    labelsByCity.clear();
     if (onDocumentClick) {
         document.removeEventListener('click', onDocumentClick);
         onDocumentClick = null;

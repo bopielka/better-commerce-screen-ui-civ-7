@@ -153,6 +153,12 @@ export function startBulkAssign(model) {
     if (patchedModel === model || typeof model?.slotSelectedResource !== 'function') {
         return;
     }
+    // ⚠️ The screen can be reopened before the old one's cleanup runs, and the handles below hold
+    // ONE model's methods - so the previous model is unwrapped here or it keeps our wrapper for
+    // good and its own `stopBulkAssign` walks away from it.
+    if (patchedModel) {
+        stopBulkAssign(patchedModel);
+    }
     patchedModel = model;
     originalSlotSelectedResource = model.slotSelectedResource;
 

@@ -17,7 +17,6 @@ import { template } from '/core/vendor/solid-js/web/dist/web.js';
 import { CommerceScreenBaseTabContent } from '/base-standard/ui-next/screens/commerce/commerce-screen-base-tab-content.js';
 
 import { absoluteWorth, factoryHoldings, gdpPerSlottedResource, sumFactoryTotals } from '../planner/factory-effects.js';
-import { forgetModifierIndex } from '../planner/effects.js';
 import { PRODUCTION_YIELD } from '../planner/facts.js';
 import { appendWithResourceTooltip, resourceTooltipProps } from './resource-tooltip.js';
 import { appendAll, clearChildren, ensureStyle, makeElement } from '../support/dom.js';
@@ -594,9 +593,6 @@ function sectionFor({ titleKey, emptyKey, noteKey, holdings, isIdle, applied }) 
 
 function render(host) {
     clearChildren(host);
-    // A fresh reading each time the tab is opened - resources move between visits.
-    forgetModifierIndex();
-
     const { working, idle } = factoryHoldings();
 
 /** The percentage per yield ALREADY in the empire's figures - every slotted copy counted. */
