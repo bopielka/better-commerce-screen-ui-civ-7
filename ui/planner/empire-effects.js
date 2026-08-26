@@ -23,6 +23,7 @@
 import { collectionOf, effectTypeOf, modifierApplies, modifierRequirements, resourceModifiers } from './effects.js';
 import { buildSettlements } from '../model/headless-model.js';
 import { warn } from '../support/diagnostics.js';
+import { onGameDataStale } from '../support/game-data.js';
 
 /** See the note above: the engine's, not the data's. */
 const COMBAT_STRENGTH_CAP = 6;
@@ -59,6 +60,11 @@ const NAVAL_CLASS = 'UNIT_CLASS_NAVAL';
 const NAVAL_SUBDIVISIONS = ['UNIT_CLASS_LIGHT', 'UNIT_CLASS_HEAVY'];
 
 let unitsByClass = null;
+
+// The unit tables are the age's own; see support/game-data.js.
+onGameDataStale(() => {
+    unitsByClass = null;
+});
 
 /** Which units carry each named class, in the age being played. */
 function indexUnitClasses() {

@@ -21,6 +21,7 @@ import { startDockResourceButton } from './screen/dock-resource-button.js';
 import { logEventStats, onEngineEvent } from './engine/events.js';
 import { TooltipSettingChangedEventName } from './engine/tooltip-setting.js';
 import { removeModTooltips } from './support/dom.js';
+import { forgetGameData } from './support/game-data.js';
 import { BUILD_STAMP } from './support/build-stamp.js';
 import { DIAGNOSTICS, log, warn } from './support/diagnostics.js';
 
@@ -40,6 +41,18 @@ startResourceLockUpkeep();
  * trigger inside its own Solid root, so disposing it would take the button with it.
  */
 window.addEventListener(TooltipSettingChangedEventName, removeModTooltips);
+
+/*
+ * ⚠️ `GameInfo` HOLDS THE AGE BEING PLAYED, so an age transition replaces the resource, unit and
+ * modifier tables under every index this mod built from them. Raised here rather than beside any
+ * one cache: each of them registers its own reset through support/game-data.js, and this is the
+ * only place that knows the whole mod is loaded. `GameAgeEnded` is the game's own name for it
+ * (four handlers in base-standard); `GameStarted` covers a different game being loaded into a
+ * session that never unloaded these scripts.
+ */
+for (const name of ['GameAgeEnded', 'GameStarted']) {
+    onEngineEvent(name, forgetGameData);
+}
 
 // ⚠️ Diagnostics only, and the first measurement to take when the report is "the game runs
 // slowly". Nothing is counted and this listener is not installed with diagnostics off.

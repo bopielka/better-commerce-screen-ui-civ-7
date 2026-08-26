@@ -613,7 +613,7 @@ async function purchaseAndSend(site, targetCity) {
         return;
     }
     orderMerchantTo(merchant, targetCity);
-    log(`${Locale.compose(site.offer.definition.Name)} bought in `
+    log(() => `${Locale.compose(site.offer.definition.Name)} bought in `
         + `${Locale.compose(site.city.name ?? '')}, heading for ${Locale.compose(targetCity.name ?? '')}`);
 }
 
@@ -657,7 +657,7 @@ async function improveAndSend(stack, route, targetCity, offer) {
     renderImproveStack(stack, route, targetCity);
     try {
         if (proposeTradeRelations(route.leaderId, offer)) {
-            log(`proposed Improve Trade Relations with ${leaderName(route.leaderId)}`);
+            log(() => `proposed Improve Trade Relations with ${leaderName(route.leaderId)}`);
         } else {
             warn(`proposing Improve Trade Relations with ${leaderName(route.leaderId)} was refused at the door`);
         }
@@ -772,7 +772,7 @@ function buildWarnButton(warning, scope) {
 
     bindActivatable(button, () => {
         if (ready && proposeTradeRelations(warning.leaderId, offer)) {
-            log(`proposed Improve Trade Relations with ${leaderName(warning.leaderId)}`);
+            log(() => `proposed Improve Trade Relations with ${leaderName(warning.leaderId)}`);
             // Prices, the offer itself and the capacity behind the warning all moved; the
             // generation bump inside this is what makes the redraw below rebuild the stacks.
             forgetMerchantOffers();
@@ -855,7 +855,7 @@ function buildSendSpareButton(targetCity, spare, scope) {
             return;
         }
         if (orderMerchantTo(live, targetCity)) {
-            log(`sent a spare merchant to ${Locale.compose(targetCity.name ?? '')}`);
+            log(() => `sent a spare merchant to ${Locale.compose(targetCity.name ?? '')}`);
             markMerchantStateStale();
         }
     });
@@ -890,7 +890,7 @@ function buildCancelErrandButton(unit, targetCity, scope) {
         onActivate: () => {
             stopMerchant(unit);
             clearMerchantOrder(unit.id);
-            log(`called a merchant off its errand to ${Locale.compose(targetCity.name ?? '')}`);
+            log(() => `called a merchant off its errand to ${Locale.compose(targetCity.name ?? '')}`);
             // `clearMerchantOrder` announces the change; the tab redraws every card off that.
             markMerchantStateStale();
         },
@@ -936,7 +936,7 @@ function buildSendSpareImproveButton(stack, route, targetCity, offer, scope) {
             return;
         }
         if (proposeTradeRelations(route.leaderId, fresh)) {
-            log(`proposed Improve Trade Relations with ${leaderName(route.leaderId)}`);
+            log(() => `proposed Improve Trade Relations with ${leaderName(route.leaderId)}`);
             announceTradeCapacityChange();
         }
         /*
@@ -946,7 +946,7 @@ function buildSendSpareImproveButton(stack, route, targetCity, offer, scope) {
          * unnecessary. Standing still costs nothing; the order is retried every turn.
          */
         if (orderMerchantTo(live, targetCity, { mayMove: false })) {
-            log(`a spare merchant will open the route to ${Locale.compose(targetCity.name ?? '')} once the limit rises`);
+            log(() => `a spare merchant will open the route to ${Locale.compose(targetCity.name ?? '')} once the limit rises`);
         }
         forgetMerchantOffers();
         renderImproveStack(stack, route, targetCity);

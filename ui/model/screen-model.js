@@ -3,6 +3,7 @@
  * under the cursor, and what the model says about it.
  */
 import { log } from '../support/diagnostics.js';
+import { onGameDataStale } from '../support/game-data.js';
 
 const CITY_CARD_PREFIX = 'city-resource-container-';
 const CITY_CARD_SELECTOR = `[data-name^="${CITY_CARD_PREFIX}"]`;
@@ -385,6 +386,9 @@ export function reconcileScreenWithEngine(assignedTo) {
 
 /** ⚠️ The pool's subsections are keyed by resource CLASS, which is a lookup, so it is memoised. */
 const classByResourceType = new Map();
+
+// A resource's class is the age's own; see support/game-data.js.
+onGameDataStale(() => classByResourceType.clear());
 
 function poolSubsectionFor(subsections, resourceType) {
     if (!resourceType) {

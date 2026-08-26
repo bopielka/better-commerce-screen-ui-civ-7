@@ -3,6 +3,19 @@
 Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the source repository.
 
 [hr][/hr]
+[h2]1.11[/h2]
+[list]
+[*][b]Nothing on screen changes and no setting moves.[/b] The third sweep over what the mod costs, aimed at the part that was always going to be the largest: laying out a whole empire.
+[*][b]Laying out an empire no longer re-scores the whole empire for every resource it places.[/b] Each choice is still made against the board the last one left behind — but the answers for every OTHER settlement were being thrown away each time, and now only the settlement a resource landed in is recomputed.
+[*][b]The board is carried instead of rebuilt for every resource.[/b] Reading every settlement out of the game before every single placement, to reflect a change in one of them, was the other half of the cost. The whole board is still re-read once a second, so nothing that moves your empire from outside goes unnoticed.
+[*][b]Dropping one settlement's answers no longer walks every answer the planner is holding[/b] — it was a comparison against the size of the pool times the size of your empire, once per resource placed.
+[*][b]Waiting for the game to accept a resource backs off[/b] instead of asking every four milliseconds until it does.
+[*][b]The mod indexes the game's modifier tables for resources only.[/b] Around 12 000 modifiers ship in the game's data; a few hundred belong to resources, and the mod was building and keeping indexes over all of it.
+[*][b]Fixed: moving to the next age left the previous age's answers in memory.[/b] The game's resource, unit and modifier tables are the age's own — whether Gold is an Empire resource or a Treasure one changes with it — and every cache the mod builds from them now empties when the age ends.
+[*][b]A Treasure Convoy pass no longer asks the game about units it has already ruled out[/b], once per tile of every unit you move.
+[*][b]A trade route card is matched to its route once per pass instead of twice.[/b]
+[/list]
+
 [h2]1.10[/h2]
 [list]
 [*][b]Nothing on screen changes and no setting moves.[/b] Like 1.9, this is about what the mod costs the game — the second sweep over the same ground, because 1.9 fixed the subscriptions and left the work behind them alone.

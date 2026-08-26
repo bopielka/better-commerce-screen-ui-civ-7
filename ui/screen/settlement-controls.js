@@ -423,7 +423,7 @@ function createControl(settlement) {
         item.appendChild(icon);
         bindActivatable(item, () => {
             setPriority(settlement.cityID, option.type);
-            log(`priority for ${unassignLabel(settlement)}: ${label}`);
+            log(() => `priority for ${unassignLabel(settlement)}: ${label}`);
             renderPriorityIcon(triggerIcon, option.type);
             trigger.setAttribute('title', currentLabel(option.type));
             trigger.setAttribute('aria-label', currentLabel(option.type));

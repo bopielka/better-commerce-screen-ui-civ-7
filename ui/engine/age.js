@@ -7,6 +7,8 @@
  * In engine/ rather than beside the Factory tab: three modules across two layers ask it, and
  * the planner may not import a screen module.
  */
+import { onGameDataStale } from '../support/game-data.js';
+
 let modernAge = null;
 
 export function isFactoryAge() {
@@ -22,6 +24,16 @@ export function isFactoryAge() {
 
 /** ⚠️ Cached too: tab-icons.js asks this six times on every pass of its observer. */
 let explorationAge = null;
+
+/*
+ * ⚠️ THE ONE CACHE HERE THAT THE AGE ITSELF INVALIDATES. Both answers are "which age is this",
+ * so an age transition inverts them - and every other cache in the mod that is keyed by age
+ * trusts these two. See support/game-data.js.
+ */
+onGameDataStale(() => {
+    modernAge = null;
+    explorationAge = null;
+});
 
 export function isExplorationAge() {
     if (explorationAge === null) {

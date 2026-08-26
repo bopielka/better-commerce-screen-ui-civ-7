@@ -16,8 +16,9 @@ import {
     buildHeadlessModel,
     buildSettlements,
     forgetSettlementFacts,
+    rebuildSettlement,
 } from '../model/headless-model.js';
-import { bestAssignment, forgetEligibility, startPlacementRun } from './scoring.js';
+import { bestAssignment, forgetEligibility, forgetSettlementScores, startPlacementRun } from './scoring.js';
 import { isFactoryFirstEnabled } from './factory-first-setting.js';
 import { isImportedResource, resourceClassOf, resourceType } from './facts.js';
 import { allSettlements, getCommerceModel, reconcileScreenWithEngine } from '../model/screen-model.js';
@@ -31,8 +32,15 @@ import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
  *
  * ⚠️ Polled every few ms rather than once a frame: the operation is processed on the engine's own
  * tick, and a frame-aligned check can miss it by most of a frame - 16ms per resource, for nothing.
+ *
+ * ⚠️ The interval only starts DOUBLING once the first 50ms are gone, and that split is the point:
+ * each poll is a call into the engine plus the settlement's whole resource list. Inside the window
+ * an assignment normally lands in, the timing is exactly what it was; past it, an assignment the
+ * engine is slow with is asked about a dozen times rather than five hundred.
  */
 const CONFIRM_POLL_MS = 4;
+const CONFIRM_FAST_WINDOW_MS = 50;
+const CONFIRM_POLL_CEILING_MS = 32;
 const CONFIRM_TIMEOUT_MS = 2000;
 
 function awaitAssignment(cityID, resourceValue) {
@@ -47,6 +55,7 @@ function awaitAssignment(cityID, resourceValue) {
                 return false;
             }
         };
+        let wait = CONFIRM_POLL_MS;
         const check = () => {
             if (landed()) {
                 resolve(true);
@@ -56,7 +65,10 @@ function awaitAssignment(cityID, resourceValue) {
                 resolve(false);
                 return;
             }
-            setTimeout(check, CONFIRM_POLL_MS);
+            setTimeout(check, wait);
+            if (Date.now() - started >= CONFIRM_FAST_WINDOW_MS) {
+                wait = Math.min(wait * 2, CONFIRM_POLL_CEILING_MS);
+            }
         };
         check();
     });
@@ -80,6 +92,24 @@ function letTheScreenCatchUp() {
 
 /** Guard against a runaway loop: high enough to cover a whole empire twice over. */
 const MAX_PLACEMENTS = 300;
+
+/**
+ * How long the carried board may be trusted before it is read in full again.
+ *
+ * ⚠️ WHAT KEEPS THE SCORES HONEST IS OBJECT IDENTITY, not this number: a settlement's cached
+ * scores are dropped exactly when its object is replaced - by a placement landing there, or by
+ * the full read below. Between the two, the planner scores the same objects it scored last time
+ * and gets the same numbers.
+ *
+ * ⚠️ THE NUMBER MATCHES `YIELD_CACHE_MS` in headless-model.js on purpose, and that is about how
+ * STALE the board may be rather than about consistency: that cache already froze an untouched
+ * settlement's yields for a second at a time, and a run is not allowed to get staler than the
+ * model it was reading before.
+ *
+ * ⚠️ Wall-clock, not a count of placements: a run's placements are microseconds apart when the
+ * engine is quick and a second apart when it is not.
+ */
+const FULL_READ_EVERY_MS = 1000;
 
 /** How many refusals to spell out when a pass places nothing; the rest repeat. */
 const EXPLAIN_SAMPLE = 8;
@@ -114,13 +144,41 @@ export async function placeResources({ scope = null, targetCityID = null, label 
     /** What the last pass saw still sitting in the pool - see the note by the summary. */
     let leftInPool = 0;
 
+    /*
+     * ⚠️ THE BOARD IS CARRIED, NOT REBUILT. Reading every settlement before every placement was
+     * two engine calls per settlement plus a whole object graph, multiplied by the size of the
+     * empire - to reflect a change in ONE settlement. What is re-read is that settlement; the
+     * pool loses the copy that landed.
+     *
+     * ⚠️ This does NOT batch the decisions - each one is still made against the board the
+     * previous one left behind, which is the rule at the top of this file. It changes how the
+     * board is READ, not when it is read.
+     */
+    let settlements = null;
+    let available = null;
+    let lastFullReadAt = 0;
+
+    const inScope = (resource) =>
+        (scope === null || scope.has(resource.resourceValue)) && !refused.has(resource.resourceValue);
+
     while (placed < MAX_PLACEMENTS) {
         let mark = Date.now();
-        const settlements = buildSettlements();
-        const available = buildAvailableResources(settlements).filter(
-            (resource) =>
-                (scope === null || scope.has(resource.resourceValue)) && !refused.has(resource.resourceValue),
-        );
+        /*
+         * ⚠️ THE BACKSTOP, and it is why the whole read is still here. The carried board only
+         * knows what this loop did; anything else moving the empire underneath it - the engine
+         * releasing a companion, another mod - would otherwise stay invisible for the rest of
+         * the run. Once a second it costs one old-style pass.
+         *
+         * ⚠️ The planner's per-settlement scores go with it, and that pairing is load-bearing:
+         * they are kept between placements precisely because the yields behind them are frozen
+         * until this line runs. See `forgetSettlementScores`.
+         */
+        if (settlements === null || Date.now() - lastFullReadAt >= FULL_READ_EVERY_MS) {
+            settlements = buildSettlements();
+            available = buildAvailableResources(settlements).filter(inScope);
+            forgetSettlementScores();
+            lastFullReadAt = Date.now();
+        }
         boardMs += Date.now() - mark;
         leftInPool = available.length;
 
@@ -136,6 +194,7 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         }
         if (!canAssign(plan.settlement.cityID, plan.resource.resourceValue)) {
             refused.add(plan.resource.resourceValue);
+            available = available.filter(inScope);
             continue;
         }
         if (!requestAssign(plan.settlement.cityID, plan.resource.resourceValue)) {
@@ -147,6 +206,8 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         // if that was a camel. Every other settlement's remain valid and are kept.
         forgetEligibility(plan.settlement.cityID);
         forgetSettlementFacts(plan.settlement.cityID);
+        // The same rule for the scores, and for the same reason.
+        forgetSettlementScores(plan.settlement.cityID);
         // ⚠️ One line per placement, naming the TIER that won it: "why did Tin end up in my
         // culture capital instead of Silk" has at least four possible answers and the board looks
         // the same in all of them.
@@ -158,7 +219,8 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         }
 
         mark = Date.now();
-        if (!(await awaitAssignment(plan.settlement.cityID, plan.resource.resourceValue))) {
+        const landed = await awaitAssignment(plan.settlement.cityID, plan.resource.resourceValue);
+        if (!landed) {
             // Accepted but never arrived: stop asking for this one rather than choosing it
             // again on every pass for the rest of the run.
             refused.add(plan.resource.resourceValue);
@@ -166,6 +228,15 @@ export async function placeResources({ scope = null, targetCityID = null, label 
             warn(`the engine took ${plan.resource.resourceType} but it never arrived; skipping it`);
         }
         waitingMs += Date.now() - mark;
+
+        // ⚠️ AFTER the confirmation, never before: this reads the settlement back out of the
+        // engine, and before the assignment lands the engine still describes the old board.
+        mark = Date.now();
+        settlements = rebuildSettlement(settlements, plan.settlement.cityID);
+        available = landed
+            ? available.filter((resource) => resource.resourceValue !== plan.resource.resourceValue)
+            : available.filter(inScope);
+        boardMs += Date.now() - mark;
     }
 
     // ⚠️ Whenever ANYTHING is left, not only when the run placed nothing. Gated here, not inside

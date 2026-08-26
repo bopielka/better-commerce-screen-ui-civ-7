@@ -25,6 +25,7 @@ import { FramedResource } from '/base-standard/ui-next/components/framed-resourc
 import { areModTooltipsHidden } from '../engine/tooltip-setting.js';
 import { makeElement, setTooltip } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
+import { onGameDataStale } from '../support/game-data.js';
 
 /**
  * ⚠️ Three lookups per resource card - the resource table and the atlas twice - and every one of
@@ -32,6 +33,9 @@ import { warn } from '../support/diagnostics.js';
  * varies by caller, so it is layered on top rather than cached with the rest.
  */
 const propsByType = new Map();
+
+// Names, classes and icons are the age's own; see support/game-data.js.
+onGameDataStale(() => propsByType.clear());
 
 function baseProps(resourceType) {
     let props = propsByType.get(resourceType);

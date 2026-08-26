@@ -84,6 +84,28 @@ export function isTreasureConvoy(unit) {
     return Boolean(unit) && unit.owner === GameContext.localPlayerID && cargoAmount(unit) > 0;
 }
 
+/**
+ * Unit ids this mod has already established are NOT convoys.
+ *
+ * ⚠️ `UnitMoved` is raised once per TILE per unit, so every step the player's army takes cost a
+ * `Units.get` and the two calls behind `isTreasureConvoy` to conclude that a scout is not a
+ * treasure fleet. This is the cheapest possible answer to that, and the ONLY thing it remembers
+ * is "no": a convoy that unloads merely stops being worth skipping, while a "yes" cached against
+ * a recycled id would strand a real convoy.
+ *
+ * ⚠️ Emptied whenever a unit appears or leaves, because that is when an id can come to mean a
+ * different unit.
+ */
+const notAConvoy = new Set();
+
+function couldBeConvoy(unitID) {
+    return !notAConvoy.has(String(unitID?.id ?? unitID));
+}
+
+function rememberNotAConvoy(unitID) {
+    notAConvoy.add(String(unitID?.id ?? unitID));
+}
+
 /** Every loaded convoy of ours. An empty list on failure; nothing here needs to tell the
  *  two apart, because nothing here is stored to be pruned. */
 function localConvoys() {
@@ -421,7 +443,9 @@ export function startTreasureConvoys() {
      */
     const listenPerUnit = (name, maySail) =>
         onLocalPlayerEvent(name, (data) => {
-            if (!isTreasureAutoReturnEnabled() || !data?.unit) {
+            // ⚠️ Three filters, cheapest first: the switch, then whether this id has already been
+            // ruled out, and only then a call into the engine. See `notAConvoy`.
+            if (!isTreasureAutoReturnEnabled() || !data?.unit || !couldBeConvoy(data.unit)) {
                 return;
             }
             let unit = null;
@@ -431,10 +455,16 @@ export function startTreasureConvoys() {
                 return;
             }
             if (!isTreasureConvoy(unit)) {
+                rememberNotAConvoy(data.unit);
                 return;
             }
             scheduleProcess(maySail);
         });
+
+    // An id only comes to mean a different unit when one appears or leaves.
+    for (const name of ['UnitAddedToMap', 'UnitRemovedFromMap']) {
+        onEngineEvent(name, () => notAConvoy.clear());
+    }
 
     for (const name of UNLOAD_EVENTS) {
         listenPerUnit(name, false);

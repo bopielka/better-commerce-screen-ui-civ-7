@@ -11,6 +11,7 @@ import { isFactoryAge } from '../engine/age.js';
 import { heldResourceType, resourceTypeFromHash } from '../engine/resource-types.js';
 import { isAssignableToSettlement } from '../planner/facts.js';
 
+import { onGameDataStale } from '../support/game-data.js';
 import { warn } from '../support/diagnostics.js';
 
 /**
@@ -28,7 +29,18 @@ const YIELD_BY_TAG = new Map([
 
 let yieldTypesByResource = null;
 
+/**
+ * ⚠️ THE SAME ARRAY EVERY TIME, and it must not be mutated. This is asked once per slotted
+ * resource per settlement per placement, and building a fresh array from the Set each time was
+ * thousands of throwaway allocations for a full empire.
+ */
+const yieldTypeListByResource = new Map();
+
 function yieldTypesFor(resourceType) {
+    const listed = yieldTypeListByResource.get(resourceType);
+    if (listed) {
+        return listed;
+    }
     if (!yieldTypesByResource) {
         yieldTypesByResource = new Map();
         GameInfo.Resources.forEach((resource) => yieldTypesByResource.set(resource.ResourceType, new Set()));
@@ -40,7 +52,9 @@ function yieldTypesFor(resourceType) {
             }
         });
     }
-    return [...(yieldTypesByResource.get(resourceType) ?? [])];
+    const list = Object.freeze([...(yieldTypesByResource.get(resourceType) ?? [])]);
+    yieldTypeListByResource.set(resourceType, list);
+    return list;
 }
 
 function resourceTypeOf(resourceValue) {
@@ -193,6 +207,45 @@ function countBuildings(city) {
     return counts;
 }
 
+/** Shared rather than allocated per resource; nothing may mutate it. */
+const EMPTY_YIELD_TYPES = Object.freeze([]);
+
+/** One settlement, shaped like the screen's own data. */
+function settlementFrom(city) {
+    const assigned = city.Resources.getAssignedResources() ?? [];
+    const capacity = city.Resources.getAssignedResourcesCap() ?? assigned.length;
+    const buildings = countBuildings(city);
+
+    return {
+        cityID: city.id,
+        isDistantLands: city.isDistantLands,
+        settlementNameData: {
+            settlementName: settlementNameOf(city),
+            isTown: city.isTown,
+            warehouseCount: buildings.warehouseCount,
+            hasRail: buildings.hasRail,
+        },
+        factoryResourceData: { hasFactory: buildings.hasFactory },
+        yieldTotals: cityYieldTotals(city),
+        slottedResources: assigned.map((resource) => {
+            const type = heldResourceType(resource);
+            return {
+                resourceValue: resource.value,
+                resourceType: type,
+                cityID: city.id,
+                yieldTypes: type ? yieldTypesFor(type) : EMPTY_YIELD_TYPES,
+            };
+        }),
+        /*
+         * The planner only ever reads the length of this - and the screen's own model, which the
+         * planner also reads, carries a real array here.
+         * ⚠️ NOT `.fill(0)`: the zeroes were never read, and filling is what makes the engine
+         * materialise the elements. One of these is built per settlement per placement.
+         */
+        availableSlots: new Array(Math.max(0, capacity - assigned.length)),
+    };
+}
+
 /** Every settlement of the local player, shaped like the screen's own data. */
 export function buildSettlements() {
     const player = Players.get(GameContext.localPlayerID);
@@ -203,36 +256,40 @@ export function buildSettlements() {
         if (!city.Resources) {
             continue;
         }
-        const assigned = city.Resources.getAssignedResources() ?? [];
-        const capacity = city.Resources.getAssignedResourcesCap() ?? assigned.length;
-        const buildings = countBuildings(city);
-
-        settlements.push({
-            cityID: city.id,
-            isDistantLands: city.isDistantLands,
-            settlementNameData: {
-                settlementName: settlementNameOf(city),
-                isTown: city.isTown,
-                warehouseCount: buildings.warehouseCount,
-                hasRail: buildings.hasRail,
-            },
-            factoryResourceData: { hasFactory: buildings.hasFactory },
-            yieldTotals: cityYieldTotals(city),
-            slottedResources: assigned.map((resource) => {
-                const type = heldResourceType(resource);
-                return {
-                    resourceValue: resource.value,
-                    resourceType: type,
-                    cityID: city.id,
-                    yieldTypes: type ? yieldTypesFor(type) : [],
-                };
-            }),
-            // The planner only ever reads the length of this.
-            availableSlots: new Array(Math.max(0, capacity - assigned.length)).fill(0),
-        });
+        settlements.push(settlementFrom(city));
     }
 
     return settlements;
+}
+
+/**
+ * The same board with ONE settlement re-read from the engine.
+ *
+ * ⚠️ WHAT THIS SAVES: `buildSettlements` is two calls into the engine per settlement plus a fresh
+ * object graph, and the placement loop ran it before every resource it placed - the whole empire,
+ * to reflect a change in one settlement. Everything else is handed back BY REFERENCE, which also
+ * keeps the planner's per-settlement caches warm.
+ *
+ * ⚠️ The caller drops that settlement's cached facts first (`forgetSettlementFacts`); this reads
+ * the engine, so it must run after the assignment has actually landed.
+ */
+export function rebuildSettlement(settlements, cityID) {
+    const key = String(cityID?.id);
+    let replacement = null;
+    try {
+        const city = Cities.get(cityID);
+        if (city?.Resources) {
+            replacement = settlementFrom(city);
+        }
+    } catch (error) {
+        warn(`could not re-read a settlement after a placement: ${error}`);
+    }
+    if (!replacement) {
+        return settlements;
+    }
+    return settlements.map((settlement) =>
+        String(settlement.cityID?.id) === key ? replacement : settlement,
+    );
 }
 
 /**
@@ -262,7 +319,7 @@ export function buildAvailableResources(settlements) {
             resourceValue: value,
             resourceType: type,
             cityID: undefined,
-            yieldTypes: type ? yieldTypesFor(type) : [],
+            yieldTypes: type ? yieldTypesFor(type) : EMPTY_YIELD_TYPES,
         };
         if (!isAssignableToSettlement(entry)) {
             continue;
@@ -295,3 +352,13 @@ export function buildHeadlessModel(prebuiltSettlements, prebuiltAvailable) {
         setLastSlottedResourceValues: () => {},
     };
 }
+
+/*
+ * ⚠️ `GameInfo.TypeTags` and the settlement facts below it describe the age being played; see
+ * support/game-data.js.
+ */
+onGameDataStale(() => {
+    yieldTypesByResource = null;
+    yieldTypeListByResource.clear();
+    forgetSettlementFacts();
+});
