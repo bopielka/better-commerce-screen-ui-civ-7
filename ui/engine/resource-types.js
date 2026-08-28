@@ -9,8 +9,12 @@
  * that changes the shape breaks nothing. A failed lookup is remembered as null, or the
  * resources the tables do not describe are the ones asked about forever.
  */
+import { onGameDataStale } from '../support/game-data.js';
 
 const typeByHash = new Map();
+
+// The resource tables are the age's own; see support/game-data.js.
+onGameDataStale(() => typeByHash.clear());
 
 /** @returns the `ResourceType` string for a resource hash, or null. */
 export function resourceTypeFromHash(hash) {

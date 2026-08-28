@@ -47,6 +47,7 @@ import {
     scalesWithWarehouses,
     yieldTypeFromIcon,
 } from './facts.js';
+import { onGameDataStale } from '../support/game-data.js';
 import { DIAGNOSTICS, log } from '../support/diagnostics.js';
 
 /** Above everything else, including camels: no settlement should sit on negative happiness. */
@@ -105,29 +106,64 @@ const HOARD_CULTURE_FIRST = 10000000;
 const CULTURE_YIELD = 'YIELD_CULTURE';
 const GOLD_YIELD = 'YIELD_GOLD';
 
+//#region keys
+/**
+ * The settlement's key, worked out ONCE per settlement OBJECT.
+ *
+ * ⚠️ `cityKey` builds a string, and the scoring asks for one several times per (resource kind x
+ * settlement) pair - for every placement in the run. A full empire made hundreds of thousands of
+ * them for nothing.
+ *
+ * ⚠️ A WeakMap keyed on the OBJECT is what scopes it, the same argument as `cityBySettlement` in
+ * effects.js: the planner rebuilds every settlement before each placement, and a rebuilt
+ * settlement gets a fresh entry. The VALUE is stable across rebuilds, so anything comparing keys
+ * across passes - the gathering ranking - still matches.
+ */
+const keyBySettlement = new WeakMap();
+
+function settlementKey(settlement) {
+    let key = keyBySettlement.get(settlement);
+    if (key === undefined) {
+        key = cityKey(settlement.cityID);
+        keyBySettlement.set(settlement, key);
+    }
+    return key;
+}
+
+/** What the caches here key a resource by: its KIND, since the loop scores kinds, not copies. */
+function resourceKey(resource) {
+    return resourceType(resource) ?? `#${String(resource.resourceValue)}`;
+}
+//#endregion
+
 //#region eligibility
-const eligibilityCache = new Map();
+/**
+ * ⚠️ NESTED cityKey -> resourceValue -> answer, and the nesting is the point: dropping one
+ * settlement's answers used to walk every key in the cache looking for a matching suffix, once
+ * per placement - `pool x settlements` string comparisons and a copy of the key list, to
+ * invalidate one settlement.
+ */
+const eligibilityByCity = new Map();
 
 /** @param cityID the settlement whose answers are now stale, or null for all of them. */
 export function forgetEligibility(cityID = null) {
     if (!cityID) {
-        eligibilityCache.clear();
+        eligibilityByCity.clear();
         return;
     }
-    const suffix = `:${cityKey(cityID)}`;
-    for (const key of [...eligibilityCache.keys()]) {
-        if (key.endsWith(suffix)) {
-            eligibilityCache.delete(key);
-        }
-    }
+    eligibilityByCity.delete(cityKey(cityID));
 }
 
-function canAssignCached(resourceValue, cityID) {
-    const key = assignmentPairKey(resourceValue, cityID);
-    let answer = eligibilityCache.get(key);
+function canAssignCached(resourceValue, cityID, key) {
+    let byResource = eligibilityByCity.get(key);
+    if (!byResource) {
+        byResource = new Map();
+        eligibilityByCity.set(key, byResource);
+    }
+    let answer = byResource.get(resourceValue);
     if (answer === undefined) {
         answer = canAssign(cityID, resourceValue);
-        eligibilityCache.set(key, answer);
+        byResource.set(resourceValue, answer);
     }
     return answer;
 }
@@ -230,8 +266,10 @@ function settlementYieldTotals(settlement) {
 }
 
 /**
- * ⚠️ Both hold for ONE planning pass and are emptied at the start of the next: they describe a
- * board that the last placement has already moved on.
+ * ⚠️ All three are keyed cityKey -> resource KIND, and the outer level is what makes the
+ * invalidation cheap: `forgetSettlementScores` drops ONE settlement, because a placement moves
+ * one settlement's board and nobody else's. Clearing all three per placement made the planner
+ * re-score every pair in the empire for every resource it placed.
  */
 const boostsThisPass = new Map();
 const scoresThisPass = new Map();
@@ -242,38 +280,123 @@ const scoresThisPass = new Map();
  */
 const conditionalsThisPass = new Map();
 
-function startPlanningPass() {
+function clearPlanningCaches() {
     boostsThisPass.clear();
     scoresThisPass.clear();
     conditionalsThisPass.clear();
 }
 
+/** This settlement's shelf in one of the caches above, made on demand. */
+function bucketFor(cache, settlement) {
+    const key = settlementKey(settlement);
+    let bucket = cache.get(key);
+    if (!bucket) {
+        bucket = new Map();
+        cache.set(key, bucket);
+    }
+    return bucket;
+}
+
+/**
+ * What the placement that just landed made stale.
+ *
+ * ⚠️ ONE SETTLEMENT, NOT THE BOARD, and that is the difference between
+ * O(placements x kinds x settlements) and O(placements x kinds). A placement changes the
+ * settlement it landed in - its free slots, its yields, the factory kind it is running.
+ *
+ * ⚠️ WHY THE REST IS SAFE TO KEEP, and it is not "because a resource only pays where it sits" -
+ * that could not be verified from the data. It is that everything a cached score is computed
+ * from is FROZEN for the other settlements anyway: their yield totals come from the cache in
+ * headless-model.js, which a placement loop cannot outrun, and their buildings and warehouses
+ * cannot change while the loop is running. Recomputing would return the same number.
+ *
+ * ⚠️ Which makes the placement loop's periodic FULL re-read the other half of this: it drops
+ * these caches at the same time and on the same clock as those yield totals. Break that pairing
+ * and this cache starts describing a board the loop has re-read since. See place.js.
+ *
+ * @param cityID the settlement the placement landed in, or null to drop everything.
+ */
+export function forgetSettlementScores(cityID = null) {
+    if (!cityID) {
+        clearPlanningCaches();
+        return;
+    }
+    const key = cityKey(cityID);
+    boostsThisPass.delete(key);
+    scoresThisPass.delete(key);
+    conditionalsThisPass.delete(key);
+}
+
+/**
+ * Which yields this resource actually pays HERE, as a set.
+ *
+ * ⚠️ ONE Set per (kind, town-or-city) rather than one per pair per pass: only Cowries answer
+ * differently in a town, and `computePairScore` and `computeYieldBoosts` each built a fresh one
+ * for every pair, for every placement.
+ *
+ * ⚠️ THE SET IS SHARED - never mutate what this hands back.
+ */
+const affectedYieldsByKind = new Map();
+
+function affectedYields(resource, settlement) {
+    const key = resourceKey(resource);
+    let both = affectedYieldsByKind.get(key);
+    if (!both) {
+        both = { town: null, city: null };
+        affectedYieldsByKind.set(key, both);
+    }
+    const where = settlement.settlementNameData?.isTown ? 'town' : 'city';
+    let yields = both[where];
+    if (!yields) {
+        yields = new Set(effectiveResourceYieldTypes(resource, settlement));
+        both[where] = yields;
+    }
+    return yields;
+}
+
+/** How many distinct yields a KIND pays anywhere; the tier that sorts single before multi. */
+const yieldCountByKind = new Map();
+
+function distinctYieldCount(resource) {
+    const key = resourceKey(resource);
+    let count = yieldCountByKind.get(key);
+    if (count === undefined) {
+        count = new Set(resourceYieldTypes(resource)).size;
+        yieldCountByKind.set(key, count);
+    }
+    return count;
+}
+
+// What a resource pays and where it pays it are the age's own; see support/game-data.js.
+onGameDataStale(() => {
+    affectedYieldsByKind.clear();
+    yieldCountByKind.clear();
+});
+
 function conditionalStrengthOf(resource, settlement) {
-    const key = passKey(resource, settlement);
-    let strength = conditionalsThisPass.get(key);
+    const bucket = bucketFor(conditionalsThisPass, settlement);
+    const key = resourceKey(resource);
+    let strength = bucket.get(key);
     if (strength === undefined) {
         strength = conditionalBoostStrength(resource, settlement);
-        conditionalsThisPass.set(key, strength);
+        bucket.set(key, strength);
     }
     return strength;
 }
 
-function passKey(resource, settlement) {
-    return `${resourceType(resource) ?? `#${String(resource.resourceValue)}`}:${cityKey(settlement.cityID)}`;
-}
-
 function estimatedYieldBoosts(resource, settlement) {
-    const key = passKey(resource, settlement);
-    let boosts = boostsThisPass.get(key);
+    const bucket = bucketFor(boostsThisPass, settlement);
+    const key = resourceKey(resource);
+    let boosts = bucket.get(key);
     if (boosts === undefined) {
         boosts = computeYieldBoosts(resource, settlement);
-        boostsThisPass.set(key, boosts);
+        bucket.set(key, boosts);
     }
     return boosts;
 }
 
 function computeYieldBoosts(resource, settlement) {
-    const applicableYields = new Set(effectiveResourceYieldTypes(resource, settlement));
+    const applicableYields = affectedYields(resource, settlement);
     const groupedEffects = new Map();
     for (const effect of resourceYieldEffects(resource)) {
         if (!applicableYields.has(effect.yieldType)) {
@@ -320,7 +443,7 @@ function buildScoreContext(settlements) {
     const yieldTotalsByCity = new Map();
     const specializedLoadsByCityYield = new Map();
     settlements.forEach((settlement) => {
-        const key = cityKey(settlement.cityID);
+        const key = settlementKey(settlement);
         const loads = new Map();
         yieldTotalsByCity.set(key, settlementYieldTotals(settlement));
         for (const resource of settlement.slottedResources) {
@@ -335,7 +458,7 @@ function buildScoreContext(settlements) {
 
 function specializedYieldLoad(settlement, yieldType, scoreContext = null) {
     if (scoreContext) {
-        return scoreContext.specializedLoadsByCityYield.get(cityKey(settlement.cityID))?.get(yieldType) ?? 0;
+        return scoreContext.specializedLoadsByCityYield.get(settlementKey(settlement))?.get(yieldType) ?? 0;
     }
     let total = 0;
     for (const resource of settlement.slottedResources) {
@@ -362,23 +485,24 @@ export function assignmentPairKey(resourceValue, cityID) {
 }
 
 function scorePair(resource, settlement, scoreContext = null) {
-    const key = passKey(resource, settlement);
-    const cached = scoresThisPass.get(key);
+    const bucket = bucketFor(scoresThisPass, settlement);
+    const key = resourceKey(resource);
+    const cached = bucket.get(key);
     if (cached !== undefined) {
         return cached;
     }
     const score = computePairScore(resource, settlement, scoreContext);
-    scoresThisPass.set(key, score);
+    bucket.set(key, score);
     return score;
 }
 
 function computePairScore(resource, settlement, scoreContext = null) {
-    const affectedYields = new Set(effectiveResourceYieldTypes(resource, settlement));
+    const affected = affectedYields(resource, settlement);
     const priority = effectivePriority(settlement.cityID, settlement.settlementNameData?.isTown);
     const cityYieldTotals =
-        scoreContext?.yieldTotalsByCity.get(cityKey(settlement.cityID)) ?? settlementYieldTotals(settlement);
+        scoreContext?.yieldTotalsByCity.get(settlementKey(settlement)) ?? settlementYieldTotals(settlement);
     const yieldTotals = [];
-    affectedYields.forEach((yieldType) => {
+    affected.forEach((yieldType) => {
         if (cityYieldTotals.has(yieldType)) {
             yieldTotals.push(cityYieldTotals.get(yieldType));
         }
@@ -389,7 +513,7 @@ function computePairScore(resource, settlement, scoreContext = null) {
     const openSlots = settlement.availableSlots?.length ?? 0;
     const actualBoost = estimatedTotalBoost(resource, settlement);
 /** Matching specialisations balance their estimated realised yield gains. */
-    const servesPriority = affectedYields.has(priority);
+    const servesPriority = affected.has(priority);
     const specializedLoad = servesPriority ? specializedYieldLoad(settlement, priority, scoreContext) : 0;
     const priorityBonus = servesPriority ? 100000 : 0;
     const distributionScore = servesPriority ? -specializedLoad * 100 : -weakestAffectedYield;
@@ -432,7 +556,7 @@ function happinessDeficits(settlements) {
     for (const settlement of settlements) {
         const isTown = !!settlement.settlementNameData?.isTown;
         const deficit = Math.max(0, -settlementYieldTotal(settlement, HAPPINESS_YIELD));
-        deficits.set(cityKey(settlement.cityID), deficit);
+        deficits.set(settlementKey(settlement), deficit);
         if (!isTown) {
             worstCity = Math.max(worstCity, deficit);
             worstAnywhere = Math.max(worstAnywhere, deficit);
@@ -490,6 +614,8 @@ let lastLoggedTargets = '';
 export function startPlacementRun() {
     hoardRankingThisRun = null;
     lastLoggedTargets = '';
+    // The board this run scores is not the one the last run left behind.
+    clearPlanningCaches();
     // A captured city changes whose resources are imports, and that can only happen
     // between runs.
     forgetImportOrigins();
@@ -506,7 +632,7 @@ function hoardRanking(settlements, scoreContext) {
     const rankedBy = (yieldType) =>
         [...pool]
             .sort((a, b) => bareYield(b, yieldType, scoreContext) - bareYield(a, yieldType, scoreContext))
-            .map((settlement) => cityKey(settlement.cityID));
+            .map((settlement) => settlementKey(settlement));
 
     hoardRankingThisRun = {
         culture: isCultureGatheringEnabled() ? rankedBy(CULTURE_YIELD) : [],
@@ -518,7 +644,7 @@ function hoardRanking(settlements, scoreContext) {
 /** Which settlement holds each role: the highest-ranked city that still has room. */
 function hoardTargets(settlements, scoreContext) {
     const ranking = hoardRanking(settlements, scoreContext);
-    const byKey = new Map(settlements.map((settlement) => [cityKey(settlement.cityID), settlement]));
+    const byKey = new Map(settlements.map((settlement) => [settlementKey(settlement), settlement]));
     const hasRoom = (key) => (byKey.get(key)?.availableSlots?.length ?? 0) > 0;
 
     const cultureCityKey = ranking.culture.find(hasRoom) ?? null;
@@ -545,7 +671,7 @@ function logHoardTargets(byKey, targets) {
 
 /** The score for gathering this resource here, or null if this is not one of the two piles. */
 function hoardScore(resource, settlement, targets, scoreContext) {
-    const key = cityKey(settlement.cityID);
+    const key = settlementKey(settlement);
 
     if (key === targets.cultureCityKey && positiveYieldBoost(resource, settlement, CULTURE_YIELD) > 0) {
         return HOARD_SCORE_BASE + HOARD_CULTURE_FIRST + bareYield(settlement, CULTURE_YIELD, scoreContext) * 100;
@@ -601,12 +727,15 @@ function importFirstScore(resource, settlement, scoreContext) {
 }
 
 /** The first copy of this kind that this settlement may actually take, if any. */
-function assignableCopy(group, settlement, blockedPairs) {
+function assignableCopy(group, settlement, blockedPairs, key) {
     for (const resource of group) {
-        if (blockedPairs.has(assignmentPairKey(resource.resourceValue, settlement.cityID))) {
+        // ⚠️ The pair key is only built when there is something to look up in - the normal case
+        // is an empty set, and this runs per copy per settlement per placement.
+        if (blockedPairs.size > 0
+            && blockedPairs.has(assignmentPairKey(resource.resourceValue, settlement.cityID))) {
             continue;
         }
-        if (canAssignCached(resource.resourceValue, settlement.cityID)) {
+        if (canAssignCached(resource.resourceValue, settlement.cityID, key)) {
             return resource;
         }
     }
@@ -615,9 +744,12 @@ function assignableCopy(group, settlement, blockedPairs) {
 
 export function bestAssignment(model, targetCityID = null, blockedPairs = new Set()) {
     let best = null;
-    // ⚠️ Must come first: what these hold describes the board as it was before the last
-    // assignment landed.
-    startPlanningPass();
+    /*
+     * ⚠️ NOTHING IS CLEARED HERE ANY MORE, and that is deliberate. What the caches hold is
+     * per settlement, and the only caller is the placement loop, which says which settlement
+     * the last placement moved - `forgetSettlementScores` in place.js, beside `forgetEligibility`
+     * and for the same reason. `startPlacementRun` empties them for a run that is starting.
+     */
     const groups = groupByResourceType(pooledResources(model));
     /*
      * ⚠️ The whole empire, then the filter - not the other way round. Quick-assigning one
@@ -627,7 +759,7 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
     const everySettlement = allSettlements(model);
     const scoreContext = buildScoreContext(everySettlement);
     const settlements = everySettlement.filter(
-        (settlement) => !targetCityID || cityKey(settlement.cityID) === cityKey(targetCityID),
+        (settlement) => !targetCityID || settlementKey(settlement) === cityKey(targetCityID),
     );
 
     const targets = hoardTargets(everySettlement, scoreContext);
@@ -643,7 +775,7 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
     for (const group of groups.values()) {
         const representative = group[0];
         const camel = resourceType(representative) === 'RESOURCE_CAMELS';
-        const yieldCount = new Set(resourceYieldTypes(representative)).size;
+        const yieldCount = distinctYieldCount(representative);
         const yieldCountPriority =
             yieldCount === 1
                 ? SINGLE_YIELD_SCORE_BASE
@@ -655,7 +787,7 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
             if (!camel && !settlement.availableSlots?.length) {
                 continue;
             }
-            const resource = assignableCopy(group, settlement, blockedPairs);
+            const resource = assignableCopy(group, settlement, blockedPairs, settlementKey(settlement));
             if (!resource) {
                 continue;
             }
@@ -663,7 +795,7 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
                 ? rescueScore(
                       resource,
                       settlement,
-                      deficits.get(cityKey(settlement.cityID)) ?? 0,
+                      deficits.get(settlementKey(settlement)) ?? 0,
                       camel,
                       happinessResourceExists,
                       townsAreEligible,

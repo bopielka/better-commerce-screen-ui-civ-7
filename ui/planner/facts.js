@@ -6,6 +6,7 @@
  * ITERATED rather than queried, so an uncached read is a full scan of GameInfo.
  */
 import { effectTypeOf, modifierApplies, modifierIsConditional, resourceModifiers } from './effects.js';
+import { onGameDataStale } from '../support/game-data.js';
 
 export const HAPPINESS_YIELD = 'YIELD_HAPPINESS';
 export const PRODUCTION_YIELD = 'YIELD_PRODUCTION';
@@ -322,3 +323,22 @@ export function conditionalBoostStrength(resource, settlement) {
     }
     return 0;
 }
+
+/*
+ * ⚠️ THE AGE REWRITES EVERY ANSWER HERE. Gold is an EMPIRE resource in Antiquity and a TREASURE
+ * one in Exploration, Ivory becomes BONUS, Marble becomes EMPIRE in Modern - each age's
+ * resources.xml rewrites the column, and with it what these caches hold. The `${Game.age}:` keys
+ * are the older half of the same defence; this drops the memory as well. See
+ * support/game-data.js.
+ */
+onGameDataStale(() => {
+    yieldTypeByIcon = null;
+    resourceYieldEffectCache.clear();
+    resourceTypeCache.clear();
+    resourceYieldTypeCache.clear();
+    unitProductionCache.clear();
+    resourceClassCache.clear();
+    importOriginCache.clear();
+    warehouseScalingCache.clear();
+    bestBoostCache.clear();
+});

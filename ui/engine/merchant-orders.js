@@ -332,7 +332,7 @@ export function clearMerchantOrder(unitID) {
 /** One merchant: sign if the engine will have it, walk on if the caller allows it. */
 function advance(unit, city, mayMove) {
     if (signRoute(unit, city.location)) {
-        log(`trade route opened with ${Locale.compose(city.name ?? '')}`);
+        log(() => `trade route opened with ${Locale.compose(city.name ?? '')}`);
         return true;
     }
 

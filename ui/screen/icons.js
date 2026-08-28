@@ -7,6 +7,7 @@
  * bare BLP name needing `url(blp:...)`. Mixing them gives no error, just a blank square.
  */
 import { warn } from '../support/diagnostics.js';
+import { onGameDataStale } from '../support/game-data.js';
 
 /**
  * ⚠️ `UI.getIcon` IS A LOOKUP, not a constant, and its answer cannot change while the game runs -
@@ -62,6 +63,12 @@ export function iconBackground(name, context = null) {
  * is an empire resource in one age and a treasure one in the next.
  */
 const classBackgroundByType = new Map();
+
+// Both maps describe the age's own resources and its atlas; see support/game-data.js.
+onGameDataStale(() => {
+    iconByName.clear();
+    classBackgroundByType.clear();
+});
 
 export function resourceClassBackground(resourceType) {
     // ⚠️ Two lookups deep - the resource table and then the atlas - and it is asked once per

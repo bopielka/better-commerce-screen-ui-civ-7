@@ -29,6 +29,7 @@ import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip
 import { iconBackground, resourceIcon, yieldIcon } from './icons.js';
 import { appendAll, bindActivatable, makeElement } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
+import { onGameDataStale } from '../support/game-data.js';
 
 export const SORT_CLASS = 'najane-trade-sort';
 
@@ -230,6 +231,12 @@ function tabs() {
 /* Cached per resource TYPE: this asks about every resource on every card. */
 const yieldCache = new Map();
 const classCache = new Map();
+
+// What a resource pays and which class it is are the age's own; see support/game-data.js.
+onGameDataStale(() => {
+    yieldCache.clear();
+    classCache.clear();
+});
 
 function yieldsOf(resourceTypeName) {
     if (!yieldCache.has(resourceTypeName)) {

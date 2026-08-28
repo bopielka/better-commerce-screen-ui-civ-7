@@ -2,6 +2,79 @@
 
 Notable changes to **Better Commerce Screen UI**. Newest first.
 
+## 1.11
+
+The third sweep over what the mod costs, and the first one aimed at the part that was always
+going to be the largest: laying out a whole empire. Nothing on screen changes, no setting moves,
+and every feature behaves exactly as it did in 1.10.
+
+### Laying out an empire
+
+- **The planner no longer re-scores the whole empire for every resource it places.** Each
+  placement is still decided against the board the previous one left behind — that rule has not
+  moved, and the header in `place.js` says why. What changed is that the three caches behind the
+  scoring were being emptied *completely* before every single choice, so a resource landing in
+  one settlement threw away the answers for all the others. They are keyed by settlement now and
+  only that settlement's shelf is dropped. On a full empire this is the difference between
+  *placements × kinds × settlements* pieces of work and *placements × kinds*.
+  The other settlements' answers are safe to keep for a concrete reason, and it is not "a
+  resource only pays where it sits": everything a cached score is computed from is already frozen
+  for them — their yield totals come from a cache a placement loop cannot outrun, and buildings
+  cannot be built mid-run. Recomputing would return the same number.
+- **The board is carried rather than rebuilt.** Reading every settlement out of the engine before
+  every placement was two engine calls per settlement plus a whole object graph, repeated for the
+  size of the empire, to reflect a change in *one* settlement. That settlement is re-read; the
+  pool loses the copy that landed; everything else is handed straight back. Once a second the
+  whole board is still read in full, so anything moving the empire from outside this loop — the
+  engine releasing a companion resource, another mod — is picked up, and the scoring caches are
+  dropped on the same clock.
+- **Dropping one settlement's eligibility answers no longer walks every answer in the cache.**
+  The cache was flat and keyed *resource:settlement*, so invalidating one settlement meant a
+  string comparison against every key in it — the size of the pool times the size of the empire,
+  once per placement — plus a copy of the key list. It is nested by settlement now, and the same
+  invalidation is a single delete.
+- **The confirmation poll backs off.** Every placement waits for the engine to actually take the
+  resource, asking every 4ms — each ask a call into the engine plus the settlement's whole
+  resource list. The first 50ms are unchanged, which is the window an assignment normally lands
+  in; past that the interval doubles up to 32ms, so a placement the engine is slow with is asked
+  about a dozen times rather than five hundred.
+- **Fewer throwaway objects in the hot loop.** The settlement key was rebuilt as a string several
+  times per resource-and-settlement pair; the set of yields a resource pays was rebuilt for every
+  pair; the list of yield types was rebuilt for every slotted resource on every pass; and every
+  settlement allocated and *filled* an array of empty slots that nothing ever read but the length
+  of.
+
+### Memory
+
+- **The modifier indexes are built for resources, not for the whole game.** The mod reads what a
+  resource does out of the game's modifier tables — around 12 000 modifiers, 39 000 arguments and
+  15 000 requirements ship in the game's data, of which a few hundred belong to resources. Three
+  indexes were being built over all of it and kept for the session, including a map allocated per
+  modifier in the game and the entire requirement graph. They now cover the resource modifiers,
+  which is all anything has ever asked about — and an id from outside that set still answers
+  correctly, by widening the index on demand. Measured on synthetic tables the size of the
+  game's: 6.8 MB of retained heap that is no longer held, against effectively nothing for the
+  resource-only indexes.
+- **An age transition drops everything read out of the age's tables.** `GameInfo` holds the age
+  being played, so moving to the next age replaces the resource, unit and modifier tables under
+  every index built from them. Two dozen caches across twelve modules now register a reset and are
+  emptied on `GameAgeEnded` — which frees the memory and, more to the point, means no answer describing
+  the previous age can survive into the next one. Whether Gold is an Empire resource or a
+  Treasure one is exactly this kind of answer.
+
+### Elsewhere
+
+- **A Treasure Convoy pass no longer asks the engine about units it has already ruled out.**
+  `UnitMoved` is raised once per tile per unit, so every step your army takes was costing a
+  lookup and two more calls to conclude that a Scout is not a Treasure Fleet. Ids that are not
+  convoys are remembered — only the "no" answers, and only until a unit appears or leaves, so a
+  recycled id can never strand a real convoy.
+- **A trade route card is matched to its route once per pass instead of twice.** Both walks over
+  the cards were running the same lookup.
+- **Diagnostics messages are no longer composed when diagnostics are off.** A handful of them
+  asked the game to compose a settlement or leader name before handing the result to a function
+  that ships switched off.
+
 ## 1.10
 
 Nothing on screen changes and no setting moves. Like 1.9, this release is about what the mod

@@ -7,8 +7,16 @@
  * The consequence for unassigning: taking one out shrinks the settlement's capacity, so others
  * may have to leave first.
  */
+import { onGameDataStale } from '../support/game-data.js';
+
 const bonusSlotsByType = new Map();
 let indexed = false;
+
+// `BonusResourceSlots` is read out of the age's resource table; see support/game-data.js.
+onGameDataStale(() => {
+    bonusSlotsByType.clear();
+    indexed = false;
+});
 
 function indexBonusSlots() {
     if (indexed) {

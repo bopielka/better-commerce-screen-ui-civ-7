@@ -449,6 +449,8 @@ function decorate(card) {
 
     const name = (title.textContent ?? '').trim();
     const route = routeInfo().get(name);
+    // Filed for `applyFilterAndHeaders`, which walks the same cards straight after this.
+    routeByCardThisPass?.set(card, route ?? null);
     if (!route) {
         // A card whose route the projection does not list - leave it as the game drew it
         // rather than showing half a title.
@@ -721,10 +723,24 @@ function removeGroupHeaders() {
 /** Groups the player has clicked shut. Kept for the session, like the sort tabs. */
 const collapsedGroups = new Set();
 
-/** The route entry behind a card, found the same way `decorate` finds it: by its title. */
+/**
+ * The route entry behind a card, found by its title.
+ *
+ * ⚠️ ONCE PER CARD PER PASS. `decorate` and `applyFilterAndHeaders` each walk every card on the
+ * screen, and both used to run this lookup - two `querySelector` calls and two map reads per card
+ * per frame in which the screen changed. The pass map is set up and dropped by `decorateAll`.
+ */
+let routeByCardThisPass = null;
+
 function cardRoute(card) {
+    const cached = routeByCardThisPass?.get(card);
+    if (cached !== undefined) {
+        return cached;
+    }
     const name = (card.querySelector(TITLE_SELECTOR)?.textContent ?? '').trim();
-    return routeInfo().get(name) ?? null;
+    const route = routeInfo().get(name) ?? null;
+    routeByCardThisPass?.set(card, route);
+    return route;
 }
 
 /** Where a route belongs in the unavailable section: limit first, then range, then the rest. */
@@ -859,6 +875,7 @@ function decorateAll() {
         return;
     }
     decorating = true;
+    routeByCardThisPass = new Map();
     try {
         updateMeasuredLayout();
         for (const card of document.querySelectorAll(CARD_SELECTOR)) {
@@ -880,6 +897,8 @@ function decorateAll() {
         }
     } finally {
         decorating = false;
+        // Held for the pass only: the cards are Solid's and come back as different elements.
+        routeByCardThisPass = null;
     }
 }
 
