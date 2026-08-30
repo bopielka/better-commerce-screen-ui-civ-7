@@ -13,7 +13,7 @@ through here — and everything the game raises comes back through here too.
 | `merchant.js` | buying a merchant, walking it, signing the route |
 | `merchant-orders.js` | the standing order a bought merchant carries, turn after turn |
 | `resource-locks.js` | resources pinned in place; obeyed by `unassign.js`, cleared when one leaves |
-| `treasure-convoys.js` | sends loaded Treasure Convoys home and unloads them |
+| `treasure-convoys.js` | sends loaded Treasure Convoys home, unloads them, and announces it |
 | `treasure-return-setting.js` | the switch that turns that off; **on** by default |
 | `tooltip-setting.js` | the switch that hides every tooltip this mod draws; **off** by default |
 | `diplomacy.js` | proposing "Improve Trade Relations" |

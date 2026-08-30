@@ -292,6 +292,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="es_ES">
             <Text>Los convoyes del tesoro cargados navegan por su cuenta hasta tu asentamiento natal más cercano y descargan en cuanto pueden.[N][N]Siguen bajo tu mando: un convoy que muevas tú se queda donde lo dejes y solo se reenvía al principio de tu siguiente turno.</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="es_ES">
+            <Text>Un Convoy del tesoro ha descargado solo: +{1_Gdp} [icon:ECONOMIC_VP] PIB y +{2_Gold} [icon:YIELD_GOLD] Oro.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="es_ES">
+            <Text>{1_Count} Convoyes del tesoro han descargado solos: +{2_Gdp} [icon:ECONOMIC_VP] PIB y +{3_Gold} [icon:YIELD_GOLD] Oro en total.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="es_ES">
             <Text>Bloquear recurso</Text>
         </Row>

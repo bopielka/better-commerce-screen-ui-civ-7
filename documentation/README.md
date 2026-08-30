@@ -30,7 +30,7 @@ Then the module documents, which mirror the folders under `ui/`:
 | 10 | [screen: tabs](10-screen-tabs.md) | `ui/screen/` — the rebuilt and added tabs |
 | 11 | [options and persistence](11-options-and-persistence.md) | `ui/options/`, priority store, factory-first switch |
 | 12 | [localisation](12-localisation.md) | `text/<locale>/` |
-| 13 | [notifications](13-notifications.md) | `ui/screen/assign-notification.js` — the end-turn nag |
+| 13 | [notifications](13-notifications.md) | `ui/screen/` — the end-turn nag, and the convoy toast |
 | 14 | [development workflow](14-development-workflow.md) | Deploying, checking, reading logs, conventions |
 
 ## The one-paragraph summary

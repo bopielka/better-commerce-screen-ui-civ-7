@@ -15,6 +15,9 @@
  * ⚠️ THE ATTEMPT CAP IS NOT TIDINESS - WITHOUT IT THE GAME FREEZES. Same trap as merchant-orders:
  * the engine answers a move it cannot honour with `UnitOperationsCleared`, which is what this
  * module listens for, so the convoy is woken by its own refusal and the cascade never ends.
+ *
+ * ⚠️ An unload is ANNOUNCED on `window`, not drawn here: the toast lives in screen/, which engine
+ * may not import. `screen/treasure-toast.js` listens.
  */
 /*
  * ⚠️ IMPORTED, not global. `Game`, `Players`, `GameplayMap` and friends ARE global here and
@@ -57,6 +60,9 @@ const UNLOAD_COMMAND = 'UNITCOMMAND_DISBAND';
 
 /** The game's own "cancel the queued order"; see `stopJourney`. */
 const CANCEL_COMMAND = 'UNITCOMMAND_CANCEL';
+
+/** What `screen/treasure-toast.js` listens for; the detail carries `{ gdp, gold }`. */
+export const TreasureConvoyUnloadedEventName = 'najane-commerce-treasure-convoy-unloaded';
 
 // ⚠️ A position the command ignores: unloading happens where the unit stands.
 function unloadArgs() {
@@ -126,17 +132,61 @@ function canUnload(unit) {
     }
 }
 
+/**
+ * What this convoy pays out on arrival.
+ *
+ * ⚠️ Both figures come from the ORIGIN SETTLEMENT, not from the unit: `getProducedTreasureFleetGold`
+ * and `getProducedTreasureFleetGDP` are the same pair screen/treasure-tab.js prints on the card, so
+ * the toast cannot disagree with the tab. `getDisbandVictoryPoints` is the fallback for a convoy
+ * whose origin has since been conquered; there is none for the gold, which then reads 0.
+ */
+function convoyWorth(unit) {
+    let gdp = 0;
+    let gold = 0;
+    try {
+        const resources = Cities.get(unit.getAssociatedDisbandCityId())?.Resources;
+        gdp = Number(resources?.getProducedTreasureFleetGDP?.()) || 0;
+        gold = Number(resources?.getProducedTreasureFleetGold?.()) || 0;
+    } catch (error) {
+        warn(`could not read what a treasure convoy is worth: ${error}`);
+    }
+    if (!gdp) {
+        try {
+            gdp = Number(unit.getDisbandVictoryPoints?.()) || 0;
+        } catch (error) {
+            gdp = 0;
+        }
+    }
+    return { gdp, gold };
+}
+
+/** ⚠️ `window.dispatchEvent` from engine/, the same deliberate exception ./stored-setting.js
+ *  records: what draws this is a screen module, which engine may not import. */
+function announceUnload({ gdp, gold }) {
+    try {
+        window.dispatchEvent(
+            new CustomEvent(TreasureConvoyUnloadedEventName, { detail: { gdp, gold } }),
+        );
+    } catch (error) {
+        warn(`could not announce a treasure convoy unloading: ${error}`);
+    }
+}
+
 function unload(unit) {
     if (!canUnload(unit)) {
         return false;
     }
+    // ⚠️ Read BEFORE the request: the command removes the unit, and with it the only route to
+    // the settlement that produced it.
+    const worth = convoyWorth(unit);
     try {
         Game.UnitCommands.sendRequest(unit.id, UNLOAD_COMMAND, unloadArgs());
-        return true;
     } catch (error) {
         warn(`unloading a treasure convoy failed: ${error}`);
         return false;
     }
+    announceUnload(worth);
+    return true;
 }
 
 /** Whether a plot is in our own homeland rather than the distant lands. */

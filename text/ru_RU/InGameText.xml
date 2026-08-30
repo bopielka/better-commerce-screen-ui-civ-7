@@ -302,6 +302,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="ru_RU">
             <Text>Завантажені каравани зі скарбами самі прямують до найближчого поселення на батьківщині й розвантажуються, щойно це стає можливим.[N][N]Керування лишається за вами: караван, який ви пересунули самі, залишається на місці й вирушає далі лише на початку вашого наступного ходу.</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="ru_RU">
+            <Text>Караван зі скарбами розвантажився сам: +{1_Gdp} [icon:ECONOMIC_VP] ВВП і +{2_Gold} [icon:YIELD_GOLD] золота.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="ru_RU">
+            <Text>Каравани зі скарбами ({1_Count}) розвантажилися самі: разом +{2_Gdp} [icon:ECONOMIC_VP] ВВП і +{3_Gold} [icon:YIELD_GOLD] золота.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="ru_RU">
             <Text>Закріпити ресурс</Text>
         </Row>

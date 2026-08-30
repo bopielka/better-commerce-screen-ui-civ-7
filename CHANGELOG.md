@@ -2,6 +2,26 @@
 
 Notable changes to **Better Commerce Screen UI**. Newest first.
 
+## 1.12
+
+### A Treasure Convoy says what it brought home
+
+- **A line at the top of the screen when a Treasure Convoy unloads itself**, naming the GDP and
+  the Gold it just paid out. Automatic return has always been silent: the convoy sails home over
+  several turns, unloads the moment it is allowed to, and the only sign of it was the unit no
+  longer being on the map. Nothing about the return itself changed.
+- The figures are the origin settlement's own `getProducedTreasureFleetGold` and
+  `getProducedTreasureFleetGDP` — **the same pair the Treasure Convoys tab already prints on the
+  card**, deliberately, so the toast cannot disagree with the tab. They are read before the
+  unload command is sent, because the command removes the unit and with it the route back to the
+  settlement that produced it.
+- **Coalesced.** Every convoy already standing in the homeland unloads in the same instant at the
+  start of a turn, so one line per convoy would be a stack of them replacing each other faster
+  than any could be read. They are gathered for 700 ms and announced once, with the totals.
+- Plain DOM, not a game notification: the notification train is for things you have to act on,
+  and this reports something that already happened. It fades after five seconds, takes no clicks,
+  and appears only when *Send convoys home* is on — it is that feature reporting itself.
+
 ## 1.11
 
 The third sweep over what the mod costs, and the first one aimed at the part that was always

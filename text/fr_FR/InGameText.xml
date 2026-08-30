@@ -292,6 +292,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="fr_FR">
             <Text>Les convois de trésor chargés rejoignent d'eux-mêmes votre colonie natale la plus proche et déchargent dès qu'ils le peuvent.[N][N]Vous en gardez la main : un convoi que vous déplacez vous-même reste où vous l'avez laissé, et n'est relancé qu'au début de votre tour suivant.</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="fr_FR">
+            <Text>Un Convoi de trésors a déchargé sa cargaison tout seul : +{1_Gdp} [icon:ECONOMIC_VP] PIB et +{2_Gold} [icon:YIELD_GOLD] Or.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="fr_FR">
+            <Text>{1_Count} Convois de trésors ont déchargé leur cargaison tout seuls : +{2_Gdp} [icon:ECONOMIC_VP] PIB et +{3_Gold} [icon:YIELD_GOLD] Or au total.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="fr_FR">
             <Text>Verrouiller la ressource</Text>
         </Row>

@@ -292,6 +292,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="de_DE">
             <Text>Beladene Schatzkonvois fahren von selbst zur nächstgelegenen Heimatsiedlung und laden ab, sobald es erlaubt ist.[N][N]Ihr behaltet die Kontrolle: Ein Konvoi, den Ihr selbst bewegt, bleibt dort stehen und wird erst zu Beginn Eures nächsten Zuges wieder losgeschickt.</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="de_DE">
+            <Text>Ein Schatzkonvoi hat seine Ladung selbst gelöscht: +{1_Gdp} [icon:ECONOMIC_VP] BIP und +{2_Gold} [icon:YIELD_GOLD] Gold.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="de_DE">
+            <Text>{1_Count} Schatzkonvois haben ihre Ladung selbst gelöscht: insgesamt +{2_Gdp} [icon:ECONOMIC_VP] BIP und +{3_Gold} [icon:YIELD_GOLD] Gold.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="de_DE">
             <Text>Ressource sperren</Text>
         </Row>

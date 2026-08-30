@@ -292,6 +292,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="it_IT">
             <Text>I convogli del tesoro carichi raggiungono da soli il tuo insediamento madrepatria più vicino e scaricano appena è consentito.[N][N]Restano sotto il tuo controllo: un convoglio che muovi tu rimane dove lo lasci e viene rimandato solo all’inizio del tuo turno successivo.</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="it_IT">
+            <Text>Un Convoglio del tesoro ha scaricato da solo: +{1_Gdp} [icon:ECONOMIC_VP] PIL e +{2_Gold} [icon:YIELD_GOLD] Oro.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="it_IT">
+            <Text>{1_Count} Convogli del tesoro hanno scaricato da soli: +{2_Gdp} [icon:ECONOMIC_VP] PIL e +{3_Gold} [icon:YIELD_GOLD] Oro in totale.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="it_IT">
             <Text>Blocca risorsa</Text>
         </Row>

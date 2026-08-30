@@ -339,6 +339,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="pl_PL">
             <Text>Załadowane konwoje skarbów same płyną do najbliższej osady w ojczyźnie i rozładowują się, gdy tylko mogą.[N][N]Nadal nimi kierujesz: konwój, który przesuniesz sam, zostaje tam, gdzie go zostawisz, i rusza dalej dopiero na początku twojej następnej tury.</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="pl_PL">
+            <Text>Konwój skarbów rozładował się sam: +{1_Gdp} [icon:ECONOMIC_VP] PKB i +{2_Gold} [icon:YIELD_GOLD] złota.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="pl_PL">
+            <Text>Konwoje skarbów ({1_Count}) rozładowały się same: łącznie +{2_Gdp} [icon:ECONOMIC_VP] PKB i +{3_Gold} [icon:YIELD_GOLD] złota.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="pl_PL">
             <Text>Zablokuj zasób</Text>
         </Row>

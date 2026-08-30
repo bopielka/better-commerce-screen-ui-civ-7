@@ -292,6 +292,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="zh_Hans_CN">
             <Text>满载的财宝船队会自动驶向最近的母国聚落，并在允许时立即卸货。[N][N]你仍可随时接管：由你亲自移动的船队会留在原地，直到你的下一回合开始才会再次出发。</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="zh_Hans_CN">
+            <Text>宝藏护送队已自动卸货：+{1_Gdp}[icon:ECONOMIC_VP]GDP、+{2_Gold}[icon:YIELD_GOLD]金币。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="zh_Hans_CN">
+            <Text>{1_Count} 支宝藏护送队已自动卸货：共 +{2_Gdp}[icon:ECONOMIC_VP]GDP、+{3_Gold}[icon:YIELD_GOLD]金币。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="zh_Hans_CN">
             <Text>锁定资源</Text>
         </Row>

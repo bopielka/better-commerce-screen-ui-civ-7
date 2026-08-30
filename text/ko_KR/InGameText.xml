@@ -292,6 +292,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="ko_KR">
             <Text>화물을 실은 보물 수송선단이 가장 가까운 본토 정착지로 스스로 이동하여 가능해지는 즉시 하역합니다.[N][N]조작권은 그대로 유지됩니다. 직접 움직인 선단은 그 자리에 남으며, 다음 턴이 시작될 때 다시 출발합니다.</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="ko_KR">
+            <Text>보물 호송대가 자동으로 화물을 내렸습니다: [icon:ECONOMIC_VP] GDP +{1_Gdp}, [icon:YIELD_GOLD] 금 +{2_Gold}.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="ko_KR">
+            <Text>보물 호송대 {1_Count}대가 자동으로 화물을 내렸습니다: 합계 [icon:ECONOMIC_VP] GDP +{2_Gdp}, [icon:YIELD_GOLD] 금 +{3_Gold}.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="ko_KR">
             <Text>자원 고정</Text>
         </Row>
