@@ -60,9 +60,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="ru_RU">
             <Text>Призначає непризначені ресурси лише цьому поселенню, зберігаючи наявні призначення.</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="ru_RU">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="ru_RU">
             <Text>Призначати ресурси автоматично</Text>
         </Row>
@@ -468,6 +465,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="ru_RU">
             <Text>Ви вже розпочали цю дипломатичну дію з цим лідером цього ходу.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="ru_RU">
+            <Text>Моды Najane: торговля</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="ru_RU">
+            <Text>Моды Najane: экран торговли</Text>
         </Row>
     </LocalizedText>
 </Database>

@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="ja_JP">
             <Text>既存の割り当てを保ったまま、未割り当ての資源をこの居住地だけに割り当てます。</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="ja_JP">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="ja_JP">
             <Text>資源を自動で割り当てる</Text>
         </Row>
@@ -458,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="ja_JP">
             <Text>このターン、この指導者に対し、すでに同じ外交アクションを実行しています。</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="ja_JP">
+            <Text>Najane MOD: 商業</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="ja_JP">
+            <Text>Najane MOD: 商業画面</Text>
         </Row>
     </LocalizedText>
 </Database>

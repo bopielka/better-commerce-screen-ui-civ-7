@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="ko_KR">
             <Text>기존 할당을 유지한 채, 할당되지 않은 자원을 이 정착지에만 할당합니다.</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="ko_KR">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="ko_KR">
             <Text>자원 자동 할당</Text>
         </Row>
@@ -458,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="ko_KR">
             <Text>이번 턴에 이미 이 지도자에 대해 이 외교 활동을 실행 중입니다.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="ko_KR">
+            <Text>Najane 모드: 상업</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="ko_KR">
+            <Text>Najane 모드: 상업 화면</Text>
         </Row>
     </LocalizedText>
 </Database>

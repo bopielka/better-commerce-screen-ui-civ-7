@@ -52,9 +52,6 @@
             <Text>Przypisuje nieprzydzielone zasoby wyłącznie do tej osady, zachowując dotychczasowe przydziały.</Text>
         </Row>
 
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="pl_PL">
-            <Text>Lepszy widok zasobów Najane</Text>
-        </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="pl_PL">
             <Text>Automatycznie przypisuj zasoby</Text>
@@ -481,6 +478,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="pl_PL">
             <Text>To działanie dyplomatyczne względem tej cywilizacji zostało już przez ciebie rozpoczęte w tej turze.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="pl_PL">
+            <Text>Mody Najane: handel</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="pl_PL">
+            <Text>Mody Najane: widok zasobów</Text>
         </Row>
     </LocalizedText>
 </Database>

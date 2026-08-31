@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="es_ES">
             <Text>Asigna los recursos sin asignar solo a este asentamiento, conservando las asignaciones existentes.</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="es_ES">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="es_ES">
             <Text>Asignar recursos automáticamente</Text>
         </Row>
@@ -458,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="es_ES">
             <Text>Ya estás realizando esta Acción diplomática con este líder en este turno.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="es_ES">
+            <Text>Mods de Najane: comercio</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="es_ES">
+            <Text>Mods de Najane: pantalla de comercio</Text>
         </Row>
     </LocalizedText>
 </Database>

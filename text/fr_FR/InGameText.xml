@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="fr_FR">
             <Text>Assigne les ressources non assignées à cette seule colonie, en conservant les assignations existantes.</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="fr_FR">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="fr_FR">
             <Text>Assigner les ressources automatiquement</Text>
         </Row>
@@ -458,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="fr_FR">
             <Text>Cette action diplomatique est déjà en cours avec ce dirigeant durant ce tour.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="fr_FR">
+            <Text>Mods de Najane: commerce</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="fr_FR">
+            <Text>Mods de Najane: écran de commerce</Text>
         </Row>
     </LocalizedText>
 </Database>

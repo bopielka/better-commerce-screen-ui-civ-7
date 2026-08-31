@@ -2,6 +2,35 @@
 
 Notable changes to **Better Commerce Screen UI**. Newest first.
 
+## Najane mods: one settings block (2026-08-30)
+
+### One block of settings across all three Najane mods
+
+Every Najane mod's settings now sit together in the shared "Mods" tab, under headings that all
+begin with the family name. Naming them alike was not enough - they were still scattered down the
+tab with other mods' headings between them.
+
+⚠️ **The on-screen order is the order `Options.addOption` was called in, and nothing else.**
+`screen-options.js` builds its rows by iterating `Options.data`, which is a Map and so is in
+insertion order, and `screen-options-category.js` creates a group's heading the first time an
+option asks for it. A mod adding its own options from its own init callback therefore interleaves
+with every other mod that does the same.
+
+⚠️ **The fix is a handshake through one global, and it works because of the timing.**
+`Options.init()` runs EVERY registered init callback in one pass, and only when the options screen
+opens - by which point every mod has long since loaded. So all three mods register their options
+into a shared registry at load time, and whichever one's callback fires first adds all of them in
+one uninterrupted burst. `ui/options/najane-mod-options-registry.js` is shared verbatim by the
+three mods; `sort` (10 specialists, 20 city, 30 commerce) fixes the running order so the sections
+do not change places depending on which mod loaded first.
+
+⚠️ **The re-entry guard is a probe, not a flag.** `reInitOptions()` clears `Options.data` and
+re-arms the same callbacks, so a boolean would be stuck true and the settings would come back
+empty the second time the screen was opened. Asking whether an option we added is still registered
+answers "has this cycle been handled" without having to be told.
+
+---
+
 ## 1.12
 
 ### A Treasure Convoy says what it brought home

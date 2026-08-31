@@ -60,9 +60,6 @@
             <Text>Assigns currently unassigned Resources only to this Settlement while preserving existing assignments.</Text>
         </Row>
 
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE">
             <Text>Assign Resources automatically</Text>
@@ -501,6 +498,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED">
             <Text>Already running this Diplomatic Action with this Leader this turn.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE">
+            <Text>Najane Mods: commerce</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW">
+            <Text>Najane Mods: commerce screen</Text>
         </Row>
     </EnglishText>
 </Database>

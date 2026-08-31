@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="zh_Hans_CN">
             <Text>只把未分配的资源分配给这个定居地，并保留现有分配。</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="zh_Hans_CN">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="zh_Hans_CN">
             <Text>自动分配资源</Text>
         </Row>
@@ -458,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="zh_Hans_CN">
             <Text>本回合已经在进行针对此领袖的外交行动。</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="zh_Hans_CN">
+            <Text>Najane 模组: 商业</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="zh_Hans_CN">
+            <Text>Najane 模组: 商业界面</Text>
         </Row>
     </LocalizedText>
 </Database>

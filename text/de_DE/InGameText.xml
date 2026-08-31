@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="de_DE">
             <Text>Weist nicht zugewiesene Ressourcen nur dieser Siedlung zu und behält bestehende Zuweisungen bei.</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="de_DE">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="de_DE">
             <Text>Ressourcen automatisch zuweisen</Text>
         </Row>
@@ -458,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="de_DE">
             <Text>Ihr führt diese diplomatische Aktion in diesem Zug bereits mit diesem Anführer durch.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="de_DE">
+            <Text>Najane-Mods: Handel</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="de_DE">
+            <Text>Najane-Mods: Handelsansicht</Text>
         </Row>
     </LocalizedText>
 </Database>

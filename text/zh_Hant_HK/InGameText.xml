@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="zh_Hant_HK">
             <Text>只把未指派的資源指派給這個聚落，並保留現有指派。</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="zh_Hant_HK">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="zh_Hant_HK">
             <Text>自動指派資源</Text>
         </Row>
@@ -458,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="zh_Hant_HK">
             <Text>本回合已經在和此領袖執行此外交行動。</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="zh_Hant_HK">
+            <Text>Najane 模組: 商業</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="zh_Hant_HK">
+            <Text>Najane 模組: 商業介面</Text>
         </Row>
     </LocalizedText>
 </Database>

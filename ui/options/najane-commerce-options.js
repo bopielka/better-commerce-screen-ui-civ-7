@@ -20,6 +20,7 @@ import {
 } from '../planner/hoard-setting.js';
 import { isResourceLockingAllowed, setResourceLockingAllowed } from '../engine/resource-locks.js';
 import { areModTooltipsHidden, setModTooltipsHidden } from '../engine/tooltip-setting.js';
+import { flushNajaneOptions, registerNajaneOptions } from './najane-mod-options-registry.js';
 
 /**
  * Mod options, under a "Mods" tab in the options screen.
@@ -35,7 +36,23 @@ CategoryData[CategoryType.Mods] ??= {
 const MOD_ID = 'better-commerce-screen-ui';
 
 /** This mod's own heading inside the shared "Mods" tab. */
-const OPTION_GROUP = 'najane_commerce';
+/**
+ * The two headings this mod owns in the shared "Mods" tab.
+ *
+ * ⚠️ `najane_mods_*` IS A CONVENTION ACROSS THREE MODS (user's instruction, 2026-08-30). Better
+ * City UI and Better Specialists UI use the same prefix and the same "Najane Mods: x" heading
+ * pattern, so all of them read as one family rather than as three unrelated blocks.
+ *
+ * ⚠️ THE HEADING TEXT IS DERIVED, NOT PASSED. `GetGroupLocKey` uppercases the group name into
+ * `LOC_OPTIONS_GROUP_<NAME>`, so these strings and the localisation tags have to be kept in step
+ * by hand - nothing errors when they drift, the player just sees a raw tag.
+ *
+ * ⚠️ Split along the line that already ran through this list: what gets ASSIGNED WHERE, and how
+ * the screen READS. The old single heading held both and the file already carried a comment
+ * apologising for it.
+ */
+const GROUP_ASSIGN = 'najane_mods_commerce';
+const GROUP_VIEW = 'najane_mods_commerce_view';
 
 export const CommerceOptionsChangedEventName = 'najane-commerce-options-changed';
 
@@ -148,86 +165,102 @@ const HAPPINESS_ITEMS = [
 ];
 
 // ⚠️ Order matters: a group is laid out in the order its options are added.
-Options.addInitCallback(() => {
-    Options.addOption({
-        category: CategoryType.Mods,
-        group: OPTION_GROUP,
-        type: OptionType.Dropdown,
-        id: 'najane-commerce-happiness-priority',
-        initListener: (info) => (info.selectedItemIndex = happinessPriorityMode()),
-        updateListener: (_info, value) => setHappinessPriorityMode(value),
-        label: 'LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS',
-        description: 'LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION',
-        dropdownItems: HAPPINESS_ITEMS,
-    });
+/**
+ * ⚠️ REGISTERED, NOT ADDED. Going straight to `Options.addInitCallback` puts this mod's headings
+ * wherever its callback happens to fall among every other mod's, which scattered the Najane
+ * sections down the tab. The registry collects all three mods and adds them in one burst, so the
+ * headings come out adjacent. See ui/options/najane-mod-options-registry.js.
+ *
+ * ⚠️ `sort` and `probeId` are part of that contract: `sort` is this mod's fixed place in the
+ * running order, `probeId` is the first option below and is how the registry recognises an init
+ * cycle it has already handled.
+ */
+registerNajaneOptions({
+    sort: 30,
+    probeId: 'najane-commerce-happiness-priority',
+    add: () => {
+        Options.addOption({
+            category: CategoryType.Mods,
+            group: GROUP_ASSIGN,
+            type: OptionType.Dropdown,
+            id: 'najane-commerce-happiness-priority',
+            initListener: (info) => (info.selectedItemIndex = happinessPriorityMode()),
+            updateListener: (_info, value) => setHappinessPriorityMode(value),
+            label: 'LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS',
+            description: 'LOC_OPTIONS_NAJANE_COMMERCE_HAPPINESS_DESCRIPTION',
+            dropdownItems: HAPPINESS_ITEMS,
+        });
 
-    Options.addOption({
-        category: CategoryType.Mods,
-        group: OPTION_GROUP,
-        type: OptionType.Dropdown,
-        id: 'najane-commerce-auto-assign-mode',
-        initListener: (info) => (info.selectedItemIndex = CommerceOptions.autoAssignMode),
-        updateListener: (_info, value) => (CommerceOptions.autoAssignMode = value),
-        label: 'LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE',
-        description: 'LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION',
-        dropdownItems: MODE_ITEMS,
-    });
+        Options.addOption({
+            category: CategoryType.Mods,
+            group: GROUP_ASSIGN,
+            type: OptionType.Dropdown,
+            id: 'najane-commerce-auto-assign-mode',
+            initListener: (info) => (info.selectedItemIndex = CommerceOptions.autoAssignMode),
+            updateListener: (_info, value) => (CommerceOptions.autoAssignMode = value),
+            label: 'LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE',
+            description: 'LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION',
+            dropdownItems: MODE_ITEMS,
+        });
 
-    Options.addOption({
-        category: CategoryType.Mods,
-        group: OPTION_GROUP,
-        type: OptionType.Checkbox,
-        id: 'najane-commerce-skip-assign-prompt',
-        initListener: (info) => (info.currentValue = CommerceOptions.skipAssignPrompt),
-        updateListener: (_info, value) => (CommerceOptions.skipAssignPrompt = value),
-        label: 'LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT',
-        description: 'LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION',
-    });
+        Options.addOption({
+            category: CategoryType.Mods,
+            group: GROUP_ASSIGN,
+            type: OptionType.Checkbox,
+            id: 'najane-commerce-skip-assign-prompt',
+            initListener: (info) => (info.currentValue = CommerceOptions.skipAssignPrompt),
+            updateListener: (_info, value) => (CommerceOptions.skipAssignPrompt = value),
+            label: 'LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT',
+            description: 'LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT_DESCRIPTION',
+        });
 
-    Options.addOption({
-        category: CategoryType.Mods,
-        group: OPTION_GROUP,
-        type: OptionType.Checkbox,
-        id: 'najane-commerce-allow-resource-locks',
-        initListener: (info) => (info.currentValue = isResourceLockingAllowed()),
-        updateListener: (_info, value) => setResourceLockingAllowed(value),
-        label: 'LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS',
-        description: 'LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION',
-    });
+        Options.addOption({
+            category: CategoryType.Mods,
+            group: GROUP_ASSIGN,
+            type: OptionType.Checkbox,
+            id: 'najane-commerce-allow-resource-locks',
+            initListener: (info) => (info.currentValue = isResourceLockingAllowed()),
+            updateListener: (_info, value) => setResourceLockingAllowed(value),
+            label: 'LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS',
+            description: 'LOC_OPTIONS_NAJANE_COMMERCE_ALLOW_LOCKS_DESCRIPTION',
+        });
 
-    Options.addOption({
-        category: CategoryType.Mods,
-        group: OPTION_GROUP,
-        type: OptionType.Checkbox,
-        id: 'najane-commerce-gather-culture',
-        initListener: (info) => (info.currentValue = isCultureGatheringEnabled()),
-        updateListener: (_info, value) => setCultureGatheringEnabled(value),
-        label: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE',
-        description: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION',
-    });
+        Options.addOption({
+            category: CategoryType.Mods,
+            group: GROUP_VIEW,
+            type: OptionType.Checkbox,
+            id: 'najane-commerce-gather-culture',
+            initListener: (info) => (info.currentValue = isCultureGatheringEnabled()),
+            updateListener: (_info, value) => setCultureGatheringEnabled(value),
+            label: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE',
+            description: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_CULTURE_DESCRIPTION',
+        });
 
-    Options.addOption({
-        category: CategoryType.Mods,
-        group: OPTION_GROUP,
-        type: OptionType.Checkbox,
-        id: 'najane-commerce-gather-gold',
-        initListener: (info) => (info.currentValue = isGoldGatheringEnabled()),
-        updateListener: (_info, value) => setGoldGatheringEnabled(value),
-        label: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD',
-        description: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION',
-    });
+        Options.addOption({
+            category: CategoryType.Mods,
+            group: GROUP_VIEW,
+            type: OptionType.Checkbox,
+            id: 'najane-commerce-gather-gold',
+            initListener: (info) => (info.currentValue = isGoldGatheringEnabled()),
+            updateListener: (_info, value) => setGoldGatheringEnabled(value),
+            label: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD',
+            description: 'LOC_OPTIONS_NAJANE_COMMERCE_GATHER_GOLD_DESCRIPTION',
+        });
 
-    // ⚠️ Last deliberately: it is about how the screen READS, not about what gets assigned where.
-    Options.addOption({
-        category: CategoryType.Mods,
-        group: OPTION_GROUP,
-        type: OptionType.Checkbox,
-        id: 'najane-commerce-hide-tooltips',
-        initListener: (info) => (info.currentValue = areModTooltipsHidden()),
-        updateListener: (_info, value) => setModTooltipsHidden(value),
-        label: 'LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS',
-        description: 'LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION',
-    });
+        // ⚠️ Last within its own heading, which is now what "about how the screen READS" means here.
+        Options.addOption({
+            category: CategoryType.Mods,
+            group: GROUP_VIEW,
+            type: OptionType.Checkbox,
+            id: 'najane-commerce-hide-tooltips',
+            initListener: (info) => (info.currentValue = areModTooltipsHidden()),
+            updateListener: (_info, value) => setModTooltipsHidden(value),
+            label: 'LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS',
+            description: 'LOC_OPTIONS_NAJANE_COMMERCE_HIDE_TOOLTIPS_DESCRIPTION',
+        });
+    },
 });
 
+// ⚠️ Every Najane mod registers this same flush; the first one to fire adds all of them.
+Options.addInitCallback(flushNajaneOptions);
 export { CommerceOptions as default };
