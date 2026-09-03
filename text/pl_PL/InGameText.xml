@@ -52,9 +52,6 @@
             <Text>Przypisuje nieprzydzielone zasoby wyłącznie do tej osady, zachowując dotychczasowe przydziały.</Text>
         </Row>
 
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="pl_PL">
-            <Text>Lepszy widok zasobów Najane</Text>
-        </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="pl_PL">
             <Text>Automatycznie przypisuj zasoby</Text>
@@ -339,6 +336,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="pl_PL">
             <Text>Załadowane konwoje skarbów same płyną do najbliższej osady w ojczyźnie i rozładowują się, gdy tylko mogą.[N][N]Nadal nimi kierujesz: konwój, który przesuniesz sam, zostaje tam, gdzie go zostawisz, i rusza dalej dopiero na początku twojej następnej tury.</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="pl_PL">
+            <Text>Konwój skarbów rozładował się sam: +{1_Gdp} [icon:ECONOMIC_VP] PKB i +{2_Gold} [icon:YIELD_GOLD] złota.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="pl_PL">
+            <Text>Konwoje skarbów ({1_Count}) rozładowały się same: łącznie +{2_Gdp} [icon:ECONOMIC_VP] PKB i +{3_Gold} [icon:YIELD_GOLD] złota.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="pl_PL">
             <Text>Zablokuj zasób</Text>
         </Row>
@@ -473,6 +478,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="pl_PL">
             <Text>To działanie dyplomatyczne względem tej cywilizacji zostało już przez ciebie rozpoczęte w tej turze.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="pl_PL">
+            <Text>Mody Najane: handel</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="pl_PL">
+            <Text>Mody Najane: widok zasobów</Text>
         </Row>
     </LocalizedText>
 </Database>

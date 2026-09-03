@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="pt_BR">
             <Text>Atribui os recursos não atribuídos apenas a este assentamento, preservando as atribuições existentes.</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="pt_BR">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="pt_BR">
             <Text>Atribuir recursos automaticamente</Text>
         </Row>
@@ -292,6 +289,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="pt_BR">
             <Text>Comboios do tesouro carregados navegam sozinhos até o seu assentamento natal mais próximo e descarregam assim que for permitido.[N][N]Você continua no comando: um comboio que você mover fica onde o deixou e só é reenviado no início do seu próximo turno.</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="pt_BR">
+            <Text>Um Comboio do Tesouro descarregou sozinho: +{1_Gdp} [icon:ECONOMIC_VP] PIB e +{2_Gold} [icon:YIELD_GOLD] Ouro.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="pt_BR">
+            <Text>{1_Count} Comboios do Tesouro descarregaram sozinhos: +{2_Gdp} [icon:ECONOMIC_VP] PIB e +{3_Gold} [icon:YIELD_GOLD] Ouro no total.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="pt_BR">
             <Text>Travar recurso</Text>
         </Row>
@@ -450,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="pt_BR">
             <Text>Já está executando esta Ação Diplomática com este Líder neste turno.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="pt_BR">
+            <Text>Mods de Najane: comércio</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="pt_BR">
+            <Text>Mods de Najane: tela de comércio</Text>
         </Row>
     </LocalizedText>
 </Database>

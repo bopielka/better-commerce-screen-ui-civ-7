@@ -10,13 +10,14 @@ import './screen/factory-tab.js';
 // Wraps the trade route card - its own tab and its own mount.
 import './screen/trade-routes.js';
 
-// All six run with the screen CLOSED, so they start here rather than from a component.
+// All seven run with the screen CLOSED, so they start here rather than from a component.
 import { startMerchantOrders } from './engine/merchant-orders.js';
 import { startTreasureConvoys } from './engine/treasure-convoys.js';
 import { startResourceLockUpkeep } from './engine/resource-locks.js';
 import { startAutoAssign } from './planner/auto-assign.js';
 import { startAssignNotification } from './screen/assign-notification.js';
 import { startDockResourceButton } from './screen/dock-resource-button.js';
+import { startTreasureToast } from './screen/treasure-toast.js';
 
 import { logEventStats, onEngineEvent } from './engine/events.js';
 import { TooltipSettingChangedEventName } from './engine/tooltip-setting.js';
@@ -31,6 +32,8 @@ startAssignNotification();
 startMerchantOrders();
 // Same for a convoy at sea.
 startTreasureConvoys();
+// And the line that says what one of them just brought home.
+startTreasureToast();
 // The HUD dock button: coloured when unlocked, pulsing when something in the pool would fit.
 startDockResourceButton();
 // A lock belongs to a resource IN a settlement, so it drops when the resource leaves.

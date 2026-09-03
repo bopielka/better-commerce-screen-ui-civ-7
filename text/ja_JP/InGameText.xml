@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="ja_JP">
             <Text>既存の割り当てを保ったまま、未割り当ての資源をこの居住地だけに割り当てます。</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="ja_JP">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="ja_JP">
             <Text>資源を自動で割り当てる</Text>
         </Row>
@@ -292,6 +289,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="ja_JP">
             <Text>積荷のある財宝輸送船団は、最寄りの母国の集落へ自動で向かい、可能になり次第すぐに荷を降ろします。[N][N]操作権はあなたのままです。自分で動かした船団はその場に留まり、次の自分のターンの開始時にあらためて送り出されます。</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="ja_JP">
+            <Text>財宝輸送隊が自動で荷を降ろしました：[icon:ECONOMIC_VP] GDP +{1_Gdp}、[icon:YIELD_GOLD] ゴールド +{2_Gold}。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="ja_JP">
+            <Text>財宝輸送隊 {1_Count} 隊が自動で荷を降ろしました：合計 [icon:ECONOMIC_VP] GDP +{2_Gdp}、[icon:YIELD_GOLD] ゴールド +{3_Gold}。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="ja_JP">
             <Text>資源を固定</Text>
         </Row>
@@ -450,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="ja_JP">
             <Text>このターン、この指導者に対し、すでに同じ外交アクションを実行しています。</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="ja_JP">
+            <Text>Najane MOD: 商業</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="ja_JP">
+            <Text>Najane MOD: 商業画面</Text>
         </Row>
     </LocalizedText>
 </Database>

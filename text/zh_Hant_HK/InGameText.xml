@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="zh_Hant_HK">
             <Text>只把未指派的資源指派給這個聚落，並保留現有指派。</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="zh_Hant_HK">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="zh_Hant_HK">
             <Text>自動指派資源</Text>
         </Row>
@@ -292,6 +289,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="zh_Hant_HK">
             <Text>滿載的財寶船隊會自動駛向最近的母國聚落，並在允許時立即卸貨。[N][N]你仍可隨時接管：由你親自移動的船隊會留在原地，直到你的下一回合開始才會再次出發。</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="zh_Hant_HK">
+            <Text>寶藏護衛隊已自動卸貨：+{1_Gdp}[icon:ECONOMIC_VP] GDP 和 +{2_Gold}[icon:YIELD_GOLD]金幣。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="zh_Hant_HK">
+            <Text>{1_Count} 支寶藏護衛隊已自動卸貨：合計 +{2_Gdp}[icon:ECONOMIC_VP] GDP 和 +{3_Gold}[icon:YIELD_GOLD]金幣。</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="zh_Hant_HK">
             <Text>鎖定資源</Text>
         </Row>
@@ -450,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="zh_Hant_HK">
             <Text>本回合已經在和此領袖執行此外交行動。</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="zh_Hant_HK">
+            <Text>Najane 模組: 商業</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="zh_Hant_HK">
+            <Text>Najane 模組: 商業介面</Text>
         </Row>
     </LocalizedText>
 </Database>

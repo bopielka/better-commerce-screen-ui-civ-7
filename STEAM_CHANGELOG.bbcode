@@ -6,6 +6,9 @@ Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the sourc
 [h2]1.12[/h2]
 [list]
 [*][b]Fixed: "Reassign All" could leave Resources in the pool with empty slots all over your empire.[/b] Three causes, all in the same path. Emptying the empire came back before the game had finished doing it, so the layout that followed ran against a board that was still changing and stopped early. A Resource the game turned down in ONE settlement was set aside for the whole pass instead of just for that settlement, so it was never offered anywhere else. And a single operation the game would not accept ended the run outright, abandoning everything after it.
+[*][b]A Treasure Convoy that sails home by itself now says so.[/b] A short line appears at the top of the screen when one unloads, naming the GDP and Gold it just paid out. Automatic return was silent before this — the only sign of it was the convoy no longer being on the map.
+[*][b]Several convoys arriving together are announced once, with the totals[/b], rather than as a stack of lines replacing each other faster than any of them could be read.
+[*]The figures are the same ones the Treasure Convoys tab already prints on the card, so the two cannot disagree. Nothing about the return itself changed, and the line only appears when [b]Send convoys home[/b] is on.
 [*][b]Fixed: the mod reported itself as version 1.10.[/b]
 [/list]
 

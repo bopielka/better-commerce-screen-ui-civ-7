@@ -1,4 +1,9 @@
-# 13 — `ui/screen/assign-notification.js` — the end-turn nag
+# 13 — what the mod puts in front of the player
+
+Two unrelated things, both about telling the player something: the end-turn nag this mod
+**declines to draw**, and the one line it **adds** itself.
+
+## `assign-notification.js` — the end-turn nag
 
 411 lines for one behaviour, and the file is dense with dead ends. Read this before touching it.
 
@@ -252,3 +257,66 @@ being wrong is one late re-check, which happens anyway.
 That is why this module can hide the icon **before** it is ever drawn rather than a second
 afterwards: if a pass is coming, whatever is unassigned right now says nothing about what will be
 unassigned when it finishes.
+
+---
+
+## `treasure-toast.js` — a convoy saying what it brought home
+
+Automatic Treasure Convoy return (`engine/treasure-convoys.js`, on by default) used to be
+entirely silent: the convoy sails home over several turns, unloads the moment it is allowed to,
+and the only sign of it was the unit no longer being on the map. This is the line that says so —
+a fixed strip under the top bar, no pointer events, gone after five seconds.
+
+### ⚠️ Driven by a window event, not by an import
+
+`engine/treasure-convoys.js` is what knows a convoy unloaded, and **engine may not import
+screen**. So it dispatches `TreasureConvoyUnloadedEventName` on `window` with
+`{ gdp, gold }`, and this module listens. Same one-way direction as a setting and the checkbox
+that draws it, and the same deliberate exception to the layer rule that
+[`stored-setting.js`](05-engine.md) already records.
+
+It is started from the entry point rather than from a component: a convoy unloads with the
+Commerce screen closed.
+
+### ⚠️ Where the two figures come from
+
+Both are the **origin settlement's** own `getProducedTreasureFleetGDP` and
+`getProducedTreasureFleetGold` — the pair [`treasure-tab.js`](10-screen-tabs.md) already prints
+on the convoy card. Deliberately the same source: two ways of working out what a convoy is worth
+is how the toast and the tab come to disagree.
+
+They are read **before** the unload command is sent. The command removes the unit, and with it
+`getAssociatedDisbandCityId` — the only route back to the settlement that produced it.
+
+⚠️ `getDisbandVictoryPoints()` on the unit is the fallback for the GDP when the origin settlement
+has since been conquered. There is none for the gold, which then reads 0.
+
+### ⚠️ Coalesced, and that is the point rather than a nicety
+
+Every convoy already standing in the homeland unloads **in the same instant** at the start of a
+turn. One toast per convoy would be a stack of them replacing each other faster than any could be
+read, so they are gathered for `GATHER_MS = 700` and announced once with the totals — one
+message for one convoy, another for several.
+
+### ⚠️ Plain DOM, not a game notification
+
+The engine's notification train is for things the player must **act on**. This reports something
+that already happened, and putting it there would make it another item to dismiss every turn.
+
+### Two traps carried over from the same feature in Better City UI
+
+⚠️ `gatherTimer` is initialised to **`undefined`, not `null`**. It is compared with
+`!== undefined` to mean "a timer is already running"; as `null` that test is true before the
+first timer has ever been set, so the gather timer never starts and the toast cannot appear once.
+
+⚠️ The fade-in waits **two frames**. Setting `opacity` in the same frame the element is added
+skips the transition entirely — there is nothing to animate from.
+
+⚠️ `top: 12.5rem`, and the offset is not arbitrary. Repair Shop+'s repair summary sits at
+`5.5rem` and Better City UI's citizen toast at `9rem`; all three are centred at the top with the
+same z-index and all three fire at the start of a turn, so at a shared offset the later one
+simply covers the earlier.
+
+⚠️ The text goes through `Locale.stylize` into `innerHTML`, not `textContent`: it carries
+`[icon:ECONOMIC_VP]` and `[icon:YIELD_GOLD]`, which are markup rather than characters and reach
+the screen as literal square brackets otherwise.

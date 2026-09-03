@@ -50,9 +50,6 @@
         <Row Tag="LOC_NAJANE_COMMERCE_QUICK_ASSIGN_TOOLTIP" Language="it_IT">
             <Text>Assegna le risorse non assegnate solo a questo insediamento, mantenendo le assegnazioni esistenti.</Text>
         </Row>
-        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_COMMERCE" Language="it_IT">
-            <Text>Better Commerce Screen UI by Najane</Text>
-        </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE" Language="it_IT">
             <Text>Assegna le risorse automaticamente</Text>
         </Row>
@@ -292,6 +289,14 @@
         <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_AUTO_RETURN_TOOLTIP" Language="it_IT">
             <Text>I convogli del tesoro carichi raggiungono da soli il tuo insediamento madrepatria più vicino e scaricano appena è consentito.[N][N]Restano sotto il tuo controllo: un convoglio che muovi tu rimane dove lo lasci e viene rimandato solo all’inizio del tuo turno successivo.</Text>
         </Row>
+
+        <!-- The line at the top of the screen when a convoy unloads itself -->
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_ONE" Language="it_IT">
+            <Text>Un Convoglio del tesoro ha scaricato da solo: +{1_Gdp} [icon:ECONOMIC_VP] PIL e +{2_Gold} [icon:YIELD_GOLD] Oro.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_TREASURE_TOAST_MANY" Language="it_IT">
+            <Text>{1_Count} Convogli del tesoro hanno scaricato da soli: +{2_Gdp} [icon:ECONOMIC_VP] PIL e +{3_Gold} [icon:YIELD_GOLD] Oro in totale.</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_RESOURCE_LOCK" Language="it_IT">
             <Text>Blocca risorsa</Text>
         </Row>
@@ -450,6 +455,13 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_IMPROVE_STARTED" Language="it_IT">
             <Text>Stai già portando avanti questa azione diplomatica nei confronti di questo leader in questo turno.</Text>
+        </Row>
+
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE" Language="it_IT">
+            <Text>Mod di Najane: commercio</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="it_IT">
+            <Text>Mod di Najane: schermata commercio</Text>
         </Row>
     </LocalizedText>
 </Database>

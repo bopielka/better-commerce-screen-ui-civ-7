@@ -2,10 +2,40 @@
 
 Notable changes to **Better Commerce Screen UI**. Newest first.
 
+## Najane mods: one settings block (2026-08-30)
+
+### One block of settings across all three Najane mods
+
+Every Najane mod's settings now sit together in the shared "Mods" tab, under headings that all
+begin with the family name. Naming them alike was not enough - they were still scattered down the
+tab with other mods' headings between them.
+
+⚠️ **The on-screen order is the order `Options.addOption` was called in, and nothing else.**
+`screen-options.js` builds its rows by iterating `Options.data`, which is a Map and so is in
+insertion order, and `screen-options-category.js` creates a group's heading the first time an
+option asks for it. A mod adding its own options from its own init callback therefore interleaves
+with every other mod that does the same.
+
+⚠️ **The fix is a handshake through one global, and it works because of the timing.**
+`Options.init()` runs EVERY registered init callback in one pass, and only when the options screen
+opens - by which point every mod has long since loaded. So all three mods register their options
+into a shared registry at load time, and whichever one's callback fires first adds all of them in
+one uninterrupted burst. `ui/options/najane-mod-options-registry.js` is shared verbatim by the
+three mods; `sort` (10 specialists, 20 city, 30 commerce) fixes the running order so the sections
+do not change places depending on which mod loaded first.
+
+⚠️ **The re-entry guard is a probe, not a flag.** `reInitOptions()` clears `Options.data` and
+re-arms the same callbacks, so a boolean would be stuck true and the settings would come back
+empty the second time the screen was opened. Asking whether an option we added is still registered
+answers "has this cycle been handled" without having to be told.
+
+---
+
 ## 1.12
 
-A fix release. **"Reassign All" could leave resources in the pool with room all over the empire** -
-three separate causes, all of them in the path that empties the empire and lays it out again.
+A Treasure Convoy now says what it brought home - and **"Reassign All" no longer leaves resources
+in the pool with room all over the empire**, which had three separate causes, all of them in the
+path that empties the empire and lays it out again.
 
 ### Laying out an empire
 
@@ -31,6 +61,24 @@ three separate causes, all of them in the path that empties the empire and lays 
 - **A settlement that refuses a resource the planner thought it would take has all its cached
   answers dropped**, not just the one pair - if the cached answer was wrong about that pair,
   nothing else it said about that settlement is worth keeping either.
+
+### A Treasure Convoy says what it brought home
+
+- **A line at the top of the screen when a Treasure Convoy unloads itself**, naming the GDP and
+  the Gold it just paid out. Automatic return has always been silent: the convoy sails home over
+  several turns, unloads the moment it is allowed to, and the only sign of it was the unit no
+  longer being on the map. Nothing about the return itself changed.
+- The figures are the origin settlement's own `getProducedTreasureFleetGold` and
+  `getProducedTreasureFleetGDP` — **the same pair the Treasure Convoys tab already prints on the
+  card**, deliberately, so the toast cannot disagree with the tab. They are read before the
+  unload command is sent, because the command removes the unit and with it the route back to the
+  settlement that produced it.
+- **Coalesced.** Every convoy already standing in the homeland unloads in the same instant at the
+  start of a turn, so one line per convoy would be a stack of them replacing each other faster
+  than any could be read. They are gathered for 700 ms and announced once, with the totals.
+- Plain DOM, not a game notification: the notification train is for things you have to act on,
+  and this reports something that already happened. It fades after five seconds, takes no clicks,
+  and appears only when *Send convoys home* is on — it is that feature reporting itself.
 
 ### Packaging
 
