@@ -2,6 +2,41 @@
 
 Notable changes to **Better Commerce Screen UI**. Newest first.
 
+## 1.12
+
+A fix release. **"Reassign All" could leave resources in the pool with room all over the empire** -
+three separate causes, all of them in the path that empties the empire and lays it out again.
+
+### Laying out an empire
+
+- **Emptying the empire now waits for the game to have actually done it.** `Clear settlement` is
+  one operation but the game raises one `ResourceUnassigned` per resource in it, and the wait
+  after each settlement returned on the *first* of them. So the layout that follows started while
+  the tail of the releases was still queued: those resources were neither in the pool nor
+  placeable, the loop emptied the pool it could see and stopped, and the releases landed
+  afterwards - leaving exactly the resources of the last settlements cleared sitting unassigned.
+  The releases are now counted, not evented: the pass waits until the number of assigned
+  resources across the empire has fallen to whatever is locked, and gives up after 3s with a
+  warning rather than silently laying out half a board.
+- **A resource one settlement turns down is no longer banned from the whole run.** The engine
+  refusing a resource in the settlement that scored best for it says nothing about the other
+  fifteen, but the loop set the *resource* aside rather than the *pair* - so it went back in the
+  pool and was never offered anywhere else. `bestAssignment` has taken a set of blocked pairs all
+  along; it is now actually given one. A resource three settlements have refused is still set
+  aside, and that ceiling is what bounds the loop: a refusal places nothing, so it does not
+  advance the placement counter that guards against a runaway pass.
+- **One operation the game would not accept no longer ends the whole run.** It was a `break`,
+  which abandoned every resource after it in the pool; it is treated as a refusal of that pair
+  now, like any other.
+- **A settlement that refuses a resource the planner thought it would take has all its cached
+  answers dropped**, not just the one pair - if the cached answer was wrong about that pair,
+  nothing else it said about that settlement is worth keeping either.
+
+### Packaging
+
+- **Fixed: the mod reported itself as 1.10.** The human-readable version in the `.modinfo` was
+  not bumped when 1.11 shipped.
+
 ## 1.11
 
 The third sweep over what the mod costs, and the first one aimed at the part that was always

@@ -18,7 +18,13 @@ import {
     forgetSettlementFacts,
     rebuildSettlement,
 } from '../model/headless-model.js';
-import { bestAssignment, forgetEligibility, forgetSettlementScores, startPlacementRun } from './scoring.js';
+import {
+    assignmentPairKey,
+    bestAssignment,
+    forgetEligibility,
+    forgetSettlementScores,
+    startPlacementRun,
+} from './scoring.js';
 import { isFactoryFirstEnabled } from './factory-first-setting.js';
 import { isImportedResource, resourceClassOf, resourceType } from './facts.js';
 import { allSettlements, getCommerceModel, reconcileScreenWithEngine } from '../model/screen-model.js';
@@ -94,6 +100,15 @@ function letTheScreenCatchUp() {
 const MAX_PLACEMENTS = 300;
 
 /**
+ * How many settlements may turn one resource away before it is set aside for the rest of the run.
+ *
+ * ⚠️ THIS IS THE LOOP'S BOUND, not a heuristic. `MAX_PLACEMENTS` counts placements and a refused
+ * pass places nothing, so with only the PAIR blocked a resource nothing will take would be chosen
+ * again once per settlement in the empire.
+ */
+const MAX_PAIR_REFUSALS = 3;
+
+/**
  * How long the carried board may be trusted before it is read in full again.
  *
  * ⚠️ WHAT KEEPS THE SCORES HONEST IS OBJECT IDENTITY, not this number: a settlement's cached
@@ -130,9 +145,27 @@ export async function placeResources({ scope = null, targetCityID = null, label 
     // see the note on hoardTargets for why they must not be re-picked every pass.
     startPlacementRun();
 
-    // A pair the engine refuses is set aside rather than retried, or the loop would
-    // choose it again every pass and never finish.
+    /*
+     * ⚠️ A REFUSAL SETS ASIDE THE PAIR, NOT THE RESOURCE, and that was the bug: the engine turning
+     * a resource away from the settlement that scored best for it says nothing about the other
+     * fifteen. Banning the resource outright left it sitting in the pool with room all over the
+     * empire - which is what "reassign all does not assign everything" was.
+     *
+     * `refused` is what survives that: a resource MAX_PAIR_REFUSALS settlements have turned down,
+     * and one the engine accepted but never actually took.
+     */
+    const blockedPairs = new Set();
     const refused = new Set();
+    const refusalsByResource = new Map();
+
+    const setAsideRefusal = (resourceValue, cityID) => {
+        blockedPairs.add(assignmentPairKey(resourceValue, cityID));
+        const count = (refusalsByResource.get(resourceValue) ?? 0) + 1;
+        refusalsByResource.set(resourceValue, count);
+        if (count >= MAX_PAIR_REFUSALS) {
+            refused.add(resourceValue);
+        }
+    };
 
     logFactoryState();
 
@@ -184,7 +217,7 @@ export async function placeResources({ scope = null, targetCityID = null, label 
 
         mark = Date.now();
         const plan = available.length
-            ? bestAssignment(buildHeadlessModel(settlements, available), targetCityID)
+            ? bestAssignment(buildHeadlessModel(settlements, available), targetCityID, blockedPairs)
             : null;
         choosingMs += Date.now() - mark;
 
@@ -193,12 +226,19 @@ export async function placeResources({ scope = null, targetCityID = null, label 
             break;
         }
         if (!canAssign(plan.settlement.cityID, plan.resource.resourceValue)) {
-            refused.add(plan.resource.resourceValue);
+            setAsideRefusal(plan.resource.resourceValue, plan.settlement.cityID);
+            // ⚠️ The cache answered yes and the engine says no, so nothing this settlement was
+            // asked about that pass can be trusted either - drop the lot, not just the one pair.
+            forgetEligibility(plan.settlement.cityID);
             available = available.filter(inScope);
             continue;
         }
         if (!requestAssign(plan.settlement.cityID, plan.resource.resourceValue)) {
-            break;
+            // ⚠️ NOT `break`. One operation the engine would not take used to end the whole run,
+            // leaving every resource after it in the pool.
+            setAsideRefusal(plan.resource.resourceValue, plan.settlement.cityID);
+            available = available.filter(inScope);
+            continue;
         }
 
         placed++;

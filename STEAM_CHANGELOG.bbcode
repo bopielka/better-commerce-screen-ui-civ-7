@@ -3,6 +3,12 @@
 Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the source repository.
 
 [hr][/hr]
+[h2]1.12[/h2]
+[list]
+[*][b]Fixed: "Reassign All" could leave Resources in the pool with empty slots all over your empire.[/b] Three causes, all in the same path. Emptying the empire came back before the game had finished doing it, so the layout that followed ran against a board that was still changing and stopped early. A Resource the game turned down in ONE settlement was set aside for the whole pass instead of just for that settlement, so it was never offered anywhere else. And a single operation the game would not accept ended the run outright, abandoning everything after it.
+[*][b]Fixed: the mod reported itself as version 1.10.[/b]
+[/list]
+
 [h2]1.11[/h2]
 [list]
 [*][b]Nothing on screen changes and no setting moves.[/b] The third sweep over what the mod costs, aimed at the part that was always going to be the largest: laying out a whole empire.
@@ -30,18 +36,4 @@ Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the sourc
 [*][b]The Trade Routes tab stops listening when you leave it[/b], instead of keeping five engine subscriptions for the rest of the session.
 [*][b]A trade route card asked the same three questions of your whole army[/b] — a tab of forty cards walked it over a hundred times per redraw. It is one walk now.
 [*][b]The Empire and Factory tabs no longer rebuild a static index on every visit[/b], and the layout watcher stops watching the whole HUD once it has what it was waiting for.
-[/list]
-
-[h2]1.9[/h2]
-[list]
-[*][b]One new option; otherwise nothing on screen changes.[/b] This release is about what the mod costs the game — every other feature behaves exactly as it did in 1.8.
-[*][b]New: "Don't show tooltips on the Commerce screen"[/b] (Options → Mods, off by default). Hides every tooltip this mod draws, and the round "?" marks with them. The game's own tooltips are untouched.
-[*][b]Fixed: a Merchant on a standing order could add a minute to the turn.[/b] It asked the pathfinder about every plot its target owns — thirty to fifty — three times a turn, and a target it could not reach was the most expensive question of all. It now probes the ten nearest.
-[*][b]The mod no longer listens to other empires' turns.[/b] Unit movement, resource assignment and building events are raised by the engine for every player in the game, not for you — thousands of them per AI turn in a late game — and this mod woke up on all of them. Every subscription is now filtered by whose event it is before any work starts.
-[*][b]Automatic assignment installs nothing while it is switched off[/b], and off is the default. It used to subscribe to a dozen engine events and sweep every fifteen seconds whatever the setting said.
-[*][b]Merchant orders and Treasure Convoys stop scanning your whole army.[/b] A pass now runs only when something is actually under an order, and convoy events check the one unit they name.
-[*][b]Four observers watching the entire HUD became one watching the Commerce screen[/b], running once per frame instead of once per DOM change anywhere in the game.
-[*][b]The HUD's Resource Allocation button no longer recomputes on other empires' assignments[/b] — that check is the most expensive thing this mod does.
-[*][b]Fixed: leaks that grew for as long as the session did.[/b] The GDP readout, the settlement cards and the tab strip each left listeners or observers behind on every visit to the Commerce screen.
-[*][b]Fixed: automatic assignment could not resume after being blocked.[/b] A trigger arriving while the Commerce screen was open was meant to be held and retried; it was being lost instead.
 [/list]

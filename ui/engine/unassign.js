@@ -22,6 +22,70 @@ import { log, warn } from '../support/diagnostics.js';
 
 const UNASSIGNED_EVENT = 'ResourceUnassigned';
 
+/**
+ * Waits for the releases already sent to have actually been PROCESSED, empire-wide.
+ *
+ * ⚠️ WHY THIS EXISTS: `requestClearSettlement` empties a settlement in ONE operation but the
+ * engine raises one `ResourceUnassigned` per resource, and `waitForEngineEvent` returns on the
+ * FIRST of them. So "unassign everything" came back with the tail of the clears still in flight;
+ * the placement loop that follows it read a board where those resources were neither in the pool
+ * nor placeable, emptied the pool it could see, and stopped - and the releases landed afterwards,
+ * leaving resources unassigned with room all over the empire. That was "reassign all does not
+ * assign everything".
+ *
+ * ⚠️ Counted, not evented: the count the engine reports cannot be confused by another player, and
+ * we know exactly what it should end at - whatever is locked.
+ *
+ * ⚠️ Same escalating poll as `awaitAssignment` in planner/place.js, and for the same reason: each
+ * poll is one call per settlement. The first 50ms are checked tightly, after that ever less often.
+ */
+const DRAIN_POLL_MS = 4;
+const DRAIN_FAST_WINDOW_MS = 50;
+const DRAIN_POLL_CEILING_MS = 32;
+const DRAIN_TIMEOUT_MS = 3000;
+
+/** How many resources the local player holds slotted right now, or -1 if the engine would not say. */
+function totalAssigned() {
+    try {
+        const cities = Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? [];
+        let total = 0;
+        for (const city of cities) {
+            total += city.Resources?.getAssignedResources()?.length ?? 0;
+        }
+        return total;
+    } catch (error) {
+        warn(`could not count the empire's assigned resources: ${error}`);
+        return -1;
+    }
+}
+
+function awaitReleasesLanded(expectedRemaining) {
+    return new Promise((resolve) => {
+        const started = Date.now();
+        let wait = DRAIN_POLL_MS;
+        const check = () => {
+            const left = totalAssigned();
+            if (left < 0 || left <= expectedRemaining) {
+                resolve(true);
+                return;
+            }
+            if (Date.now() - started >= DRAIN_TIMEOUT_MS) {
+                warn(
+                    `${left} resource(s) were still assigned ${DRAIN_TIMEOUT_MS}ms after everything ` +
+                        `was released (${expectedRemaining} locked); laying out what there is`,
+                );
+                resolve(false);
+                return;
+            }
+            setTimeout(check, wait);
+            if (Date.now() - started >= DRAIN_FAST_WINDOW_MS) {
+                wait = Math.min(wait * 2, DRAIN_POLL_CEILING_MS);
+            }
+        };
+        check();
+    });
+}
+
 function trySend(resource) {
     return (
         canUnassign(resource.cityID, resource.resourceValue) &&
@@ -147,6 +211,8 @@ export async function unassignSettlement(cityID) {
 
 export async function unassignEverySettlement() {
     let cleared = 0;
+    /** What is meant to still be slotted when this is done: the locked resources, and nothing else. */
+    let locked = 0;
     const cities = Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? [];
 
     for (const city of cities) {
@@ -161,6 +227,7 @@ export async function unassignEverySettlement() {
          * settlement holding a locked resource is emptied one at a time instead.
          */
         const doomed = assigned.filter((resource) => !isResourceLocked(city.id, resource.value));
+        locked += assigned.length - doomed.length;
 
         if (doomed.length === 0) {
             // Every resource here is locked. Nothing to do, and nothing to wait for - the
@@ -186,6 +253,12 @@ export async function unassignEverySettlement() {
         if (sent > 0) {
             await waitForEngineEvent(UNASSIGNED_EVENT);
         }
+    }
+
+    // ⚠️ Last, and it is not optional: everything above waits for ONE event per settlement, and a
+    // cleared settlement raises one per resource. See `awaitReleasesLanded`.
+    if (cleared > 0) {
+        await awaitReleasesLanded(locked);
     }
 
     return cleared;
