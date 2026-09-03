@@ -9,10 +9,12 @@
  * numeric part of its ComponentID, which is only unique within one game. Nothing is written into
  * the save - this mod declares AffectsSavedGames = 0.
  */
+import { readSection, writeSection } from '../engine/mod-storage.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
-const STORAGE_KEY = 'najane-commerce-priorities';
+/** ⚠️ A section of the SHARED `modSettings` key - see engine/mod-storage.js for why. */
+const SECTION = 'priorities';
 
 /**
  * Stored as an index into this list PLUS ONE, so 0/null/undefined all mean "never chosen" and
@@ -54,24 +56,15 @@ function optionName(cityKey) {
 }
 
 function readFallback(cityKey) {
-    try {
-        const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-        return all?.[currentGameKey()]?.[cityKey];
-    } catch (error) {
-        return undefined;
-    }
+    return readSection(SECTION)?.[currentGameKey()]?.[cityKey];
 }
 
 function writeFallback(cityKey, code) {
-    try {
-        const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    writeSection(SECTION, (all) => {
         const key = currentGameKey();
         all[key] ??= {};
         all[key][cityKey] = code;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-    } catch (error) {
-        // The primary channel is UI.setOption; this one is a bonus.
-    }
+    });
 }
 
 /**

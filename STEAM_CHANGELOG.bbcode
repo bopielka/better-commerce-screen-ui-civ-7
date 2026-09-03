@@ -3,6 +3,12 @@
 Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the source repository.
 
 [hr][/hr]
+[h2]1.13[/h2]
+
+[list]
+[*][b]Fixed: this mod could wipe other mods' settings.[/b] Its per-game data (settlement priorities and merchant orders) sat in its own entries in browser storage instead of the shared "modSettings" record every other mod uses, and several popular mods erase the whole store the moment they see anything else in there - taking everyone's settings with it, including their own. Everything now lives inside the shared record under this mod's own name, and the old entries are cleaned up on first load. Your own priorities and orders carry across.
+[/list]
+
 [h2]1.12[/h2]
 [list]
 [*][b]Fixed: "Reassign All" could leave Resources in the pool with empty slots all over your empire.[/b] Three causes, all in the same path. Emptying the empire came back before the game had finished doing it, so the layout that followed ran against a board that was still changing and stopped early. A Resource the game turned down in ONE settlement was set aside for the whole pass instead of just for that settlement, so it was never offered anywhere else. And a single operation the game would not accept ended the run outright, abandoning everything after it.

@@ -25,11 +25,13 @@ import {
     signRoute,
     unitKey,
 } from './merchant.js';
+import { readSection, writeSection } from './mod-storage.js';
 import { onEngineEvent, onLocalPlayerEvent } from './events.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
-const STORAGE_KEY = 'najane-commerce-merchant-orders';
+/** ⚠️ A section of the SHARED `modSettings` key - see engine/mod-storage.js for why. */
+const SECTION = 'merchantOrders';
 
 /** Raised when the set of standing orders changes; anything drawing one redraws on it. */
 export const MerchantOrdersChangedEventName = 'najane-merchant-orders-changed';
@@ -96,24 +98,15 @@ function optionName(key) {
 }
 
 function readFallback(key) {
-    try {
-        const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-        return all?.[currentGameKey()]?.[key];
-    } catch (error) {
-        return undefined;
-    }
+    return readSection(SECTION)?.[currentGameKey()]?.[key];
 }
 
 function writeFallback(key, code) {
-    try {
-        const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    writeSection(SECTION, (all) => {
         const game = currentGameKey();
         all[game] ??= {};
         all[game][key] = code;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-    } catch (error) {
-        // The primary channel is UI.setOption; this one is a bonus.
-    }
+    });
 }
 
 /**
@@ -130,7 +123,7 @@ function knownOrderedKeys() {
     }
     orderedKeys = new Set();
     try {
-        const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        const all = readSection(SECTION);
         for (const [key, code] of Object.entries(all?.[currentGameKey()] ?? {})) {
             if (Number(code) > 0) {
                 orderedKeys.add(key);

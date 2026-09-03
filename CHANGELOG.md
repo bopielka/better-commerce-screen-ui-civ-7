@@ -2,6 +2,43 @@
 
 Notable changes to **Better Commerce Screen UI**. Newest first.
 
+## 1.13 — unreleased
+
+**Fixed: this mod was destroying OTHER mods' settings.** It wrote two top-level `localStorage`
+keys of its own — `najane-commerce-priorities` and `najane-commerce-merchant-orders` — and several
+published mods run this on every save of theirs:
+
+```js
+if (localStorage.length > 1) { localStorage.clear(); }
+```
+
+✅ Verbatim in `bz-city-hall`'s `ui/options/mod-options.js` and in Leugi's `core/settings.js`;
+reported against Memento Editor, More Diplo Ribbon, Policy Yields Preview, Enhanced Town Focus Info
+and Advanced Options Menu Tweaks as well. The condition is `> 1`, so **one** key of ours was
+enough: the next time any of those mods saved anything it erased the whole store, `modSettings`
+and every cooperating mod's settings with it.
+
+⚠️ **THE OPTIONS SCREEN WAS NEVER THE PROBLEM.** `najane-commerce-options.js` has always used the
+shared `modSettings` key and read-merge-written it correctly. It was the two per-game stores,
+written from gameplay rather than from the options screen, that carried the private keys — which
+is why this looked like a settings bug and was not one.
+
+⚠️ **ONE FILE TOUCHES `localStorage` NOW.** `engine/mod-storage.js` owns the shared key and does
+the read-merge-write itself, so no caller can get it wrong: everything outside
+`modSettings['better-commerce-screen-ui'][section]` is carried across untouched. Replacing the
+whole object would destroy the other mods the same way `clear()` does, just more quietly.
+
+⚠️ **THE MIGRATION DELETES THE OLD KEYS, and that is the half that matters.** Carrying the values
+across is a courtesy to players who already have priorities and merchant orders set; a leftover key
+goes on making `length > 1` for ever.
+
+⚠️ **`UI.setOption` is still the durable channel and is untouched.** localStorage was always the
+mirror — except for `knownOrderedKeys`, which genuinely needs it, because `UI.getOption` cannot be
+enumerated and a merchant that has since drowned can only be found again through the mirror's list.
+That read now goes through the same section.
+
+⚠️ **The same defect and the same fix in Better City UI** (three keys there), in the same pass.
+
 ## Najane mods: one settings block (2026-08-30)
 
 ### One block of settings across all three Najane mods
