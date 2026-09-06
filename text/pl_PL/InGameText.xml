@@ -57,7 +57,7 @@
             <Text>Automatycznie przypisuj zasoby</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="pl_PL">
-            <Text>Co zrobić po zdobyciu zasobu — ulepszeniem pola albo szlakiem handlowym — bez otwierania ekranu Handlu. Używa tej samej kolejności co „Przypisz wszystkie".</Text>
+            <Text>Co zrobić po zdobyciu zasobu — ulepszeniem pola albo szlakiem handlowym — bez otwierania ekranu Handlu. Używa tej samej kolejności co „Przypisz wszystkie". „Nie tykaj moich zasobów” działa odwrotnie: cokolwiek gra wepnie sama, wraca do puli, żebyś umieścił to ręcznie.</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="pl_PL">
             <Text>Nigdy</Text>
@@ -70,6 +70,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="pl_PL">
             <Text>Ułóż wszystkie przydziały od nowa</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF" Language="pl_PL">
+            <Text>Nie tykaj moich zasobów</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="pl_PL">
@@ -123,6 +126,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="pl_PL">
             <Text>PKB na turę (szacunkowo)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED" Language="pl_PL">
+            <Text>[STYLE:text-negative]Zablokowane — wymaga: {1_Name}[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="pl_PL">
             <Text>[B]+{1_Amount}[/B] z zasobów przypisanych do miast. Miasteczko nie daje nic.</Text>
@@ -253,11 +259,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="pl_PL">
             <Text>{1_Rate} PKB na turę za każdy zasób fabryczny wpięty do Fabryki, a masz ich wpiętych {2_Count}. Na tym punktowana jest nowożytna ścieżka ekonomiczna. Niektóre unikalne dzielnice, jak amerykański Park Przemysłowy, dokładają do tego więcej i nie są tu wliczone.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE" Language="pl_PL">
+            <Text>Skąd ta liczba</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE" Language="pl_PL">
+            <Text>Podstawa przed premiami: {1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS" Language="pl_PL">
+            <Text>Premia z tego zasobu: +{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="pl_PL">
-            <Text>Z {3_Net} {2_Yield}, które twoje imperium robi na turę, mniej więcej {1_Amount} bierze się stąd. To szacunek — premie procentowe z innych źródeł to przesuwają.</Text>
+            <Text>Z {3_Net} {2_Yield}, które twoje imperium robi na turę, mniej więcej {1_Amount} bierze się stąd. To szacunek — procent liczy się od tego, co robią twoje osady, przed premiami imperium.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="pl_PL">
-            <Text>Wpięcie tych sztuk dołożyłoby mniej więcej {1_Amount} na turę do {3_Net} {2_Yield}, które twoje imperium już robi. To szacunek — premie procentowe z innych źródeł to przesuwają.</Text>
+            <Text>Wpięcie tych sztuk dołożyłoby mniej więcej {1_Amount} na turę do {3_Net} {2_Yield}, które twoje imperium już robi. To szacunek — procent liczy się od tego, co robią twoje osady, przed premiami imperium.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="pl_PL">
             <Text>W fabrykach</Text>

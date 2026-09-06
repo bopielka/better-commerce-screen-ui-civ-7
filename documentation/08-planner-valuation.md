@@ -4,10 +4,11 @@ Two modules that answer a different question from the assignment engine. They do
 where anything goes; they turn a rule into a number the player can act on, and they feed the
 Empire and Factory tabs.
 
-| File | Lines | Feeds |
-|---|---|---|
-| `empire-effects.js` | 404 | `ui/screen/empire-tab.js` |
-| `factory-effects.js` | 340 | `ui/screen/factory-resources.js` |
+| File | Feeds |
+|---|---|
+| `empire-effects.js` | `ui/screen/empire-tab.js` |
+| `factory-effects.js` | `ui/screen/factory-resources.js` |
+| `gdp.js` | the GDP readout in `ui/screen/assign-all-buttons.js` |
 
 Both read the modifier tables through [`effects.js`](07-planner-assignment.md#effectsjs--reading-the-modifier-tables).
 
@@ -182,7 +183,8 @@ does not get a number of its own.
 ```js
 factoryEffectTotals(resourceType, count)   // → [{ kind, amount, perCopy, yieldType?, towards? }]
 sumFactoryTotals(perResource)              // adds across resources, keeping incompatibles apart
-absoluteWorth(yieldType, percent, applied) // → { worth, net }
+absoluteWorth(yieldType, percent)          // → { worth, net }
+forgetYieldPools()                         // drop the cached pools before a render
 gdpPerSlottedResource()                    // from VictoryScorings
 slottedFactoryResources()                  // → Map<type, { count, cities[] }>
 heldFactoryResources()                     // → Map<type, { total, definition, origins }>
@@ -224,23 +226,75 @@ aggregate, and getting it backwards would inflate the figures by the size of the
 "+30% Science" is meaningless without knowing your Science. This turns it into the number the
 player would have worked out by hand.
 
-⚠️ It is an **estimate** and is labelled as one. The catch: the net yield **already includes**
-whatever factory resources are slotted, so a naive `net × percent` overstates it — a 30% bonus is
-30% of the yield *before* itself, not after.
+### ⚠️ The game ADDS its percentages; it does not compound them
+
+**Reported from a live game, 2026-09-05.** Base 1000 Science, +25% from a diplomacy project, +15%
+from five slotted Tea, and the game pays **1000 + 250 + 150 = 1400**. The Tea is worth 150 — 15%
+of the *base*, not 15% of the 1250 that was on the panel before it.
+
+So **the top-panel figure cannot be the base for any of this**, and no amount of dividing the
+factory percentage back out of it helps: the other percentages are in there too, and they are not
+knowable from the panel.
 
 ```
-before = net / (1 + applied/100)
-worth  = before × percent/100  =  net × percent / (100 + applied)
+pool  = Σ settlements' net yield        ← the "before"; the top panel is the "after"
+worth = pool × percent/100
 ```
 
-Exact if the game multiplies its percentages, close if it adds them together with percentages
-from other sources — which is not knowable from here, hence "about". `applied` is the factory
-percentage for that yield already in the net figure, computed once per render in
-`ui/screen/factory-resources.js`.
+⚠️ **The pool is the sum of the SETTLEMENTS' net yields**, read with `city.Yields.getNetYield`.
+These effects are `COLLECTION_ALL_PLAYERS`, so they land after the settlements have been added up
+— which is exactly why the settlement figures are the base and the player figure is not.
+
+The same formula answers both questions, with no denominator to get wrong: "how much of my Science
+comes from Tea" and "how much would slotting these add" are both `pool × percent/100`.
+
+Still labelled "≈": a few yields reach the empire without passing through a settlement, and the
+pool does not see those. `forgetYieldPools()` clears the per-yield cache once per render in
+`ui/screen/factory-resources.js` — one pass over the settlements per yield, not one per card.
 
 Only the three that multiply a yield readable off the top panel get an estimate (Tea, Kaolin,
 Cocoa). The rest multiply production towards one particular thing, or a growth rate, and there is
 no single figure to take a percentage of.
+
+### ⚠️ A tracker pays NOTHING until a tech or a civic switches it on
+
+Every row this mod reads out of `victories.xml` carries `RequiresActivation="true"`:
+
+| Scoring id | Unlocked by |
+|---|---|
+| `VICTORY_TRACKER_SLOTTED_BONUS` / `..._SLOTTED_CITY` | `NODE_TECH_AQ_WHEEL` — the Wheel |
+| `VICTORY_TRACKER_GOLD_BUILDINGS_ANTIQUITY` | `NODE_TECH_AQ_CURRENCY` — Currency |
+| `VICTORY_TRACKER_IMPORTED_RESOURCES` | `NODE_CIVIC_AQ_MAIN_SKILLED_TRADES` — a **civic**, not a tech |
+| `VICTORY_TRACKER_SLOTTED_FACTORY` | `NODE_TECH_MO_MASS_PRODUCTION` — Mass Production |
+
+The mod handed out the table's rate whatever the player had researched, so a turn-one empire was
+promised GDP it could not earn. `trackerRequirement(scoringId)` in `ui/planner/gdp.js` answers
+what a tracker is still waiting for; a locked one contributes **zero**, and the tooltip line says
+why in red rather than leaving a bare `+0` to be read as "you have assigned nothing".
+
+⚠️ **The table above is derived at runtime, not written down.** `indexTrackerNodes()` walks
+`ProgressionTreeNodeUnlocks` for `KIND_MODIFIER` rows and resolves each to the tracker it
+activates. Hardcoding the four node names would break on the next balance patch and on any mod
+that moves them.
+
+⚠️ **`TrackerName` is the marker, and one argument name is enough.** Across Base and every DLC it
+appears on `EFFECT_PLAYER_ACTIVATE_VICTORY_POINT_TRACKER` and on nothing else, so resolving each
+candidate's effect properly would be a scan of the 12k-row `Modifiers` table to learn what the
+argument name already says.
+
+⚠️ **One level of attachment has to be followed.** The Wheel's node names
+`MOD_AQ_CITY_RESOURCE_GDP`, which does not activate anything itself — it is an
+`EFFECT_ATTACH_MODIFIERS` naming the two that do. Reading the node's own modifier alone finds
+neither. Nothing in the data nests deeper.
+
+⚠️ **NO node in this age means UNLOCKED, not locked.** `GameInfo` holds only the age being played,
+and from Exploration onwards every civilization's trait (`TRAIT_EXPLORATION_CIV`,
+`TRAIT_MODERN_CIV`) activates the four antiquity trackers outright. There is no node to find, so
+"not found" must mean "already on" — the opposite default would black out the whole readout for
+every player past Antiquity.
+
+⚠️ **Unknown counts as unlocked** in `nodeUnlocked` too. Claiming a tracker is locked hides points
+the player may well be earning, which is the worse of the two errors.
 
 ### GDP per slotted resource
 

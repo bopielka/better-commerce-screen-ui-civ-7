@@ -54,7 +54,7 @@
             <Text>Asignar recursos automáticamente</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="es_ES">
-            <Text>Qué hacer cuando llega un recurso, al mejorar una casilla o por una ruta comercial, sin abrir la pantalla de comercio. Usa el mismo orden que Asignar todo.</Text>
+            <Text>Qué hacer cuando llega un recurso, al mejorar una casilla o por una ruta comercial, sin abrir la pantalla de comercio. Usa el mismo orden que Asignar todo. «No toques mis recursos» hace lo contrario: lo que el juego asigne por su cuenta vuelve a la reserva para que lo coloques tú.</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="es_ES">
             <Text>Nunca</Text>
@@ -67,6 +67,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="es_ES">
             <Text>Rehacer todas las asignaciones</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF" Language="es_ES">
+            <Text>No toques mis recursos</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="es_ES">
@@ -119,6 +122,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="es_ES">
             <Text>PIB por turno (estimado)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED" Language="es_ES">
+            <Text>[STYLE:text-negative]Bloqueado: requiere {1_Name}[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="es_ES">
             <Text>[B]+{1_Amount}[/B] de recursos asignados a ciudades. Un pueblo no aporta nada.</Text>
@@ -226,11 +232,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="es_ES">
             <Text>{1_Rate} de PIB por turno por cada recurso de fábrica colocado en una fábrica, y tienes {2_Count} asignados. Es lo que puntúa la senda de legado económica de la era moderna. Algunos barrios únicos, como el Parque Industrial estadounidense, pagan más aparte y no se cuentan aquí.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE" Language="es_ES">
+            <Text>De dónde sale esta cifra</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE" Language="es_ES">
+            <Text>Base antes de bonificaciones: {1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS" Language="es_ES">
+            <Text>Bonificación de este recurso: +{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="es_ES">
-            <Text>Alrededor de {1_Amount} de los {3_Net} de {2_Yield} que tu imperio produce cada turno viene de aquí. Es una estimación: las bonificaciones porcentuales de otras fuentes la desplazan.</Text>
+            <Text>Alrededor de {1_Amount} de los {3_Net} de {2_Yield} que tu imperio produce cada turno viene de aquí. Es una estimación: el porcentaje se toma de lo que producen tus asentamientos, antes de las bonificaciones de imperio.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="es_ES">
-            <Text>Asignarlos añadiría alrededor de {1_Amount} por turno a los {3_Net} de {2_Yield} que tu imperio ya produce. Es una estimación: las bonificaciones porcentuales de otras fuentes la desplazan.</Text>
+            <Text>Asignarlos añadiría alrededor de {1_Amount} por turno a los {3_Net} de {2_Yield} que tu imperio ya produce. Es una estimación: el porcentaje se toma de lo que producen tus asentamientos, antes de las bonificaciones de imperio.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="es_ES">
             <Text>En fábricas</Text>

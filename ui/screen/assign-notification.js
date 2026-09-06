@@ -23,8 +23,8 @@ import { isAssignableToSettlement, resourceClassOf } from '../planner/facts.js';
 import { settlementHasFactory } from '../model/headless-model.js';
 import { isAssignmentInProgress } from '../planner/run.js';
 import CommerceOptions, {
-    AutoAssignMode,
     CommerceOptionsChangedEventName,
+    placesResourcesAutomatically,
 } from '../options/najane-commerce-options.js';
 import { onLocalPlayerEvent } from '../engine/events.js';
 import { heldResourceType } from '../engine/resource-types.js';
@@ -56,7 +56,7 @@ const CITY_RESOURCE_CLASS = 'RESOURCECLASS_CITY';
  * for you, so the prompt is telling you something you still have to act on.
  */
 function suppressionEnabled() {
-    return CommerceOptions.skipAssignPrompt && CommerceOptions.autoAssignMode !== AutoAssignMode.Off;
+    return CommerceOptions.skipAssignPrompt && placesResourcesAutomatically();
 }
 
 /** The element whose ring holds the icon; see the note at the top of this file. */

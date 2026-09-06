@@ -54,7 +54,7 @@
             <Text>Assigner les ressources automatiquement</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="fr_FR">
-            <Text>Ce qu'il faut faire lorsqu'une ressource arrive, par l'aménagement d'une case ou par une route commerciale, sans ouvrir l'écran de commerce. Utilise le même ordre que Tout assigner.</Text>
+            <Text>Ce qu'il faut faire lorsqu'une ressource arrive, par l'aménagement d'une case ou par une route commerciale, sans ouvrir l'écran de commerce. Utilise le même ordre que Tout assigner. « Ne touchez pas à mes ressources » fait l'inverse : ce que le jeu place de lui-même retourne dans la réserve pour que vous le placiez.</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="fr_FR">
             <Text>Jamais</Text>
@@ -67,6 +67,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="fr_FR">
             <Text>Reconstruire toutes les assignations</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF" Language="fr_FR">
+            <Text>Ne touchez pas à mes ressources</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="fr_FR">
@@ -119,6 +122,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="fr_FR">
             <Text>PIB par tour (estimation)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED" Language="fr_FR">
+            <Text>[STYLE:text-negative]Verrouillé – nécessite {1_Name}[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="fr_FR">
             <Text>[B]+{1_Amount}[/B] des ressources affectées aux villes. Un bourg ne rapporte rien.</Text>
@@ -226,11 +232,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="fr_FR">
             <Text>{1_Rate} PIB par tour pour chaque ressource d'usine placée en usine, et vous en avez {2_Count} d'assignées. C'est ce qui compte pour la voie d'héritage économique de l'ère moderne. Certains quartiers uniques, comme le Parc industriel américain, rapportent davantage en plus et ne sont pas comptés ici.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE" Language="fr_FR">
+            <Text>D'où vient ce chiffre</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE" Language="fr_FR">
+            <Text>Base avant bonus : {1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS" Language="fr_FR">
+            <Text>Bonus de cette ressource : +{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="fr_FR">
-            <Text>Environ {1_Amount} des {3_Net} {2_Yield} que votre empire produit chaque tour viennent de là. Une estimation : les bonus en pourcentage d'autres sources la décalent.</Text>
+            <Text>Environ {1_Amount} des {3_Net} {2_Yield} que votre empire produit chaque tour viennent de là. Une estimation : le pourcentage est pris sur ce que produisent vos établissements, avant les bonus d'empire.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="fr_FR">
-            <Text>Les assigner ajouterait environ {1_Amount} par tour aux {3_Net} {2_Yield} que votre empire produit déjà. Une estimation : les bonus en pourcentage d'autres sources la décalent.</Text>
+            <Text>Les assigner ajouterait environ {1_Amount} par tour aux {3_Net} {2_Yield} que votre empire produit déjà. Une estimation : le pourcentage est pris sur ce que produisent vos établissements, avant les bonus d'empire.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="fr_FR">
             <Text>En usine</Text>

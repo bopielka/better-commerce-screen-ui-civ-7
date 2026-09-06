@@ -128,14 +128,27 @@ with its own name, so anything filed there appears to belong to it.
 ### `AutoAssignMode`
 
 ```js
-export const AutoAssignMode = { Off: 0, NewOnly: 1, EverythingUnassigned: 2, RebuildEverything: 3 };
+export const AutoAssignMode = {
+    Off: 0, NewOnly: 1, EverythingUnassigned: 2, RebuildEverything: 3, HandsOff: 4,
+};
 ```
 
-⚠️ **Append only** — the index is what gets stored.
+⚠️ **Append only** — the index is what gets stored. That is why `HandsOff` is **last on screen**
+even though it belongs beside `Off`: moving it would repoint every stored setting.
 
-One dropdown rather than three checkboxes: these are four points on a scale and only one can hold at
+One dropdown rather than a row of checkboxes: these are points on a scale and only one can hold at
 a time. As separate boxes they invited combinations that had to be explained away in their own
 descriptions.
+
+⚠️ **`HandsOff` is not "Off, but more".** Off is the absence of work; Hands off is work — it
+returns to the pool anything the *game* slots by itself. Anything asking "does the mod assign on its
+own?" must therefore go through
+
+```js
+placesResourcesAutomatically(mode)   // false for BOTH Off and HandsOff
+```
+
+and not compare against `Off`. `auto-assign.js` and `assign-notification.js` both do.
 
 `Off` is the default, deliberately: automatic assignment **acts on the player's behalf without being
 asked and shows nothing while doing it.**

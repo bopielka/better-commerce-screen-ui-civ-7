@@ -16,13 +16,23 @@ import { iconBackground, resourceClassBackground, yieldIcon } from './icons.js';
 import { template } from '/core/vendor/solid-js/web/dist/web.js';
 import { CommerceScreenBaseTabContent } from '/base-standard/ui-next/screens/commerce/commerce-screen-base-tab-content.js';
 
-import { absoluteWorth, factoryHoldings, gdpPerSlottedResource, sumFactoryTotals } from '../planner/factory-effects.js';
+import {
+    absoluteWorth,
+    factoryGdpRequirement,
+    factoryHoldings,
+    forgetYieldPools,
+    gdpPerSlottedResource,
+    sumFactoryTotals,
+} from '../planner/factory-effects.js';
 import { PRODUCTION_YIELD } from '../planner/facts.js';
+import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
 import { appendWithResourceTooltip, resourceTooltipProps } from './resource-tooltip.js';
 import { appendAll, clearChildren, ensureStyle, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const CLASS = 'najane-factory';
+/** ⚠️ Ours alone: a frame outliving its trigger is drawn in the top-left corner of the screen. */
+const TOOLTIP_SCOPE = 'factory-tab';
 const STYLE_ID = 'najane-factory-tab-style';
 
 /** The GDP line, which lives in the screen's tab row rather than in this tab. */
@@ -202,6 +212,11 @@ const STYLE = `
     font-size: 0.92rem;
 }
 /* A worked-out number, not a caption - it reads closer to the figure it follows. */
+.${CLASS}-total__estimate-mount {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+}
 .${CLASS}-total__estimate {
     margin-left: 0.4rem;
     color: #d8c9ae;
@@ -279,16 +294,20 @@ ${TOOLTIP_TEXT_SELECTOR} { white-space: pre-wrap; }
 /** What the slotted resources earn towards the economic legacy path, above the tabs. */
 function buildSummary(slotted) {
     const rate = gdpPerSlottedResource();
-    const bar = makeElement('div', SUMMARY_CLASS, {
-        'data-tooltip-content': Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP', rate, slotted),
-    });
+    // ⚠️ The rate is what the table pays; until Mass Production is in, the empire earns none of it.
+    const requirement = factoryGdpRequirement();
+    let tooltip = Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP', rate, slotted);
+    if (requirement) {
+        tooltip += `[N]${Locale.compose('LOC_NAJANE_COMMERCE_GDP_LOCKED', requirement)}`;
+    }
+    const bar = makeElement('div', SUMMARY_CLASS, { 'data-tooltip-content': tooltip });
 
     const label = makeElement('div', `${SUMMARY_CLASS}__label font-title`);
     label.textContent = `${Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_GDP')}:`;
     bar.appendChild(label);
 
     const value = makeElement('div', '');
-    value.textContent = `+${rate * slotted}`;
+    value.textContent = `+${requirement ? 0 : rate * slotted}`;
     bar.appendChild(value);
 
     const icon = makeElement('div', `${SUMMARY_CLASS}__icon`);
@@ -347,31 +366,48 @@ function labelFor(total) {
 }
 
 /**
- * The percentage turned into the number the player would have worked out by hand.
+ * The percentage turned into the number the player would have worked out by hand, and the working
+ * behind it in the tooltip: the base, the percentage, and what the two come to.
  * ⚠️ The percentage alone says nothing about what it is a percentage OF, which on this
- * tab is the whole point.
+ * tab is the whole point - and the base is NOT the figure in the top panel; see
+ * planner/factory-effects.js.
  */
-function estimateElement(total, applied, isIdle) {
+function appendEstimate(parent, total, isIdle) {
     if (total.kind !== 'yieldPercent' || !total.yieldType) {
-        return null;
+        return;
     }
-    const { worth, net } = absoluteWorth(total.yieldType, total.amount, applied);
+    const { worth, net, base } = absoluteWorth(total.yieldType, total.amount);
     if (!worth) {
-        return null;
+        return;
     }
     const yieldName = Locale.compose(GameInfo.Yields?.lookup(total.yieldType)?.Name ?? total.yieldType);
-    const tooltip = Locale.compose(
-        isIdle ? 'LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD' : 'LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW',
-        worth,
-        yieldName,
-        net,
-    );
-    const element = makeElement('div', `${CLASS}-total__estimate`, { 'data-tooltip-content': tooltip });
+    // The sum first, the sentence about it second: one card per paragraph.
+    const text = [
+        Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE', base, yieldName) +
+            '[N]' +
+            Locale.compose('LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS', total.amount),
+        Locale.compose(
+            isIdle ? 'LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD' : 'LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW',
+            worth,
+            yieldName,
+            net,
+        ),
+    ].join('[N][N]');
+
+    const element = makeElement('div', `${CLASS}-total__estimate`);
     element.textContent = `≈ +${worth}`;
-    return element;
+    // ⚠️ A framed tooltip hands back a WRAPPER rather than the trigger, so what sits in the
+    // flex row is this mount - the same pattern as icon-button.js.
+    const mount = makeElement('div', `${CLASS}-total__estimate-mount`);
+    parent.appendChild(mount);
+    appendWithFramedTooltip(mount, element, {
+        title: 'LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE',
+        text,
+        scope: TOOLTIP_SCOPE,
+    });
 }
 
-function totalElement(total, applied = 0, isIdle = false, { withLabel = true, withEstimate = true } = {}) {
+function totalElement(total, isIdle = false, { withLabel = true, withEstimate = true } = {}) {
     const element = makeElement('div', `${CLASS}-total`);
     const value = makeElement('div', '');
     value.textContent = valueText(total);
@@ -384,9 +420,8 @@ function totalElement(total, applied = 0, isIdle = false, { withLabel = true, wi
         element.appendChild(icon);
     }
 
-    const estimate = withEstimate ? estimateElement(total, applied, isIdle) : null;
-    if (estimate) {
-        element.appendChild(estimate);
+    if (withEstimate) {
+        appendEstimate(element, total, isIdle);
     }
 
     const label = withLabel ? labelFor(total) : '';
@@ -497,7 +532,7 @@ function tooltipFor(holding) {
     return [...lines, ...whereLines(holding)].join('\n');
 }
 
-function cardFor(holding, isIdle, applied) {
+function cardFor(holding, isIdle) {
     const card = makeElement('div', `${CLASS}-card${isIdle ? ` ${CLASS}-card--idle` : ''}`);
     // The game's own card background, so these read as the same object as the other tabs'.
     const inner = makeElement('div', `${CLASS}-card__inner card-frame-bg`);
@@ -530,9 +565,7 @@ function cardFor(holding, isIdle, applied) {
     const inline = holding.totals.length === 1;
     const totals = makeElement('div', `${CLASS}-card__totals`);
     for (const total of holding.totals) {
-        totals.appendChild(
-            totalElement(total, applied.get(total.yieldType) ?? 0, isIdle, { withLabel: inline }),
-        );
+        totals.appendChild(totalElement(total, isIdle, { withLabel: inline }));
     }
     inner.appendChild(totals);
 
@@ -551,12 +584,12 @@ function cardFor(holding, isIdle, applied) {
 function totalsRow(totals, isWould) {
     const row = makeElement('div', `${CLASS}-section__totals${isWould ? ` ${CLASS}-section__totals--would` : ''}`);
     for (const total of totals) {
-        row.appendChild(totalElement(total, 0, isWould, { withEstimate: false }));
+        row.appendChild(totalElement(total, isWould, { withEstimate: false }));
     }
     return row;
 }
 
-function sectionFor({ titleKey, emptyKey, noteKey, holdings, isIdle, applied }) {
+function sectionFor({ titleKey, emptyKey, noteKey, holdings, isIdle }) {
     const section = makeElement('div', `${CLASS}-section`);
 
     const head = makeElement('div', `${CLASS}-section__head`);
@@ -585,23 +618,20 @@ function sectionFor({ titleKey, emptyKey, noteKey, holdings, isIdle, applied }) 
 
     const cards = makeElement('div', `${CLASS}-cards`);
     for (const holding of holdings) {
-        cards.appendChild(cardFor(holding, isIdle, applied));
+        cards.appendChild(cardFor(holding, isIdle));
     }
     section.appendChild(cards);
     return section;
 }
 
 function render(host) {
+    // ⚠️ Before the elements go, and only OUR scope; see `TOOLTIP_SCOPE`.
+    disposeFramedTooltips(TOOLTIP_SCOPE);
     clearChildren(host);
     const { working, idle } = factoryHoldings();
-
-/** The percentage per yield ALREADY in the empire's figures - every slotted copy counted. */
-    const applied = new Map();
-    for (const total of sumFactoryTotals(working.map((holding) => holding.totals))) {
-        if (total.kind === 'yieldPercent' && total.yieldType) {
-            applied.set(total.yieldType, total.amount);
-        }
-    }
+    // The pools the percentages are taken from are a fact about the empire, not about a card:
+    // read once per render, not once per estimate.
+    forgetYieldPools();
 
     appendAll(
         host,
@@ -610,7 +640,6 @@ function render(host) {
             emptyKey: 'LOC_NAJANE_COMMERCE_FACTORY_WORKING_EMPTY',
             holdings: working,
             isIdle: false,
-            applied,
         }),
         sectionFor({
             titleKey: 'LOC_NAJANE_COMMERCE_FACTORY_IDLE',
@@ -618,7 +647,6 @@ function render(host) {
             noteKey: 'LOC_NAJANE_COMMERCE_FACTORY_IDLE_NOTE',
             holdings: idle,
             isIdle: true,
-            applied,
         }),
     );
     showSummary(working.reduce((sum, holding) => sum + holding.count, 0));
@@ -636,7 +664,10 @@ export const FactoryResourcesContainer = () =>
     // Left in place on cleanup, as on the Empire tab: every selector is prefixed, so nothing of
     // the game's is touched.
             ensureStyle(STYLE_ID, STYLE);
-            onCleanup(hideSummary);
+            onCleanup(() => {
+                disposeFramedTooltips(TOOLTIP_SCOPE);
+                hideSummary();
+            });
             onMount(() => {
                 try {
                     render(host);

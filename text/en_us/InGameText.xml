@@ -65,7 +65,7 @@
             <Text>Assign Resources automatically</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION">
-            <Text>What to do when a Resource is acquired, by improving a tile or over a Trade Route, without opening the Commerce screen. Uses the same order as Assign All.</Text>
+            <Text>What to do when a Resource is acquired, by improving a tile or over a Trade Route, without opening the Commerce screen. Uses the same order as Assign All. “Do not touch my resources” goes the other way: whatever the game slots by itself is sent back to the pool for you to place.</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF">
             <Text>Never</Text>
@@ -78,6 +78,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD">
             <Text>Rebuild every assignment</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF">
+            <Text>Do not touch my resources</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT">
@@ -132,6 +135,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL">
             <Text>GDP per turn (estimate)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED">
+            <Text>[STYLE:text-negative]Locked - requires {1_Name}[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES">
             <Text>[B]+{1_Amount}[/B] from Resources assigned to Cities. A Town pays nothing.</Text>
@@ -247,11 +253,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP">
             <Text>{1_Rate} GDP per turn for every Factory Resource in a Factory, and you have {2_Count} of them assigned. This is what the Modern economic legacy path is scored on. Some unique quarters, such as America's Industrial Park, pay more on top of this and are not counted here.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE">
+            <Text>Where this figure comes from</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE">
+            <Text>Base before bonuses: {1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS">
+            <Text>Bonus from this resource: +{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW">
-            <Text>Roughly {1_Amount} of the {3_Net} {2_Yield} your empire makes each turn comes from this. An estimate: percentage bonuses from other sources shift it.</Text>
+            <Text>Roughly {1_Amount} of the {3_Net} {2_Yield} your empire makes each turn comes from this. An estimate: the percentage is taken from what your settlements make, before empire-wide bonuses.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD">
-            <Text>Assigning these would add roughly {1_Amount} per turn to the {3_Net} {2_Yield} your empire already makes. An estimate: percentage bonuses from other sources shift it.</Text>
+            <Text>Assigning these would add roughly {1_Amount} per turn to the {3_Net} {2_Yield} your empire already makes. An estimate: the percentage is taken from what your settlements make, before empire-wide bonuses.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS">
             <Text>In Factories</Text>

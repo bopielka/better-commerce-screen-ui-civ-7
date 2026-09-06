@@ -54,7 +54,7 @@
             <Text>資源を自動で割り当てる</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="ja_JP">
-            <Text>タイルの整備や交易路によって資源を得たとき、商業画面を開かずに何をするかを決めます。「すべて割り当て」と同じ順序を使います。</Text>
+            <Text>タイルの整備や交易路によって資源を得たとき、商業画面を開かずに何をするかを決めます。「すべて割り当て」と同じ順序を使います。「資源に手を出さない」は逆です。ゲームが勝手に割り当てたものを未割り当てに戻し、自分で配置できるようにします。</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="ja_JP">
             <Text>何もしない</Text>
@@ -67,6 +67,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="ja_JP">
             <Text>割り当てをすべて作り直す</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF" Language="ja_JP">
+            <Text>資源に手を出さない</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="ja_JP">
@@ -119,6 +122,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="ja_JP">
             <Text>毎ターンのGDP（概算）</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED" Language="ja_JP">
+            <Text>[STYLE:text-negative]未解放：{1_Name}が必要[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="ja_JP">
             <Text>[B]+{1_Amount}[/B] — 都市に割り当てた資源から。町では何も生みません。</Text>
@@ -226,11 +232,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="ja_JP">
             <Text>工場に入っている工場資源1つにつき1ターンあたりGDP{1_Rate}、現在{2_Count}個を割り当て済みです。現代の経済レガシーパスはこれで採点されます。アメリカの工業団地など一部の固有地区はこれに加えてさらに稼ぎますが、ここには含まれていません。</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE" Language="ja_JP">
+            <Text>この数字の内訳</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE" Language="ja_JP">
+            <Text>ボーナス適用前の基礎値：{1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS" Language="ja_JP">
+            <Text>この資源のボーナス：+{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="ja_JP">
-            <Text>帝国が1ターンに生み出す{2_Yield}{3_Net}のうち、およそ{1_Amount}がここから来ています。これは概算です。他の要因による割合ボーナスで前後します。</Text>
+            <Text>帝国が1ターンに生み出す{2_Yield}{3_Net}のうち、およそ{1_Amount}がここから来ています。これは概算です。割合は、帝国全体のボーナスがかかる前の居住地の産出から計算されます。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="ja_JP">
-            <Text>これらを割り当てると、帝国がすでに生み出している{2_Yield}{3_Net}に1ターンあたりおよそ{1_Amount}が加わります。これは概算です。他の要因による割合ボーナスで前後します。</Text>
+            <Text>これらを割り当てると、帝国がすでに生み出している{2_Yield}{3_Net}に1ターンあたりおよそ{1_Amount}が加わります。これは概算です。割合は、帝国全体のボーナスがかかる前の居住地の産出から計算されます。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="ja_JP">
             <Text>工場内</Text>

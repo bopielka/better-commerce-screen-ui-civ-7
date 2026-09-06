@@ -10,11 +10,12 @@ import './screen/factory-tab.js';
 // Wraps the trade route card - its own tab and its own mount.
 import './screen/trade-routes.js';
 
-// All seven run with the screen CLOSED, so they start here rather than from a component.
+// All eight run with the screen CLOSED, so they start here rather than from a component.
 import { startMerchantOrders } from './engine/merchant-orders.js';
 import { startTreasureConvoys } from './engine/treasure-convoys.js';
 import { startResourceLockUpkeep } from './engine/resource-locks.js';
 import { startAutoAssign } from './planner/auto-assign.js';
+import { startHandsOff } from './planner/hands-off.js';
 import { startAssignNotification } from './screen/assign-notification.js';
 import { startDockResourceButton } from './screen/dock-resource-button.js';
 import { startTreasureToast } from './screen/treasure-toast.js';
@@ -27,6 +28,8 @@ import { BUILD_STAMP } from './support/build-stamp.js';
 import { DIAGNOSTICS, log, warn } from './support/diagnostics.js';
 
 startAutoAssign();
+// The other end of the same dropdown: putting back what the GAME slots by itself.
+startHandsOff();
 startAssignNotification();
 // A merchant walks for turns after the tab is shut; its standing order is looked after here.
 startMerchantOrders();

@@ -2,7 +2,101 @@
 
 Notable changes to **Better Commerce Screen UI**. Newest first.
 
-## 1.13 — unreleased
+## 1.14 — unreleased
+
+**Fixed: the GDP figure counted points the player had not unlocked yet.** Every economic tracker
+in `victories.xml` carries `RequiresActivation="true"` and pays **nothing** until a tech or a civic
+switches it on — the Wheel for City and Bonus Resources, Currency for Gold buildings, Skilled
+Trades (a **civic**) for imported Resources, Mass Production for Factory Resources. The mod handed
+out the table's rate regardless, so a turn-one empire was promised GDP it could not earn.
+
+⚠️ **A LOCKED TRACKER NOW CONTRIBUTES ZERO**, and the tooltip line says why in red — otherwise a
+bare `+0` reads as "you have assigned nothing" when it means "this does not pay yet". Both the
+readout above the tabs and the Factory tab's own GDP line.
+
+⚠️ **THE FOUR NODE NAMES ARE DERIVED, NOT WRITTEN DOWN.** `indexTrackerNodes()` walks
+`ProgressionTreeNodeUnlocks` for `KIND_MODIFIER` rows and resolves each to the tracker it
+activates. Hardcoding them would break on the next balance patch and on any mod that moves them.
+
+⚠️ **One level of attachment has to be followed.** The Wheel's node names a modifier that
+activates nothing itself — it is an `EFFECT_ATTACH_MODIFIERS` naming the two that do. Reading the
+node's own modifier alone finds neither.
+
+⚠️ **NO node in this age means UNLOCKED, not locked.** `GameInfo` holds only the age being played,
+and from Exploration onwards every civilization's trait activates the four antiquity trackers
+outright. The opposite default would black out the whole readout for every player past Antiquity.
+
+⚠️ **The `TrackerName` argument is the marker and one argument name is enough**: across Base and
+every DLC it appears on `EFFECT_PLAYER_ACTIVATE_VICTORY_POINT_TRACKER` and on nothing else, so the
+alternative was a scan of the 12k-row `Modifiers` table to learn what it already says. One pass
+over `ModifierArguments` per age, on the first GDP read.
+
+**New: "Do not touch my resources".** A fifth point on the automatic-assignment dropdown, and the
+only one that works against the engine rather than alongside it.
+
+⚠️ **The game slots a newly improved resource into the settlement that improved it** the moment
+that settlement has a free slot. Nothing asks first and the player never sees the choice. In this
+mode the resource goes straight back to the unassigned pool and waits to be placed by hand.
+
+⚠️ **IT IS NOT A STRONGER "NEVER".** Never is the absence of work; this is work. Every check of
+the shape "does the mod assign on its own?" now goes through `placesResourcesAutomatically()`
+rather than comparing against `Off` — comparing against `Off` alone would have let this mode run
+the entire automatic-assignment machinery, which is the one thing it exists to prevent.
+
+⚠️ **IT READS THE BOARD; IT DOES NOT TRUST AN EVENT.** The first attempt hung on
+`ResourceAssigned` and did nothing in play - the engine slots these without raising it, or raises
+it somewhere the mod cannot see. What is checked is STATE: the settlements are walked and anything
+slotted that the player has not been seen to slot is returned. The events are cues to look, with a
+sweep behind them.
+
+⚠️ **`approved` IS THE WHOLE SAFETY MECHANISM.** It holds what the player is known to have
+placed: whatever was slotted when the game loaded or when the setting was switched on, plus every
+assignment made with the Commerce screen open. Anything slotted and not in that set was put there
+by the engine - which means the mod never has to know who sent the operation.
+
+⚠️ **A CAPTURED SETTLEMENT ARRIVES WITH ITS RESOURCES ALREADY SLOTTED**, and so does an age
+transition and a loaded save. Those windows ADOPT rather than skip: what arrives with them is
+approved once and never fought over. Skipping instead would leave it unapproved and empty a city
+the player has just taken.
+
+⚠️ **Each resource is returned once per turn.** A game that re-slots one the instant it comes
+back would otherwise be fought for ever; the second attempt leaves it where it is and warns.
+
+⚠️ **The end-turn prompt is left alone in this mode**, as it is with Never: hiding it is only
+justified when the mod has already done the placing, and here it deliberately has not.
+
+**New: the ≈ figure on the Factory tab shows its working.** Hovering it now gives the game's own
+framed tooltip with the base the percentage is taken from, the resource's percentage, and the
+sentence about what that comes to - so the number can be checked by hand instead of trusted.
+
+**Fixed: the Factory tab's "≈" estimates were too high.** Reported on Steam with the numbers
+to prove it: base 1000 Science, +25% from a diplomacy project, +15% from five slotted Tea, and the
+game pays **1000 + 250 + 150 = 1400**. The mod previewed +187 — 15% of the 1250 that was on the
+panel.
+
+⚠️ **THE GAME ADDS ITS PERCENTAGES; IT DOES NOT COMPOUND THEM.** Every percentage bonus on a
+yield is taken from the same base and the results are added, so a factory percentage is worth a
+percentage of the *base*, never of a total that already carries somebody else's bonus.
+
+⚠️ **THE TOP-PANEL FIGURE THEREFORE CANNOT BE THE BASE**, and dividing the factory percentage
+back out of it — which is what `absoluteWorth` did — does not rescue it: the other percentages
+are in that figure too, and nothing in the panel says how big they are. The old formula was exact
+only for a player who had no other percentage bonus on that yield at all.
+
+⚠️ **THE BASE IS THE SUM OF THE SETTLEMENTS' NET YIELDS.** These effects are
+`COLLECTION_ALL_PLAYERS`, so they land after the settlements have been added up — the settlement
+figures are the "before" and the player figure is the "after". `city.Yields.getNetYield` per
+settlement, summed, cached once per render of the tab.
+
+⚠️ **The `applied` parameter is gone from `absoluteWorth` and from the whole chain under it.**
+Both questions the tab asks — "how much of my Science comes from Tea" and "how much would slotting
+these add" — are now the same `pool × percent / 100`, with no denominator to get wrong.
+
+The figure is still labelled "≈": a yield can reach the empire without passing through a
+settlement, and the pool does not see those. The tooltip in all twelve languages now says what the
+percentage is taken *of* instead of claiming other bonuses shift it — they do not.
+
+## 1.13
 
 **Fixed: this mod was destroying OTHER mods' settings.** It wrote two top-level `localStorage`
 keys of its own — `najane-commerce-priorities` and `najane-commerce-merchant-orders` — and several

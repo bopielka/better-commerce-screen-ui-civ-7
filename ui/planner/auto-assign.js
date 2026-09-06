@@ -29,6 +29,7 @@ import { heldResourceType } from '../engine/resource-types.js';
 import CommerceOptions, {
     AutoAssignMode,
     CommerceOptionsChangedEventName,
+    placesResourcesAutomatically,
 } from '../options/najane-commerce-options.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -100,7 +101,7 @@ export function isAutoAssignRunning() {
 }
 
 export function isAutoAssignPending() {
-    if (CommerceOptions.autoAssignMode === AutoAssignMode.Off) {
+    if (!placesResourcesAutomatically()) {
         return false;
     }
     // `blockedTimer` counts too: a pass that is waiting for the screen to close is still a
@@ -163,7 +164,7 @@ async function check(trigger, options = {}) {
         return;
     }
     const mode = CommerceOptions.autoAssignMode;
-    if (mode === AutoAssignMode.Off) {
+    if (!placesResourcesAutomatically(mode)) {
         log(`${trigger}: automatic assignment is switched off (Options -> Mods)`);
         return;
     }
@@ -320,7 +321,7 @@ function scheduleCheck(trigger, quiet = false, isSweep = false) {
     // ⚠️ The watchers are detached while the setting is Off, so normally nothing reaches this.
     // What still can is the sweep's own timer, between the player switching it off and
     // `detachWatchers` running.
-    if (CommerceOptions.autoAssignMode === AutoAssignMode.Off) {
+    if (!placesResourcesAutomatically()) {
         return;
     }
     clearLateArrivalChecks();
@@ -438,7 +439,7 @@ function detachWatchers() {
 }
 
 function applyAutoAssignMode() {
-    if (CommerceOptions.autoAssignMode === AutoAssignMode.Off) {
+    if (!placesResourcesAutomatically()) {
         detachWatchers();
         return;
     }

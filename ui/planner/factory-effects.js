@@ -22,6 +22,7 @@
  * resources aggregate, and getting it backwards inflates every figure by the size of the empire.
  */
 import { effectTypeOf, resourceModifiers } from './effects.js';
+import { trackerRequirement } from './gdp.js';
 import { warn } from '../support/diagnostics.js';
 
 export const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
@@ -136,17 +137,59 @@ function netYield(yieldType) {
     }
 }
 
+/** ⚠️ One pass over every settlement per yield - `forgetYieldPools()` before each render, not per card. */
+const pools = new Map();
+
+export function forgetYieldPools() {
+    pools.clear();
+}
+
+/**
+ * The pool a percentage bonus is actually taken from.
+ *
+ * ⚠️ **Percentage yields in this game ADD; they do not compound.** Base 1000 Science, +25% from a
+ * diplomacy project and +15% from five slotted Tea, and the game pays 1000 + 250 + 150 = 1400 -
+ * the Tea is worth 150, not 15% of the 1250 that was on the panel before it. Reported from a live
+ * game 2026-09-05, and it is why the top-panel figure cannot be the base for any of this.
+ *
+ * ⚠️ **The pool is the sum of the SETTLEMENTS' net yields.** The percentage effects here are
+ * `COLLECTION_ALL_PLAYERS`, so they land after the settlements have been added up: the settlement
+ * figures are the "before", the top-panel figure is the "after".
+ */
+function yieldPool(yieldType) {
+    const cached = pools.get(yieldType);
+    if (cached !== undefined) {
+        return cached;
+    }
+    let total = 0;
+    try {
+        const type = YieldTypes[yieldType];
+        for (const city of Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? []) {
+            total += city.Yields?.getNetYield(type) ?? 0;
+        }
+    } catch (error) {
+        warn(`could not read the ${yieldType} pool: ${error}`);
+        total = 0;
+    }
+    pools.set(yieldType, total);
+    return total;
+}
+
 /**
  * Roughly what a percentage bonus is worth in whole numbers - a bare "+20%" says nothing about
- * what it is 20% of. ⚠️ An estimate, and labelled as one on screen: the game applies these against
- * bases this cannot see in full.
+ * what it is 20% of. ⚠️ Still an estimate, and labelled as one on screen: the pool is what the
+ * settlements make, and a few yields reach the empire without passing through one.
  */
-export function absoluteWorth(yieldType, percent, applied) {
-    const net = netYield(yieldType);
-    if (!net || !percent) {
-        return { worth: 0, net: 0 };
+export function absoluteWorth(yieldType, percent) {
+    const pool = yieldPool(yieldType);
+    if (pool <= 0 || !percent) {
+        return { worth: 0, net: 0, base: 0 };
     }
-    return { worth: Math.round((net * percent) / (100 + applied)), net: Math.round(net) };
+    return {
+        worth: Math.round((pool * percent) / 100),
+        net: Math.round(netYield(yieldType)),
+        base: Math.round(pool),
+    };
 }
 
 /**
@@ -157,6 +200,15 @@ const FACTORY_GDP_SCORING = 'VICTORY_TRACKER_SLOTTED_FACTORY';
 
 /** ⚠️ A full scan of the scoring table, and it was one per call. gdp.js memoises the same table. */
 let slottedRate;
+
+/**
+ * What the factory tracker is still waiting to be researched, or null once it pays.
+ * ⚠️ Mass Production in the Modern age; the row carries `RequiresActivation="true"` and pays
+ * nothing before it. See planner/gdp.js.
+ */
+export function factoryGdpRequirement() {
+    return trackerRequirement(FACTORY_GDP_SCORING);
+}
 
 export function gdpPerSlottedResource() {
     if (slottedRate !== undefined) {

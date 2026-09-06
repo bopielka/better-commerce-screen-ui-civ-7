@@ -54,7 +54,7 @@
             <Text>自动分配资源</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>当通过改良地块或贸易路线获得资源时，在不打开商业界面的情况下要做什么。使用与“全部分配”相同的顺序。</Text>
+            <Text>当通过改良地块或贸易路线获得资源时，在不打开商业界面的情况下要做什么。使用与“全部分配”相同的顺序。“不要动我的资源”则相反：游戏自己塞进去的资源会被退回待分配列表，由你亲自安排。</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="zh_Hans_CN">
             <Text>从不</Text>
@@ -67,6 +67,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="zh_Hans_CN">
             <Text>重建全部分配</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF" Language="zh_Hans_CN">
+            <Text>不要动我的资源</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="zh_Hans_CN">
@@ -119,6 +122,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="zh_Hans_CN">
             <Text>每回合 GDP（估算）</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED" Language="zh_Hans_CN">
+            <Text>[STYLE:text-negative]未解锁：需要{1_Name}[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="zh_Hans_CN">
             <Text>[B]+{1_Amount}[/B] 来自分配到城市的资源。城镇不产生任何点数。</Text>
@@ -226,11 +232,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="zh_Hans_CN">
             <Text>每份放入工厂的工厂资源每回合提供{1_Rate}点GDP，你目前已分配{2_Count}份。现代经济传承路线正是以此计分。部分独特街区（例如美国的工业园区）会在此之外额外提供，未计入这里。</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE" Language="zh_Hans_CN">
+            <Text>这个数字怎么来的</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE" Language="zh_Hans_CN">
+            <Text>加成前的基础值：{1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS" Language="zh_Hans_CN">
+            <Text>该资源的加成：+{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="zh_Hans_CN">
-            <Text>你的帝国每回合产出的{3_Net}点{2_Yield}中，约有{1_Amount}点来自于此。这是估算值：其他来源的百分比加成会让它有所变化。</Text>
+            <Text>你的帝国每回合产出的{3_Net}点{2_Yield}中，约有{1_Amount}点来自于此。这是估算值：百分比取自你的聚落产出，在帝国范围加成之前。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="zh_Hans_CN">
-            <Text>把它们分配出去，会在帝国现有的{3_Net}点{2_Yield}之外每回合再增加约{1_Amount}点。这是估算值：其他来源的百分比加成会让它有所变化。</Text>
+            <Text>把它们分配出去，会在帝国现有的{3_Net}点{2_Yield}之外每回合再增加约{1_Amount}点。这是估算值：百分比取自你的聚落产出，在帝国范围加成之前。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="zh_Hans_CN">
             <Text>已入工厂</Text>

@@ -97,10 +97,16 @@ because it is Modern-age only.
 | Place the new resource | `NewOnly` | only values that were not owned last pass |
 | Place everything unassigned | `EverythingUnassigned` | the arrival is a cue to tidy the pool |
 | Rebuild every assignment | `RebuildEverything` | clears every settlement and starts again |
+| Do not touch my resources | `HandsOff` | the other direction — anything **the game** slots by itself goes back to the pool |
 
 A resource can arrive by improving a tile, by trade route or by **taking an enemy settlement**;
 room for one can arrive by finishing a building or a **wonder** that carries slots. All of those
 are triggers.
+
+⚠️ **`HandsOff` is not a stronger `Off`.** `Off` means the mod places nothing. `HandsOff`
+additionally **undoes** the game's own habit of slotting a newly improved resource into the
+settlement that improved it, so every resource waits in the pool for the player. That is work
+rather than the absence of it, and it lives in `ui/planner/hands-off.js`.
 
 `ui/planner/auto-assign.js` decides *when*; the work goes through `run.js` like everything else.
 The options are `ui/options/najane-commerce-options.js`, `ui/planner/happiness-setting.js` and

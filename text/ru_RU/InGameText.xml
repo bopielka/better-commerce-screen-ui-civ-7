@@ -64,7 +64,7 @@
             <Text>Призначати ресурси автоматично</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="ru_RU">
-            <Text>Що робити, коли надходить ресурс — через покращення клітинки або торговим шляхом — не відкриваючи екран торгівлі. Використовує той самий порядок, що й «Призначити все».</Text>
+            <Text>Що робити, коли надходить ресурс — через покращення клітинки або торговим шляхом — не відкриваючи екран торгівлі. Використовує той самий порядок, що й «Призначити все». «Не чіпай моїх ресурсів» працює навпаки: усе, що гра вставить сама, повертається до загального запасу, щоб ви розмістили його самі.</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="ru_RU">
             <Text>Ніколи</Text>
@@ -77,6 +77,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="ru_RU">
             <Text>Перебудувати всі призначення</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF" Language="ru_RU">
+            <Text>Не чіпай моїх ресурсів</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="ru_RU">
@@ -129,6 +132,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="ru_RU">
             <Text>ВВП за хід (приблизно)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED" Language="ru_RU">
+            <Text>[STYLE:text-negative]Заблоковано — потрібно: {1_Name}[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="ru_RU">
             <Text>[B]+{1_Amount}[/B] від ресурсів, призначених до міст. Містечко не дає нічого.</Text>
@@ -236,11 +242,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="ru_RU">
             <Text>{1_Rate} ВВП за хід за кожен фабричний ресурс на Фабриці, а ви призначили їх {2_Count}. Саме за цим оцінюється економічний шлях спадку сучасної доби. Деякі унікальні квартали, як-от американський Промисловий парк, дають понад це і тут не враховані.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE" Language="ru_RU">
+            <Text>Звідки ця цифра</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE" Language="ru_RU">
+            <Text>Основа до бонусів: {1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS" Language="ru_RU">
+            <Text>Бонус із цього ресурсу: +{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="ru_RU">
-            <Text>Приблизно {1_Amount} із {3_Net} {2_Yield}, які ваша імперія дає щоходу, походить звідси. Це оцінка: відсоткові бонуси з інших джерел її зміщують.</Text>
+            <Text>Приблизно {1_Amount} із {3_Net} {2_Yield}, які ваша імперія дає щоходу, походить звідси. Це оцінка: відсоток береться від того, що виробляють ваші поселення, до загальноімперських бонусів.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="ru_RU">
-            <Text>Їхнє призначення додало б приблизно {1_Amount} за хід до {3_Net} {2_Yield}, які ваша імперія вже дає. Це оцінка: відсоткові бонуси з інших джерел її зміщують.</Text>
+            <Text>Їхнє призначення додало б приблизно {1_Amount} за хід до {3_Net} {2_Yield}, які ваша імперія вже дає. Це оцінка: відсоток береться від того, що виробляють ваші поселення, до загальноімперських бонусів.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="ru_RU">
             <Text>На фабриках</Text>

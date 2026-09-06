@@ -198,15 +198,20 @@ Details:
   where it can be checked against that resource's percentage. In a heading it is a figure with
   nothing to compare it to, and it crowds out the words that say what the percentages are for.
 - The idle section is drawn at reduced opacity and its totals labelled as hypothetical.
-- `applied` — the percentage per yield **already in the empire's figures** — is computed once per
-  render, because it is a fact about the empire rather than about a card, and the idle estimates
-  measure what would be added on top of exactly that.
+- The **pools** the ≈ figures are percentages of are a fact about the empire rather than about a
+  card, so `forgetYieldPools()` runs once per render and every estimate then reads a cached sum.
+  ⚠️ The pool is the settlements' output, **not** the top-panel figure — the game adds its
+  percentages rather than compounding them; see `documentation/08-planner-valuation.md`.
 - ⚠️ Almost every factory resource has exactly **one** bonus, and then its words fit inline beside
   the number — no second line, so every card in a row is the same height. The legend is only for
   the rare card with two. (This is the reverse of the Empire tab, where the legend is the rule.)
 - ⚠️ Tooltip origins use `[B]…[/B]`, **not HTML**: `Locale.stylize` strips elements, so a `<div>`
   per leader vanished and took its line breaks with it, running the whole list into one paragraph.
   Separation comes from a blank line.
+- ⚠️ **The GDP figure is zero until the tracker is unlocked**, not merely small: the Modern
+  factory tracker needs Mass Production, and the three antiquity ones need the Wheel, Currency and
+  Skilled Trades. The tooltip carries a red "Locked - requires X" line so a `+0` is not read as
+  "you have assigned nothing". See `documentation/08-planner-valuation.md`.
 - The GDP line above the tabs is the one figure about the whole tab — every slotted copy pays the
   same rate, so per resource it would just be the count again.
 

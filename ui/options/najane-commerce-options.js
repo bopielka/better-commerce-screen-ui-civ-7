@@ -84,14 +84,19 @@ function restore(optionID) {
 }
 
 /**
- * How far automatic assignment goes. One dropdown rather than three checkboxes: these are four
+ * How far automatic assignment goes. One dropdown rather than a row of checkboxes: these are
  * points on a scale and only one can hold at a time. ⚠️ Append only - the index is what is stored.
+ *
+ * ⚠️ `HandsOff` is NOT a stronger `Off`. Off means this mod places nothing; Hands off also
+ * PUTS BACK what the game slots by itself, which is work rather than the absence of it. It reads
+ * out of order on screen (next to Off is where it belongs) because the index is the stored value.
  */
 export const AutoAssignMode = {
     Off: 0,
     NewOnly: 1,
     EverythingUnassigned: 2,
     RebuildEverything: 3,
+    HandsOff: 4,
 };
 
 const MODE_ITEMS = [
@@ -99,7 +104,17 @@ const MODE_ITEMS = [
     { label: 'LOC_OPTIONS_NAJANE_COMMERCE_MODE_NEW' },
     { label: 'LOC_OPTIONS_NAJANE_COMMERCE_MODE_ALL' },
     { label: 'LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD' },
+    { label: 'LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF' },
 ];
+
+/**
+ * Whether the mod places resources on its own.
+ * ⚠️ TWO modes mean "no", and comparing against `Off` alone let Hands off run the entire
+ * automatic-assignment machinery - the one thing it exists to prevent.
+ */
+export function placesResourcesAutomatically(mode = CommerceOptions.autoAssignMode) {
+    return mode !== AutoAssignMode.Off && mode !== AutoAssignMode.HandsOff;
+}
 
 /** Carries over the three checkboxes this dropdown replaced. Safe to delete after a release. */
 function migrateFromCheckboxes() {

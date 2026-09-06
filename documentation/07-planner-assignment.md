@@ -1,6 +1,6 @@
 # 07 — `ui/planner/` — the assignment engine
 
-Deciding what goes where, and doing it. Ten of the fourteen files in `ui/planner/`; the other
+Deciding what goes where, and doing it. Eleven of the fifteen files in `ui/planner/`; the other
 four are covered in [planner: valuation](08-planner-valuation.md).
 
 | File | Purpose |
@@ -11,6 +11,7 @@ four are covered in [planner: valuation](08-planner-valuation.md).
 | `place.js` | the placement loop, shared by both paths |
 | `run.js` | every entry point — one guard around `place.js` |
 | `auto-assign.js` | deciding **when** to run with the screen closed |
+| `hands-off.js` | putting back what the **game** slots by itself |
 | `priorities.js` | per-settlement priority, in memory |
 | `happiness-setting.js` | how far the rescue tier goes |
 | `hoard-setting.js` | whether the culture and gold piles are built |
@@ -810,6 +811,82 @@ become nine become twenty-seven, all turn long (`isRetry`).
   these events in the same burst and nothing promises which lands first, so "is a pass
   scheduled" can still be false at the moment the notification is offered. See
   [notifications](13-notifications.md).
+
+---
+
+## `hands-off.js` — putting back what the game slotted
+
+The **fifth** point on the same dropdown, and the only one that works against the engine rather
+than alongside it.
+
+⚠️ **The game slots a newly improved resource into the settlement that improved it** as soon as
+that settlement has a free slot. Nothing asks first and the player never sees the choice. In
+`HandsOff` the resource is sent straight back to the unassigned pool.
+
+### ⚠️ It reads the BOARD; it does not trust an event
+
+The first version hung on `ResourceAssigned` and **did nothing in play** — the engine slots these
+without raising it, or raises it somewhere the mod cannot see. What is checked now is state:
+
+```
+a cue arrives  →  debounce 400ms  →  walk the settlements
+                                     →  slotted but NOT in `approved`?  →  return it
+```
+
+The events are cues to look, not the mechanism. `ResourceAssigned` is still one of them, and there
+is a 15s sweep behind the lot for the same reason auto-assign.js has one.
+
+### ⚠️ `approved` is the whole safety mechanism
+
+It holds the resource values the player is known to have placed, and it is filled from three
+places:
+
+1. **The first look** — whatever is slotted when the game loads, or when the setting is switched
+   on, is theirs. A resource the engine slotted before this mode existed is never taken back.
+2. **Every assignment made with the Commerce screen open**, from the `ResourceAssigned` payload.
+   ⚠️ **O(1) and NOT debounced**: a player who assigns and shuts the screen inside the debounce
+   window would otherwise have the check run with the screen already closed and find their own
+   assignment unapproved.
+3. **The grace windows**, below.
+
+Anything slotted and not in that set was put there by the engine. There is no need to know who
+sent the operation, which is what makes this robust against an event the mod cannot see.
+
+### ⚠️ The guards ADOPT rather than skip
+
+Screen open, one of this mod's own passes running, or inside a grace window — all three take
+everything currently slotted as the player's and stop. **Skipping instead would leave those
+resources unapproved and rip them out the moment the screen closed**, which is the one thing this
+mode must never do.
+
+### ⚠️ The grace windows are not tidiness
+
+`CityTransfered`, `ConqueredSettlementIntegrated` and `GameAgeEnded` hand over resources that are
+**already slotted**. Adopting rather than returning them is what stops a captured settlement being
+emptied — a loss the player cannot undo. `SETTLE_IN_MS` does the same for loading a save and for
+the moment the setting is switched on.
+
+### ⚠️ `pushedBack` is what stops a loop
+
+A game that re-slots the same resource the instant it is returned would otherwise be fought for
+ever. Each value is returned **once per local turn**; the second time it is left where it is and a
+`warn` says so. Leaving a resource slotted is the safe failure.
+
+### Other invariants
+
+- Nothing is listened for while the mode is anything else; `applyMode` attaches and detaches on
+  `CommerceOptionsChangedEventName`, the same handshake `auto-assign.js` uses.
+- ⚠️ **The mode is not read at load.** `CommerceOptions.autoAssignMode` memoises `UI.getOption`,
+  so a read before the game can answer would cache the default for the session — and here that
+  decides whether the watcher exists. `whenReadable` retries until the player's resources can be
+  read, the same reason and shape as `seedWithRetries`.
+- ⚠️ **The return line is a `warn`, not a `log`.** This is the mod changing the board without
+  being asked and `log` ships switched off; a player reporting "it does nothing" needs a line to
+  send. One per resource returned, only in this mode.
+- The returns are drained **one at a time**: `sendRequest` only queues, so a burst has to be walked
+  with `waitForEngineEvent` in between, exactly as `unassign.js` does.
+- Our own release raises `ResourceUnassigned`, never `ResourceAssigned`, so there is no feedback
+  path back into the check.
 
 ---
 

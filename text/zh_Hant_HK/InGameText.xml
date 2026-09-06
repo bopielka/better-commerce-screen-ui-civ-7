@@ -54,7 +54,7 @@
             <Text>自動指派資源</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="zh_Hant_HK">
-            <Text>當透過改良地塊或貿易路線取得資源時，在不開啟商業畫面的情況下要做什麼。使用與「全部指派」相同的順序。</Text>
+            <Text>當透過改良地塊或貿易路線取得資源時，在不開啟商業畫面的情況下要做什麼。使用與「全部指派」相同的順序。「不要動我的資源」則相反：遊戲自己塞進去的資源會被退回待指派清單，由你親自安排。</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="zh_Hant_HK">
             <Text>永不</Text>
@@ -67,6 +67,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="zh_Hant_HK">
             <Text>重建全部指派</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF" Language="zh_Hant_HK">
+            <Text>不要動我的資源</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="zh_Hant_HK">
@@ -119,6 +122,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="zh_Hant_HK">
             <Text>每回合 GDP（估算）</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED" Language="zh_Hant_HK">
+            <Text>[STYLE:text-negative]未解鎖：需要{1_Name}[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="zh_Hant_HK">
             <Text>[B]+{1_Amount}[/B] 來自分配到城市的資源。城鎮不產生任何點數。</Text>
@@ -226,11 +232,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="zh_Hant_HK">
             <Text>每份放入工廠的工廠資源每回合提供{1_Rate}點GDP，你目前已指派{2_Count}份。現代經濟傳承路線正是以此計分。部分獨特街區（例如美國的工業園區）會在此之外額外提供，未計入這裡。</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE" Language="zh_Hant_HK">
+            <Text>這個數字怎麼來的</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE" Language="zh_Hant_HK">
+            <Text>加成前的基礎值：{1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS" Language="zh_Hant_HK">
+            <Text>該資源的加成：+{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="zh_Hant_HK">
-            <Text>你的帝國每回合產出的{3_Net}點{2_Yield}中，約有{1_Amount}點來自於此。這是估算值：其他來源的百分比加成會讓它有所變化。</Text>
+            <Text>你的帝國每回合產出的{3_Net}點{2_Yield}中，約有{1_Amount}點來自於此。這是估算值：百分比取自你的聚落產出，在帝國範圍加成之前。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="zh_Hant_HK">
-            <Text>把它們指派出去，會在帝國現有的{3_Net}點{2_Yield}之外每回合再增加約{1_Amount}點。這是估算值：其他來源的百分比加成會讓它有所變化。</Text>
+            <Text>把它們指派出去，會在帝國現有的{3_Net}點{2_Yield}之外每回合再增加約{1_Amount}點。這是估算值：百分比取自你的聚落產出，在帝國範圍加成之前。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="zh_Hant_HK">
             <Text>已入工廠</Text>

@@ -54,7 +54,7 @@
             <Text>자원 자동 할당</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="ko_KR">
-            <Text>타일 개발이나 교역로로 자원을 얻었을 때 상업 화면을 열지 않고 무엇을 할지 정합니다. 전부 할당과 같은 순서를 씁니다.</Text>
+            <Text>타일 개발이나 교역로로 자원을 얻었을 때 상업 화면을 열지 않고 무엇을 할지 정합니다. 전부 할당과 같은 순서를 씁니다. “내 자원에 손대지 않기”는 반대로 작동합니다. 게임이 알아서 넣은 자원을 미배정 목록으로 되돌려 직접 배치하게 합니다.</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="ko_KR">
             <Text>사용 안 함</Text>
@@ -67,6 +67,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="ko_KR">
             <Text>할당을 전부 다시 만들기</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF" Language="ko_KR">
+            <Text>내 자원에 손대지 않기</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="ko_KR">
@@ -119,6 +122,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="ko_KR">
             <Text>턴당 GDP (추정)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED" Language="ko_KR">
+            <Text>[STYLE:text-negative]잠김 — {1_Name} 필요[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="ko_KR">
             <Text>[B]+{1_Amount}[/B] — 도시에 배정한 자원에서. 마을은 아무것도 주지 않습니다.</Text>
@@ -226,11 +232,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="ko_KR">
             <Text>공장에 들어간 공장 자원 하나당 턴마다 GDP {1_Rate}이며, 현재 {2_Count}개를 할당했습니다. 현대 경제 유산 경로는 이것으로 점수가 매겨집니다. 미국의 공업 단지 같은 일부 고유 지구는 여기에 더해 추가로 주지만 여기에는 포함되지 않았습니다.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE" Language="ko_KR">
+            <Text>이 수치의 근거</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE" Language="ko_KR">
+            <Text>보너스 적용 전 기본값: {1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS" Language="ko_KR">
+            <Text>이 자원의 보너스: +{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="ko_KR">
-            <Text>제국이 매 턴 만들어내는 {2_Yield} {3_Net} 중 약 {1_Amount}이 여기에서 나옵니다. 어림값입니다. 다른 출처의 비율 보너스에 따라 달라집니다.</Text>
+            <Text>제국이 매 턴 만들어내는 {2_Yield} {3_Net} 중 약 {1_Amount}이 여기에서 나옵니다. 어림값입니다. 이 비율은 제국 전체 보너스가 붙기 전, 정착지들이 생산하는 양에서 계산됩니다.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="ko_KR">
-            <Text>이들을 할당하면 제국이 이미 만들어내는 {2_Yield} {3_Net}에 턴마다 약 {1_Amount}이 더해집니다. 어림값입니다. 다른 출처의 비율 보너스에 따라 달라집니다.</Text>
+            <Text>이들을 할당하면 제국이 이미 만들어내는 {2_Yield} {3_Net}에 턴마다 약 {1_Amount}이 더해집니다. 어림값입니다. 이 비율은 제국 전체 보너스가 붙기 전, 정착지들이 생산하는 양에서 계산됩니다.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="ko_KR">
             <Text>공장 안</Text>

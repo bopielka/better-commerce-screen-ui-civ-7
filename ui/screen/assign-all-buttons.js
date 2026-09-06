@@ -208,12 +208,26 @@ function makeButton({ label, busy, tooltip, run }) {
 }
 
 /**
+ * One line of the breakdown, plus what it is still waiting for.
+ * ⚠️ These trackers pay NOTHING until a tech or a civic switches them on, so a figure of zero here
+ * is not "you have assigned nothing" - it is "this does not pay yet", and only the second line
+ * says which of the two it is.
+ */
+function gdpCard(key, amount, requirement) {
+    const line = Locale.compose(key, amount);
+    if (!requirement) {
+        return line;
+    }
+    return `${line}[N]${Locale.compose('LOC_NAJANE_COMMERCE_GDP_LOCKED', requirement)}`;
+}
+
+/**
  * What every assigned resource is earning per turn, in one figure.
  * ⚠️ Rebuilt rather than edited: the tooltip breaks the same number down by source, so editing
  * only the total would leave it disagreeing with itself.
  */
 function makeGdpTotal() {
-    const { fromCities, fromImports, fromFactories, fromBuildings, total } = gdpPerTurn();
+    const { fromCities, fromImports, fromFactories, fromBuildings, total, locked } = gdpPerTurn();
 
     const readout = makeElement('div', GDP_CLASS);
     const value = makeElement('div', 'font-fit-shrink');
@@ -223,13 +237,13 @@ function makeGdpTotal() {
     appendAll(readout, value, icon);
 
     const cards = [
-        Locale.compose('LOC_NAJANE_COMMERCE_GDP_FROM_CITIES', fromCities),
-        Locale.compose('LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS', fromImports),
+        gdpCard('LOC_NAJANE_COMMERCE_GDP_FROM_CITIES', fromCities, locked.cities),
+        gdpCard('LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS', fromImports, locked.imports),
     ];
     if (isFactoryAge()) {
-        cards.push(Locale.compose('LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES', fromFactories));
+        cards.push(gdpCard('LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES', fromFactories, locked.factories));
     }
-    cards.push(Locale.compose('LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS', fromBuildings));
+    cards.push(gdpCard('LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS', fromBuildings, locked.buildings));
 
     const mount = makeElement('div', `${BUTTON_CLASS}-mount`);
     appendWithFramedTooltip(mount, readout, {

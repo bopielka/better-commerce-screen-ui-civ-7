@@ -54,7 +54,7 @@
             <Text>Atribuir recursos automaticamente</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="pt_BR">
-            <Text>O que fazer quando um recurso chega, ao melhorar um espaço ou por uma rota comercial, sem abrir a tela de comércio. Usa a mesma ordem de Atribuir tudo.</Text>
+            <Text>O que fazer quando um recurso chega, ao melhorar um espaço ou por uma rota comercial, sem abrir a tela de comércio. Usa a mesma ordem de Atribuir tudo. “Não toque nos meus recursos” faz o contrário: o que o jogo encaixar sozinho volta para a reserva para você colocar.</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="pt_BR">
             <Text>Nunca</Text>
@@ -67,6 +67,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="pt_BR">
             <Text>Refazer todas as atribuições</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF" Language="pt_BR">
+            <Text>Não toque nos meus recursos</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="pt_BR">
@@ -119,6 +122,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="pt_BR">
             <Text>PIB por turno (estimativa)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED" Language="pt_BR">
+            <Text>[STYLE:text-negative]Bloqueado: requer {1_Name}[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="pt_BR">
             <Text>[B]+{1_Amount}[/B] de recursos atribuídos a cidades. Um povoado não rende nada.</Text>
@@ -226,11 +232,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="pt_BR">
             <Text>{1_Rate} de PIB por turno para cada recurso de fábrica colocado numa fábrica, e você tem {2_Count} atribuídos. É nisto que a trilha de legado econômica da era moderna é pontuada. Alguns bairros únicos, como o Parque Industrial americano, rendem mais além disto e não são contados aqui.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE" Language="pt_BR">
+            <Text>De onde vem este número</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE" Language="pt_BR">
+            <Text>Base antes dos bônus: {1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS" Language="pt_BR">
+            <Text>Bônus deste recurso: +{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="pt_BR">
-            <Text>Cerca de {1_Amount} dos {3_Net} de {2_Yield} que seu império produz por turno vem daqui. É uma estimativa: bônus percentuais de outras fontes a deslocam.</Text>
+            <Text>Cerca de {1_Amount} dos {3_Net} de {2_Yield} que seu império produz por turno vem daqui. É uma estimativa: a porcentagem é calculada sobre o que seus assentamentos produzem, antes dos bônus de império.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="pt_BR">
-            <Text>Atribuí-los acrescentaria cerca de {1_Amount} por turno aos {3_Net} de {2_Yield} que seu império já produz. É uma estimativa: bônus percentuais de outras fontes a deslocam.</Text>
+            <Text>Atribuí-los acrescentaria cerca de {1_Amount} por turno aos {3_Net} de {2_Yield} que seu império já produz. É uma estimativa: a porcentagem é calculada sobre o que seus assentamentos produzem, antes dos bônus de império.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="pt_BR">
             <Text>Em fábricas</Text>

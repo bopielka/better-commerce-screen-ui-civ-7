@@ -54,7 +54,7 @@
             <Text>Ressourcen automatisch zuweisen</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_AUTO_MODE_DESCRIPTION" Language="de_DE">
-            <Text>Was geschehen soll, wenn eine Ressource hinzukommt - durch den Ausbau eines Felds oder über einen Handelsweg - ohne dass der Handelsbildschirm geöffnet wird. Verwendet dieselbe Reihenfolge wie Alle zuweisen.</Text>
+            <Text>Was geschehen soll, wenn eine Ressource hinzukommt - durch den Ausbau eines Felds oder über einen Handelsweg - ohne dass der Handelsbildschirm geöffnet wird. Verwendet dieselbe Reihenfolge wie Alle zuweisen. „Meine Ressourcen nicht anfassen“ geht andersherum: Was das Spiel von selbst einsetzt, wandert zurück in den Vorrat, damit Ihr es selbst platziert.</Text>
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_OFF" Language="de_DE">
             <Text>Nie</Text>
@@ -67,6 +67,9 @@
         </Row>
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_REBUILD" Language="de_DE">
             <Text>Alle Zuweisungen neu aufbauen</Text>
+        </Row>
+        <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_MODE_HANDS_OFF" Language="de_DE">
+            <Text>Meine Ressourcen nicht anfassen</Text>
         </Row>
 
         <Row Tag="LOC_OPTIONS_NAJANE_COMMERCE_SKIP_PROMPT" Language="de_DE">
@@ -119,6 +122,9 @@
 
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_TOTAL" Language="de_DE">
             <Text>BIP pro Runde (geschätzt)</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GDP_LOCKED" Language="de_DE">
+            <Text>[STYLE:text-negative]Gesperrt – benötigt {1_Name}[/STYLE]</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_GDP_FROM_CITIES" Language="de_DE">
             <Text>[B]+{1_Amount}[/B] aus Ressourcen in Städten. Ein Ort bringt nichts.</Text>
@@ -226,11 +232,20 @@
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_GDP_TOOLTIP" Language="de_DE">
             <Text>{1_Rate} BIP pro Runde für jede Fabrikressource in einer Fabrik, und Ihr habt {2_Count} davon zugewiesen. Danach wird der wirtschaftliche Vermächtnispfad der Moderne gewertet. Manche einzigartigen Viertel, etwa Amerikas Industriepark, zahlen zusätzlich und sind hier nicht mitgezählt.</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_TITLE" Language="de_DE">
+            <Text>Woher diese Zahl kommt</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BASE" Language="de_DE">
+            <Text>Basis vor Boni: {1_Amount} {2_Yield}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_BONUS" Language="de_DE">
+            <Text>Bonus dieser Ressource: +{1_Percent}%</Text>
+        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_NOW" Language="de_DE">
-            <Text>Rund {1_Amount} der {3_Net} {2_Yield}, die Euer Reich pro Runde erwirtschaftet, stammen hieraus. Eine Schätzung: prozentuale Boni aus anderen Quellen verschieben sie.</Text>
+            <Text>Rund {1_Amount} der {3_Net} {2_Yield}, die Euer Reich pro Runde erwirtschaftet, stammen hieraus. Eine Schätzung: Der Prozentsatz wird von dem genommen, was Eure Siedlungen erwirtschaften, vor reichsweiten Boni.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_ESTIMATE_WOULD" Language="de_DE">
-            <Text>Diese zuzuweisen brächte rund {1_Amount} pro Runde zusätzlich zu den {3_Net} {2_Yield}, die Euer Reich bereits erwirtschaftet. Eine Schätzung: prozentuale Boni aus anderen Quellen verschieben sie.</Text>
+            <Text>Diese zuzuweisen brächte rund {1_Amount} pro Runde zusätzlich zu den {3_Net} {2_Yield}, die Euer Reich bereits erwirtschaftet. Eine Schätzung: Der Prozentsatz wird von dem genommen, was Eure Siedlungen erwirtschaften, vor reichsweiten Boni.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_FACTORY_IN_SETTLEMENTS" Language="de_DE">
             <Text>In Fabriken</Text>

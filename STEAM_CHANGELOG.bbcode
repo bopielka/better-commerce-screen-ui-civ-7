@@ -3,6 +3,15 @@
 Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the source repository.
 
 [hr][/hr]
+[h2]1.14[/h2]
+
+[list]
+[*][b]Fixed: the GDP figure counted points you had not unlocked yet.[/b] Every economic scoring source has to be switched on by a technology or a civic first - the Wheel for City and Bonus Resources, Currency for Gold buildings, Skilled Trades for imported Resources, Mass Production for Factory Resources - and the mod paid them out regardless. A source you have not unlocked now counts as zero, and its line in the tooltip says in red what it is waiting for.
+[*][b]New: "Do not touch my resources".[/b] A new choice on the automatic-assignment setting. The game slots a newly improved Resource into the settlement that improved it as soon as that settlement has a free slot, without asking - this sends it straight back to the unassigned pool so you place every Resource yourself. Resources that come with a captured settlement are left alone.
+[*][b]New: the "≈" figure on the Factory tab shows its working.[/b] Hover it for the base the percentage is taken from, the Resource's percentage, and what the two come to.
+[*][b]Fixed: the Factory tab's "≈" estimates were too high.[/b] They took the percentage of the figure in the top panel, but the game adds its percentage bonuses together and takes them all from the same base - so five Tea at +15% Science is 15% of your settlements' output, not 15% of a total that already carries a +25% from somewhere else. The estimates now read from the settlements. Reported by a player on Steam, with the numbers to prove it - thank you.
+[/list]
+
 [h2]1.13[/h2]
 
 [list]
@@ -29,20 +38,4 @@ Short form. The full, reasoned version lives in [b]CHANGELOG.md[/b] in the sourc
 [*][b]Fixed: moving to the next age left the previous age's answers in memory.[/b] The game's resource, unit and modifier tables are the age's own — whether Gold is an Empire resource or a Treasure one changes with it — and every cache the mod builds from them now empties when the age ends.
 [*][b]A Treasure Convoy pass no longer asks the game about units it has already ruled out[/b], once per tile of every unit you move.
 [*][b]A trade route card is matched to its route once per pass instead of twice.[/b]
-[/list]
-
-[h2]1.10[/h2]
-[list]
-[*][b]Nothing on screen changes and no setting moves.[/b] Like 1.9, this is about what the mod costs the game — the second sweep over the same ground, because 1.9 fixed the subscriptions and left the work behind them alone.
-[*][b]Fixed: a Treasure Convoy asked the pathfinder about every plot you own.[/b] The same mistake 1.9 fixed for Merchants, in the module nobody looked at afterwards — four to eight hundred full pathfinder queries per convoy, three times a turn, at the moment the turn begins. Most of them were land plots, which a naval unit can never enter, and a search that fails is the expensive one. Automatic return is on by default, so this was running for everybody.
-[*][b]Settlement priorities are no longer read from disk tens of thousands of times per layout.[/b] A settlement you never set a priority on was the one answer the mod refused to remember, and the scoring asks once per resource-and-settlement pair for every single resource it places.
-[*][b]Three more answers were being worked out again for every pair[/b] — whether a conditional bonus applies here, which settlement a requirement is about, and what a settlement's yields stand at.
-[*][b]Emptying settlements no longer waits half a second for messages that are not coming[/b], once per resource and once per settlement.
-[*][b]Fixed: a wait for your own resource could be ended by another empire's[/b], letting the next step read a board that had not finished changing.
-[*][b]Fixed: a padlock on an imported Resource was never dropped when the Resource left.[/b] The mod was filing its own events as somebody else's, because it read the owner of the plot rather than the settlement the event names.
-[*][b]Fixed: the Commerce screen could end up disagreeing with the game after a bulk assignment.[/b] Its own model applies one resource per event and keeps only the latest when several arrive together, so tiles went missing from settlement cards. The mod used to give the display a frame after every single placement to try to keep up — a hundred redraws over a full empire, and it did not fix it. The run now goes at full speed and the whole board is put right once, at the end, cards included.
-[*][b]The Commerce screen stopped re-asking the game for answers that never change.[/b] Icons were fetched every time one was drawn; the padlock on every assigned Resource composed its own tooltip every frame; each settlement card rebuilt the eight priority names and their explanations from scratch; the GDP figure re-counted every building in the empire several times a second; and Shift was read from the engine on every mouse movement. All of it is remembered now.
-[*][b]The Trade Routes tab stops listening when you leave it[/b], instead of keeping five engine subscriptions for the rest of the session.
-[*][b]A trade route card asked the same three questions of your whole army[/b] — a tab of forty cards walked it over a hundred times per redraw. It is one walk now.
-[*][b]The Empire and Factory tabs no longer rebuild a static index on every visit[/b], and the layout watcher stops watching the whole HUD once it has what it was waiting for.
 [/list]
