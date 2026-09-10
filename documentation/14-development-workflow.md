@@ -184,7 +184,7 @@ mid-game.
 ```
 CLAUDE.md                 what an agent reads first; points at documentation/README.md
 README.md                 the player- and author-facing document
-STEAM_CHANGELOG.bbcode    ⚠️ the ONLY changelog; see below. 8000-character limit
+STEAM_CHANGELOG.bbcode    ⚠️ the ONLY changelog; see below. No length limit
 TODO.md                   ⚠️ "For AI agents: Don't edit this file unless asked."
 documentation/            this folder
 steam-description.bbcode  the Workshop page, 6000-character limit
@@ -203,9 +203,11 @@ does not go into the bullets — it goes where it is actually useful: a `⚠️`
 it constrains, or a page in this folder. A cause recorded in a file nobody opens while editing is
 a cause nobody reads.
 
-`deploy.sh` prints the character count and refuses to deploy over the limit. When the file
-approaches 8000, **drop the oldest version section** rather than trimming the recent ones — old
-releases are what nobody reads, and git still has them.
+⚠️ **This file has no length limit.** Only the newest section is ever pasted into the Workshop's
+change note, so it is the archive and **old sections are never deleted**. `deploy.sh` prints its
+size and nothing more. The 6000-character limit it *does* enforce belongs to
+`steam-description.bbcode`, which is a different file — an earlier reading of this rule deleted
+1.11 and 1.12, both recovered from git.
 
 There is currently no `config/` directory; the deploy script tolerates a content directory that
 does not exist.

@@ -167,16 +167,16 @@ if [[ -f "$DESCRIPTION" ]]; then
     say "steam description: $size/$DESCRIPTION_LIMIT characters"
 fi
 
-# The Workshop's change-note field is a separate, larger box. Same failure mode though: it
-# truncates silently, and this file grows by a section every release rather than a line.
+# The change-note field takes ONE SECTION at a time, not this whole file.
+#
+# ⚠️ THERE IS NO LIMIT ON THIS FILE (user, 2026-09-10). Only the NEWEST section is ever pasted into
+# the Workshop's change note, so the file is the archive and may grow without bound. This check
+# used to enforce 8000 characters on the whole of it and told the reader to "drop the oldest
+# section" - which cost 1.11 and 1.12 before the rule was corrected; both were restored from git.
+# The 6000-character limit above, on the DESCRIPTION, is the real one.
 CHANGES="$SRC_DIR/STEAM_CHANGELOG.bbcode"
-CHANGES_LIMIT=8000
 if [[ -f "$CHANGES" ]]; then
-    size=$(wc -c < "$CHANGES" | tr -d '[:space:]')
-    if [[ "$size" -gt "$CHANGES_LIMIT" ]]; then
-        die "STEAM_CHANGELOG.bbcode is $size characters; Steam allows $CHANGES_LIMIT. Drop the oldest section."
-    fi
-    say "steam changelog: $size/$CHANGES_LIMIT characters"
+    say "steam changelog: $(wc -c < "$CHANGES" | tr -d '[:space:]') characters (no limit; newest section only is posted)"
 fi
 
 # --- deploy ------------------------------------------------------------------
