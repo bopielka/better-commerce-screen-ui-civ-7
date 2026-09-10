@@ -488,5 +488,53 @@
         <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="ru_RU">
             <Text>Моды Najane: экран торговли</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_LIMIT" Language="ru_RU">
+            <Text>Ліміт торгових шляхів</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ACTIVE" Language="ru_RU">
+            <Text>Активні торгові шляхи</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ON_THE_WAY" Language="ru_RU">
+            <Text>Купці в дорозі</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_DOCK_TRADE" Language="ru_RU">
+            <Text>Показати торгові шляхи</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE" Language="ru_RU">
+            <Text>Зробити наступного ходу</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL" Language="ru_RU">
+            <Text>Скасувати</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="ru_RU">
+            <Text>У черзі на початок наступного ходу: підняти ліміт і надіслати купця до {1_City}. Натисніть, щоб скасувати.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="ru_RU">
+            <Text>Автоматично підвищено лімітів торгових шляхів: {1_Count} - надіслані раніше купці тепер можуть відкрити свої шляхи.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="ru_RU">
+            <Text>Ліміт торгових шляхів із {1_Leader} підвищено автоматично - купець, надісланий до {2_City}, тепер може відкрити шлях.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_BUY" Language="ru_RU">
+            <Text>Натисніть, щоб почати це на початку ходу: купити купця за {3_Gold} золота й одразу надіслати його до {4_City}, а «Покращення торговельних відносин» із {1_Leader} за {2_Cost} впливу запропонувати, щойно вистачить впливу. Купець тим часом іде.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE" Language="ru_RU">
+            <Text>Натисніть, щоб почати це на початку ходу: одразу надіслати до {3_City} купця, який у вас уже є, а «Покращення торговельних відносин» із {1_Leader} за {2_Cost} впливу запропонувати, щойно вистачить впливу. Купець тим часом іде.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING" Language="ru_RU">
+            <Text>Очікує наступного ходу</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING_TOOLTIP" Language="ru_RU">
+            <Text>Триває: купця надсилають до {1_City}, а ліміт торгових шляхів буде піднято, щойно вистачить впливу.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FREE_MERCHANTS" Language="ru_RU">
+            <Text>Вільні купці: {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_SENT" Language="ru_RU">
+            <Text>Купець вирушив до {2_City} - ліміт торгових шляхів із {1_Leader} буде піднято, щойно вистачить впливу.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="ru_RU">
+            <Text>Торгові шляхи у процесі створення</Text>
+        </Row>
     </LocalizedText>
 </Database>

@@ -215,6 +215,21 @@ const attempts = new Map();
 const commandedAt = new Map();
 
 /**
+ * The turn an order was filed on, per unit.
+ *
+ * ⚠️ THE CLICK-TO-ENGINE WINDOW. `sendRequest` only QUEUES, so for the rest of the frame - and in
+ * the Modern age for the rest of the turn - the unit still reports no queued destination and full
+ * movement. Both read as "free", which put a merchant straight back in the spare pool one frame
+ * after it was sent and left the plus button on the card it had just been sent to.
+ *
+ * ⚠️ IN MEMORY ONLY, AND THAT IS THE POINT. A stored order outlives a reload and the player can
+ * halt a merchant without the store hearing - the reason `isTravelling` may not simply trust an
+ * order. This map is cleared on `GameStarted` and never written to disk, so it can only ever say
+ * "spoken for during THIS session's turn", which is exactly the gap being covered.
+ */
+const spokenForOnTurn = new Map();
+
+/**
  * Merchants seen with a journey queued on the last pass.
  * ⚠️ THIS IS WHAT MAKES "THE PLAYER STOPPED IT" A FACT RATHER THAN A GUESS. A cancellation and a
  * turn's housekeeping both arrive as `UnitOperationsCleared` on a merchant with nothing queued;
@@ -266,6 +281,26 @@ function rememberWhetherTravelling(unit) {
     }
 }
 
+/**
+ * Whether the unit is standing on ground this settlement owns - "it has arrived", asked of the
+ * map rather than of the trade command.
+ *
+ * ⚠️ The same question `approachLocations` aims at: it walks the merchant to a plot the target
+ * OWNS, never to the centre, so the centre is the wrong thing to compare against.
+ */
+function standsOnLandOf(unit, city) {
+    try {
+        const owner = GameplayMap.getOwningCityFromXY(unit.location.x, unit.location.y);
+        // ⚠️ Both shapes: this call hands back a city whose `id` is a ComponentID, but a build that
+        // hands back a bare id must not silently compare "[object Object]" and never match.
+        const ownerId = owner?.id?.id ?? owner?.id;
+        return ownerId !== undefined && String(ownerId) === String(city.id.id);
+    } catch (error) {
+        // Cannot tell - assume it has NOT arrived, which only means the old behaviour.
+        return false;
+    }
+}
+
 function forgetOrderIfAbandoned(unitID) {
     const key = unitKey(unitID);
     if (!key || readOrder(key) < 0) {
@@ -299,11 +334,21 @@ function forgetOrderIfAbandoned(unitID) {
         return;
     }
     wasTravelling.delete(key);
-    // ⚠️ Only where arrival is the point: a merchant that has ARRIVED has its operations cleared
-    // too, and that is success, not cancellation.
+    /*
+     * ⚠️ ARRIVAL IS NOT CANCELLATION, and `canSignRoute` ALONE CANNOT TELL THEM APART. A merchant
+     * that arrives on its LAST movement point is refused the route for having no moves left - the
+     * engine gives that refusal and "you are not there" identically, with an empty
+     * `FailureReasons` - so the errand was thrown away one step from the end, and the merchant sat
+     * at the gate for the rest of the game. Traced in UI.log as
+     * `spent=true ... dist=1 reasons=(none given)`.
+     *
+     * ⚠️ So arrival is asked POSITIONALLY as well: standing on ground the target settlement owns
+     * is what "it got there" means, and it is true whether or not any movement is left. The route
+     * is then signed when the turn begins and the movement comes back.
+     */
     if (!routesOpenFromAnywhere()) {
         const city = cityAtPlot(readOrder(key));
-        if (city?.location && canSignRoute(unit, city.location)) {
+        if (city?.location && (canSignRoute(unit, city.location) || standsOnLandOf(unit, city))) {
             return;
         }
     }
@@ -319,6 +364,7 @@ export function clearMerchantOrder(unitID) {
     attempts.delete(key);
     commandedAt.delete(key);
     wasTravelling.delete(key);
+    spokenForOnTurn.delete(key);
     writeOrder(key, 0);
 }
 
@@ -500,6 +546,9 @@ export function orderMerchantTo(unit, city, { mayMove = true } = {}) {
     // A deliberate order gets a fresh budget: the cap exists to stop the engine's own refusals
     // looping, not to ration what the player asked for.
     attempts.delete(key);
+    // ⚠️ Before `advance`, not after: the whole point is that the merchant counts as spoken for
+    // from the moment the order is filed, whatever the engine has or has not done with it yet.
+    spokenForOnTurn.set(key, currentTurn());
 
     // ⚠️ `advance` may correctly do NOTHING - a merchant bought this turn has no movement. The
     // order is still filed, and the turn beginning picks it up.
@@ -539,7 +588,15 @@ function isTravelling(unit) {
      * as busy hid the plus buttons for the whole turn after buying merchants, which is exactly the
      * turn a player is looking for somewhere to send them.
      */
-    return hasStandingOrder(unit) && Number(unit?.Movement?.movementMovesRemaining ?? 0) <= 0;
+    if (!hasStandingOrder(unit)) {
+        return false;
+    }
+    if (Number(unit?.Movement?.movementMovesRemaining ?? 0) <= 0) {
+        return true;
+    }
+    // ⚠️ The order was filed THIS TURN and the engine has not caught up yet; see `spokenForOnTurn`.
+    // A merchant with movement still in hand is otherwise indistinguishable from a free one.
+    return spokenForOnTurn.get(unitKey(unit.id)) === currentTurn();
 }
 
 /**
@@ -564,22 +621,28 @@ export function forgetMerchantState() {
     merchantState = null;
 }
 
-function merchantStates() {
-    if (merchantState && Date.now() - merchantStateAt < STATE_CACHE_MS) {
-        return merchantState;
-    }
-    merchantState = localMerchants().map((unit) => ({
-        unit,
-        plotIndex: readOrder(unitKey(unit.id)),
-        travelling: isTravelling(unit),
-    }));
-    merchantStateAt = Date.now();
-    return merchantState;
-}
-
-/** Merchants of ours with nothing to do; see `isTravelling` for what "nothing" means. */
+/**
+ * Merchants free to be given a NEW errand.
+ *
+ * ⚠️ TWO DIFFERENT QUESTIONS, AND CONFLATING THEM SENT ONE MERCHANT ON TWO ERRANDS. "Is it
+ * moving?" is `isTravelling`, and it is what a card draws a pin from. "Is it free to be told to go
+ * somewhere?" is this - and an order that has been FILED but not yet acted on answers no to the
+ * first and used to answer yes to the second.
+ *
+ * ⚠️ The failing case was a whole turn later, which is why the click-time guard did not catch it:
+ * a merchant ordered with `mayMove: false` (the "raise the limit and send" button) still has full
+ * movement and nothing queued when the next turn begins, so the trade queue's own pass read it as
+ * spare, took it, and OVERWROTE the order it was already carrying. The route it had been promised
+ * to was simply never opened.
+ *
+ * ⚠️ This does NOT put the standing order back into `isTravelling`, which is the thing 1.8 took
+ * out: a stale order still may not claim a merchant is on the road. It only stops the mod handing
+ * out a merchant it has already spoken for.
+ */
 export function idleMerchants() {
-    return merchantStates().filter((state) => !state.travelling).map((state) => state.unit);
+    return merchantStates()
+        .filter((state) => !state.travelling && state.plotIndex < 0)
+        .map((state) => state.unit);
 }
 
 /** The spare merchant that would reach `city` soonest, or null when there is none. */
@@ -611,14 +674,21 @@ export function merchantsBoundForPlayer(leaderId) {
     if (leaderId === undefined || leaderId === null) {
         return [];
     }
+    // Same rule as `merchantsBoundFor`: the ORDER is what spoke for the slot.
     return merchantStates()
-        // Same rule as `merchantsBoundFor`: a halted merchant is not spoken for.
-        .filter((state) => state.plotIndex >= 0 && state.travelling
-            && cityAtPlot(state.plotIndex)?.owner === leaderId)
+        .filter((state) => state.plotIndex >= 0 && cityAtPlot(state.plotIndex)?.owner === leaderId)
         .map((state) => state.unit);
 }
 
-export function merchantsBoundFor(city) {
+/**
+ * Every merchant carrying an order for this settlement, whether or not it is still moving.
+ *
+ * ⚠️ THE ORDER ALONE, deliberately - the opposite of `merchantsBoundFor`. That one asks "is one on
+ * the road", which is what a card draws a pin from; this asks "have I already sent one there",
+ * which is what stops a caller sending a second. A merchant that has ARRIVED and is waiting for a
+ * trade slot is not on the road any more, and it is very much already sent.
+ */
+export function merchantsOrderedTo(city) {
     if (!city?.location) {
         return [];
     }
@@ -628,11 +698,24 @@ export function merchantsBoundFor(city) {
     } catch (error) {
         return [];
     }
-    // ⚠️ The order AND the unit, never the order alone: a merchant the player called back keeps
-    // neither.
     return merchantStates()
-        .filter((state) => state.plotIndex === plotIndex && state.travelling)
+        .filter((state) => state.plotIndex === plotIndex)
         .map((state) => state.unit);
+}
+
+/**
+ * ⚠️ THE SAME QUESTION AS `merchantsOrderedTo`, AND THAT IS THE FIX. This used to demand that the
+ * merchant still be TRAVELLING, which dropped one that had arrived and was waiting for a trade
+ * slot - so a card whose merchant stood at the gate lost its pin and its cancel mark and offered
+ * to buy a second one, while the section header above it still said the route was being
+ * established. Two questions, two answers, one merchant.
+ *
+ * ⚠️ Trusting the order alone is safe only because the order is now kept honest at both ends: a
+ * merchant the player calls back has its order dropped (`forgetOrderIfAbandoned`), and one that
+ * has merely arrived keeps it (`standsOnLandOf`). Before those, an order could outlive its errand.
+ */
+export function merchantsBoundFor(city) {
+    return merchantsOrderedTo(city);
 }
 
 let listening = false;
@@ -680,6 +763,7 @@ export function startMerchantOrders() {
         attempts.clear();
         commandedAt.clear();
         wasTravelling.clear();
+        spokenForOnTurn.clear();
         orderByKey.clear();
         forgetMerchantState();
     });

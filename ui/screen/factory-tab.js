@@ -23,6 +23,8 @@ import screenStyle from '/base-standard/ui-next/screens/commerce/commerce-screen
 import { EmpireResourcesContainer } from './empire-tab.js';
 import { FactoryResourcesContainer } from './factory-resources.js';
 import { prepareTradeTabData } from './trade-routes.js';
+import { takeRequestedTab } from './open-on-tab.js';
+import { startTabIcons } from './tab-icons.js';
 import { TreasureConvoysContainer, withoutHomelandIdlers } from './treasure-tab.js';
 import { COMMERCE_PANEL_CONTEXT } from './close-screen.js';
 import { COMMERCE_SCREEN_SELECTOR } from './screen-parts.js';
@@ -30,6 +32,13 @@ import { isExplorationAge, isFactoryAge } from '../engine/age.js';
 
 const CommerceScreenWithFactoryTab = (_props) => {
     const model = createCommerceScreenModel();
+    /*
+     * ⚠️ TAKEN ONCE, HERE, AND NOT INSIDE A GETTER. `Tab` reads `defaultTab` from an effect, so a
+     * request left standing would send every later opening of the screen to the same tab - the
+     * dock's own Resource Allocation button included. `takeRequestedTab` clears as it reads and
+     * answers `undefined` for "open as usual", which `Tab` treats as no default at all.
+     */
+    const requestedTab = takeRequestedTab();
     const audioTrigger = useAudio('CommerceScreenPopup');
     const localPlayerId = useLocalPlayerId();
 
@@ -42,7 +51,19 @@ const CommerceScreenWithFactoryTab = (_props) => {
         return civDefinition ? Locale.compose(civDefinition.Name) : '';
     });
 
-    onMount(() => audioTrigger('popup-open'));
+    onMount(() => {
+        audioTrigger('popup-open');
+        /*
+         * ⚠️ FROM THE SCREEN, NOT FROM A TAB BODY. This used to run only from the Resources tab's
+         * own onMount, so a screen opened straight onto another tab drew the strip as WORDS and
+         * only swapped in the icons once that tab had finished mounting - long enough to see.
+         * Here it is the first thing after the screen exists, whichever tab it opens on.
+         *
+         * ⚠️ Idempotent, and the Resources tab still calls it: `startTabIcons` re-runs its pass on
+         * a strip already its own rather than building a second one.
+         */
+        startTabIcons();
+    });
     const handleOnClosing = () => audioTrigger('popup-close');
     const title = createMemo(() => Locale.compose('LOC_COMMERCE_SCREEN_TITLE', civName()));
 
@@ -72,6 +93,7 @@ const CommerceScreenWithFactoryTab = (_props) => {
                 get children() {
                     return createComponent(Tab, {
                         class: 'w-full flex flex-col flex-auto pointer-events-auto relative',
+                        defaultTab: requestedTab,
                         get onTabChanged() {
                             return model.onTabChanged;
                         },

@@ -478,5 +478,53 @@
         <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="de_DE">
             <Text>Najane-Mods: Handelsansicht</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_LIMIT" Language="de_DE">
+            <Text>Handelsroutenlimit</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ACTIVE" Language="de_DE">
+            <Text>Aktive Handelsrouten</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ON_THE_WAY" Language="de_DE">
+            <Text>Händler unterwegs</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_DOCK_TRADE" Language="de_DE">
+            <Text>Handelsrouten anzeigen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE" Language="de_DE">
+            <Text>Nächste Runde erledigen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL" Language="de_DE">
+            <Text>Abbrechen</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="de_DE">
+            <Text>Für den Rundenbeginn vorgemerkt: Limit erhöhen und einen Händler nach {1_City} schicken. Klicke zum Abbrechen.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="de_DE">
+            <Text>{1_Count} Handelsroutenlimits automatisch erhöht - die bereits entsandten Händler können ihre Routen jetzt eröffnen.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="de_DE">
+            <Text>Handelsroutenlimit mit {1_Leader} automatisch erhöht - der nach {2_City} entsandte Händler kann die Route jetzt eröffnen.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_BUY" Language="de_DE">
+            <Text>Klicke, um dies zu Rundenbeginn zu starten: für {3_Gold} Gold einen Händler kaufen und sofort nach {4_City} schicken, dann {1_Leader} „Handelsbeziehungen verbessern“ für {2_Cost} Einfluss vorschlagen, sobald du es dir leisten kannst. Der Händler ist derweil unterwegs.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE" Language="de_DE">
+            <Text>Klicke, um dies zu Rundenbeginn zu starten: sofort einen vorhandenen Händler nach {3_City} schicken und {1_Leader} „Handelsbeziehungen verbessern“ für {2_Cost} Einfluss vorschlagen, sobald du es dir leisten kannst. Der Händler ist derweil unterwegs.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING" Language="de_DE">
+            <Text>Wartet auf die nächste Runde</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING_TOOLTIP" Language="de_DE">
+            <Text>Läuft: Ein Händler wird nach {1_City} geschickt, und das Handelsroutenlimit wird erhöht, sobald der Einfluss da ist.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FREE_MERCHANTS" Language="de_DE">
+            <Text>Freie Händler: {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_SENT" Language="de_DE">
+            <Text>Ein Händler ist nach {2_City} unterwegs - das Handelsroutenlimit mit {1_Leader} wird erhöht, sobald der Einfluss da ist.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="de_DE">
+            <Text>Handelsrouten im Aufbau</Text>
+        </Row>
     </LocalizedText>
 </Database>

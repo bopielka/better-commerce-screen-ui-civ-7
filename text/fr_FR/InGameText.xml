@@ -478,5 +478,53 @@
         <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="fr_FR">
             <Text>Mods de Najane: écran de commerce</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_LIMIT" Language="fr_FR">
+            <Text>Limite de routes commerciales</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ACTIVE" Language="fr_FR">
+            <Text>Routes commerciales actives</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ON_THE_WAY" Language="fr_FR">
+            <Text>Marchands en route</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_DOCK_TRADE" Language="fr_FR">
+            <Text>Voir les routes commerciales</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE" Language="fr_FR">
+            <Text>Le faire au prochain tour</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL" Language="fr_FR">
+            <Text>Annuler</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="fr_FR">
+            <Text>En attente pour le début du prochain tour : augmenter la limite et envoyer un marchand à {1_City}. Cliquez pour annuler.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="fr_FR">
+            <Text>{1_Count} limites de routes commerciales augmentées automatiquement - les marchands déjà envoyés peuvent ouvrir leurs routes.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="fr_FR">
+            <Text>Limite de routes commerciales avec {1_Leader} augmentée automatiquement - le marchand envoyé à {2_City} peut maintenant ouvrir la route.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_BUY" Language="fr_FR">
+            <Text>Cliquez pour lancer ceci au début du tour : acheter un marchand pour {3_Gold} or et l’envoyer aussitôt à {4_City}, puis proposer à {1_Leader} « Améliorer les relations commerciales » pour {2_Cost} Influence dès que possible. Le marchand voyage pendant ce temps.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE" Language="fr_FR">
+            <Text>Cliquez pour lancer ceci au début du tour : envoyer aussitôt à {3_City} un marchand que vous avez déjà, puis proposer à {1_Leader} « Améliorer les relations commerciales » pour {2_Cost} Influence dès que possible. Le marchand voyage pendant ce temps.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING" Language="fr_FR">
+            <Text>En attente du prochain tour</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING_TOOLTIP" Language="fr_FR">
+            <Text>En cours : un marchand est envoyé à {1_City}, et la limite de routes commerciales sera augmentée dès que l’Influence sera disponible.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FREE_MERCHANTS" Language="fr_FR">
+            <Text>Marchands disponibles : {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_SENT" Language="fr_FR">
+            <Text>Un marchand est en route vers {2_City} - la limite de routes commerciales avec {1_Leader} sera augmentée dès que l’Influence sera disponible.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="fr_FR">
+            <Text>Routes commerciales en cours d’établissement</Text>
+        </Row>
     </LocalizedText>
 </Database>

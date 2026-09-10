@@ -45,11 +45,18 @@ import {
     forgetMerchantState,
     merchantsBoundFor,
     merchantsBoundForPlayer,
+    merchantsOrderedTo,
     nearestIdleMerchant,
     orderMerchantTo,
 } from '../engine/merchant-orders.js';
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
-import { ICON_BUTTON_STYLE, makeIconButton } from './icon-button.js';
+import { forgetLeaderHover, noteLeaderHover } from './relationship-trade-footer.js';
+import {
+    cancelTradeAction,
+    isTradeActionQueued,
+    queueTradeAction,
+} from '../engine/trade-queue.js';
+import { ICON_BUTTON_CLASS, ICON_BUTTON_STYLE, makeIconButton } from './icon-button.js';
 import { closeCommerceScreen } from './close-screen.js';
 import { yieldIcon } from './icons.js';
 import { TRADE_HEAD_CLASS } from './screen-parts.js';
@@ -94,6 +101,15 @@ const SEND_WIDE_CLASS = `${BUY_CLASS}-send-wide`;
 const CANCEL_CLASS = `${BUY_CLASS}-cancel`;
 /** Holds the pin and the X side by side. */
 const ERRAND_ROW_CLASS = `${BUY_CLASS}-errand-row`;
+/** The same, for the queued hourglass and the X that cancels it. */
+const QUEUE_ROW_CLASS = `${BUY_CLASS}-queue-row`;
+
+/**
+ * The amber a waiting mark is lit in.
+ * ⚠️ Better City UI's own `.najane-city-wait-on` colour (user's instruction, 2026-09-10), so one
+ * hourglass means one thing across both mods.
+ */
+const QUEUED_COLOUR = '#f6ce55';
 
 /** The green of the "send a spare merchant" plus - the game's own positive colour. */
 const SEND_PLUS_COLOUR = '#9ad48f';
@@ -127,6 +143,15 @@ const CANCEL_ICON = 'blp:Action_Cancel.png';
 
 /** The game's own attention mark; `misc-icons.xml`, ID "ATTENTION". */
 const WARN_ICON = 'blp:fonticon_attention';
+
+/**
+ * The game's own plain hourglass, and the same one Better City UI puts on a purchase that has to
+ * wait (user's instruction, 2026-09-10).
+ *
+ * ⚠️ NOT `hud_turn-timer`: that mark means "turns" elsewhere on this screen, and one icon saying
+ * two things is worse than an extra icon.
+ */
+const WAIT_ICON = 'fs://game/HourGlass.png';
 
 /**
  * Whose teardown owns these tooltips; the tab disposes its own and no others.
@@ -274,7 +299,13 @@ ${ICON_BUTTON_STYLE}
 .${CANCEL_CLASS} { margin-left: 0.3rem; }
 
 .${SEND_WIDE_CLASS} { margin-top: 0.25rem; }
-.${SEND_WIDE_CLASS}__plus {
+/*
+ * ⚠️ ONE RULE FOR BOTH, and that is the point: the two buttons make the same offer - "raise the
+ * limit and send the merchant you already have" - so the mark that identifies that offer may not
+ * be stated twice and drift apart, which is what happened to its colour and size once already.
+ */
+.${SEND_WIDE_CLASS}__plus,
+.${WARN_CLASS}__plus {
     margin-right: 0.3rem;
     color: ${SEND_PLUS_COLOUR};
     font-size: ${SEND_PLUS_SIZE};
@@ -354,6 +385,102 @@ ${ICON_BUTTON_STYLE}
  * the other buttons use, since clicking this one is never actually inert.
  */
 .${WARN_CLASS}--blocked { opacity: 0.7; }
+/*
+ * The hourglass. Flattened and tinted the same three-step way the cancel mark is - the game's
+ * art is pale and would read as disabled against the amber frame.
+ *
+ * ⚠️ SMALLER THAN THE BOX IT SHARES WITH THE INFLUENCE MARK, and for the same reason as the dock
+ * button's own icon: the game's yield marks are drawn with a margin baked into the artwork, while
+ * "HourGlass.png" fills its image edge to edge - so at the shared "contain" it came out visibly
+ * larger than the globe beside it. The box keeps its size; only the artwork inside shrinks, so
+ * the two marks stay on the same baseline.
+ */
+.${WARN_CLASS}__icon.${WARN_CLASS}__wait-icon {
+    filter: grayscale(1) brightness(1.6);
+    /*
+     * ⚠️ WRITTEN AS A COMPOUND SELECTOR, and that is what makes it apply at all. The element wears
+     * both classes; at one class each, the two rules tie on specificity and the LATER one wins -
+     * and ".__icon", with its "background-size: contain", is the later one. Stated as a single
+     * class this rule was simply overruled and the hourglass never shrank.
+     */
+    background-size: 74%;
+}
+/*
+ * Already queued: lit, so the card says at a glance that the mark has been made.
+ *
+ * ⚠️ THE SAME AMBER BETTER CITY UI LIGHTS ITS OWN HOURGLASS WITH (user's instruction,
+ * 2026-09-10) - border, wash and icon tint all taken from ".najane-city-wait-on" there, so the
+ * two mods say "queued" in one colour rather than two.
+ *
+ * ⚠️ NOT green: green belongs to the plus, which acts NOW. An amber mark is a thing waiting.
+ */
+.${WARN_CLASS}--queued {
+    border-color: ${QUEUED_COLOUR};
+    background: rgba(246, 206, 85, 0.28);
+}
+.${WARN_CLASS}--queued:hover { border-color: ${QUEUED_COLOUR}; }
+.${WARN_CLASS}--queued .${WARN_CLASS}__icon.${WARN_CLASS}__wait-icon {
+    filter: fxs-color-tint(${QUEUED_COLOUR});
+}
+/* Queued, and there is nothing left to press: the X beside it is what undoes it. */
+.${WARN_CLASS}--queued { cursor: default; }
+/*
+ * The hourglass and its cancel mark side by side; same arrangement as the errand row.
+ *
+ * ⚠️ LEVELLED BY STRETCHING, NOT BY A NUMBER. The two are built by different means - the
+ * hourglass is a priced button sized by its content, the X is a fixed-size icon button - and they
+ * came out different heights. Working out the taller one by hand would mean adding up a padding
+ * and a border that this engine does not treat as "border-box" reliably, and pinning the result
+ * would drift the moment either side changed. So the row stretches and the icon button gives up
+ * its fixed height for this one placement: whichever is taller sets the row, which is what
+ * "match the bigger one" actually means.
+ */
+.${QUEUE_ROW_CLASS} {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: flex-end;
+    /*
+     * ⚠️ THE SPACING MOVES UP TO THE ROW, and the hourglass gives up its own. Its "margin-top"
+     * sits INSIDE the flex line, so the row came out that much taller than the button - and the X,
+     * stretching to the row, ended up taller than the thing it stands beside. Carried here, the
+     * row is exactly as tall as the hourglass and the X matches it.
+     */
+    margin-top: 0.25rem;
+}
+.${QUEUE_ROW_CLASS} .${WARN_CLASS} {
+    margin-top: 0;
+}
+/*
+ * Air between the three marks. The hourglass carries a price and reads as a block; without a gap
+ * the pin sat flush against it and the two read as one wide control.
+ *
+ * ⚠️ On every child AFTER the first rather than as a gap on the row, because the row's children
+ * are mounts of different kinds - a priced button and two framed-tooltip wrappers - and only the
+ * spacing between them is wanted, never before the first or after the last.
+ */
+.${QUEUE_ROW_CLASS} > * + * {
+    margin-left: 0.3rem;
+}
+.${QUEUE_ROW_CLASS} .${ICON_BUTTON_CLASS} {
+    height: auto;
+    align-self: stretch;
+}
+/* The mount is the flex item; the button only fills what the mount is given. */
+.${QUEUE_ROW_CLASS} .${ICON_BUTTON_CLASS}-mount {
+    align-items: stretch;
+}
+/*
+ * The map pin, brought in to match the marks around it.
+ *
+ * ⚠️ TWO CLASSES DEEP ON PURPOSE. ".__icon" carries "background-size: contain" and a rule at one
+ * class would tie with it on specificity and lose to whichever comes later in the sheet - exactly
+ * how the hourglass rule was silently overruled. Same reason the artwork needs shrinking at all:
+ * the game's own marks carry a margin inside the image, this one fills it edge to edge.
+ */
+.${LOCATE_CLASS} .${ICON_BUTTON_CLASS}__icon {
+    background-size: 78%;
+}
 .${WARN_CLASS}__icon {
     width: 1.3rem;
     height: 1.3rem;
@@ -711,6 +838,13 @@ export function decorateLeaderLink(card, route) {
     }
     portrait.classList.add(LEADER_LINK_CLASS);
     bindActivatable(portrait, () => openDiplomacyWith(leaderId));
+    /*
+     * ⚠️ The relationship tooltip carries no leader in its DOM, and it is portalled out of this
+     * screen entirely - so which leader it is about can only be learned on the way in. See
+     * screen/relationship-trade-footer.js.
+     */
+    portrait.addEventListener('mouseenter', () => noteLeaderHover(leaderId));
+    portrait.addEventListener('mouseleave', forgetLeaderHover);
 }
 
 /** The warning under the price: this leader has no slot left for what you are about to buy. */
@@ -723,10 +857,20 @@ export function decorateLeaderLink(card, route) {
  * this feature existed. So every non-ready branch ends by saying so, and only the ready
  * branch is a one-click fix on its own.
  */
-function warnActionText(warning, offer) {
+function warnActionText(warning, offer, targetCity = null) {
     const leader = leaderName(warning.leaderId);
     if (offer?.canStart && offer.cost <= influenceBalance()) {
-        return Locale.compose('LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE', leader, offer.cost);
+        // ⚠️ The sentence has to match the MARK on the button: a green plus promises a merchant
+        // is sent, so where one will be, the tooltip is the one that says so. Same string the
+        // limit-blocked card's own send button uses - it is the same offer.
+        return targetCity && nearestIdleMerchant(targetCity)
+            ? Locale.compose(
+                'LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP',
+                leader,
+                offer.cost,
+                Locale.compose(targetCity.name ?? ''),
+            )
+            : Locale.compose('LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE', leader, offer.cost);
     }
     const openLine = Locale.compose('LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN', leader);
     if (!offer) {
@@ -742,21 +886,81 @@ function warnActionText(warning, offer) {
 
 /**
  * The warning turned into the fix it warns about: propose "Improve Trade Relations" from the
- * card, without leaving the screen.
+ * card, without leaving the screen - and, where there is one standing idle, send the merchant
+ * into the slot the treaty opens.
+ *
+ * ⚠️ THE MARK STATES WHICH OF THE TWO IT IS. A green plus is a promise to SEND something, so it
+ * is drawn only where both halves are actually on offer - a treaty that can be afforded and a
+ * spare merchant to send. Everything else keeps the attention mark, because then the button
+ * really is only a warning with a proposal behind it.
  *
  * ⚠️ It goes dark once used - the proposal can only be made once per turn per leader, and a
  * button that stayed bright and priced made the feature look broken.
  */
-function buildWarnButton(warning, scope) {
-    const offer = improveOfferFor(warning.leaderId);
+/**
+ * What the hourglass promises, in the order the pass will actually try it: the treaty, then a
+ * spare merchant, then a bought one.
+ *
+ * ⚠️ The GOLD price is named only where a merchant would have to be bought. Naming it while a
+ * spare is standing idle would promise a cost the pass will not pay.
+ */
+function queueActionText(leaderId, offer, targetCity, queued) {
+    const city = Locale.compose(targetCity?.name ?? '');
+    if (queued) {
+        // ⚠️ Says only what is waiting. What UNDOES it is the X beside it, and that button's own
+        // tooltip is where "click to cancel" belongs.
+        return Locale.compose('LOC_NAJANE_COMMERCE_QUEUE_WAITING_TOOLTIP', city);
+    }
+    const leader = leaderName(leaderId);
+    const cost = offer?.cost ?? 0;
+    if (nearestIdleMerchant(targetCity)) {
+        return Locale.compose('LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE', leader, cost, city);
+    }
+    const site = siteFor({ nearestCityId: null }, targetCity);
+    return site?.offer
+        ? Locale.compose('LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_BUY', leader, cost, site.offer.cost, city)
+        : Locale.compose('LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE', leader, cost, city);
+}
+
+/**
+ * @param leaderId whose limit this is about - passed separately because `warning` is absent on a
+ *        card that is queued but no longer short of a slot.
+ */
+function buildWarnButton(leaderId, warning, targetCity, scope) {
+    const offer = improveOfferFor(leaderId);
     const ready = Boolean(offer?.canStart) && offer.cost <= influenceBalance();
+    const spare = ready ? nearestIdleMerchant(targetCity) : null;
+    /*
+     * ⚠️ THE THIRD STATE, AND THE REASON THE WARNING MARK IS NOW RARE. The treaty cannot be
+     * proposed - already proposed this turn, or the Influence is short - but BOTH of those answers
+     * change when the turn does. That is a wait, not a refusal, so the button offers to do it then
+     * (engine/trade-queue.js) instead of merely warning that it cannot be done now.
+     *
+     * ⚠️ An offer that does not EXIST is still only a warning: at war, or a pairing the action does
+     * not apply to, no amount of waiting helps and the fallback is diplomacy.
+     */
+    // ⚠️ Asked of the SETTLEMENT, not the leader: the request is "send one THERE", and asked of
+    // the leader it lit the button on every card that leader owns.
+    const queued = isTradeActionQueued(targetCity);
+    const canWait = Boolean(offer) && !ready;
 
     const button = makeElement('div', WARN_CLASS);
-    button.classList.toggle(`${WARN_CLASS}--blocked`, !ready);
+    button.classList.toggle(`${WARN_CLASS}--blocked`, !ready && !canWait);
+    button.classList.toggle(`${WARN_CLASS}--queued`, queued);
 
-    const icon = makeElement('div', `${WARN_CLASS}__icon`);
-    icon.style.backgroundImage = `url(${WARN_ICON})`;
-    button.appendChild(icon);
+    if (spare) {
+        const plus = makeElement('div', `${WARN_CLASS}__plus`);
+        plus.textContent = '+';
+        button.appendChild(plus);
+    } else if (canWait) {
+        const icon = makeElement('div', `${WARN_CLASS}__icon ${WARN_CLASS}__wait-icon`);
+        icon.style.backgroundImage = `url(${WAIT_ICON})`;
+        button.appendChild(icon);
+    } else {
+        const icon = makeElement('div', `${WARN_CLASS}__icon`);
+        icon.style.backgroundImage = `url(${WARN_ICON})`;
+        button.appendChild(icon);
+    }
 
     if (offer) {
         const influenceIconEl = makeElement('div', `${WARN_CLASS}__icon ${WARN_CLASS}__influence-icon`);
@@ -771,8 +975,36 @@ function buildWarnButton(warning, scope) {
     }
 
     bindActivatable(button, () => {
-        if (ready && proposeTradeRelations(warning.leaderId, offer)) {
-            log(() => `proposed Improve Trade Relations with ${leaderName(warning.leaderId)}`);
+        /*
+         * The waiting states first: this button is the one control for them, so the same press
+         * both files the request and takes it back. Nothing here spends anything - the spending
+         * happens when the turn turns, and both prices are on the button before it is pressed.
+         */
+        if (canWait) {
+            /*
+             * ⚠️ A SECOND PRESS DOES NOTHING, deliberately (user's instruction, 2026-09-10). It
+             * used to toggle, which made one control mean "do it" and "undo it" depending on a
+             * state the player had to read off the border first. The X beside it undoes it.
+             */
+            if (!queued) {
+                queueTradeAction(targetCity);
+            }
+            // `queueTradeAction` announces; the tab redraws off that.
+            return;
+        }
+        if (ready && proposeTradeRelations(leaderId, offer)) {
+            log(() => `proposed Improve Trade Relations with ${leaderName(leaderId)}`);
+            /*
+             * ⚠️ Re-asked at the click, and `mayMove: false`. The merchant may have been given
+             * something else to do while the screen sat open; and `sendRequest` only QUEUES, so
+             * for a moment the engine still reports the old limit and refuses the route - which a
+             * merchant with movement in hand reads as "too far" and walks off for nothing. The
+             * order is retried when the turn begins, by which time the treaty has resolved.
+             */
+            const live = nearestIdleMerchant(targetCity);
+            if (live && orderMerchantTo(live, targetCity, { mayMove: false })) {
+                log(() => `a spare merchant will open the route to ${Locale.compose(targetCity.name ?? '')} once the limit rises`);
+            }
             // Prices, the offer itself and the capacity behind the warning all moved; the
             // generation bump inside this is what makes the redraw below rebuild the stacks.
             forgetMerchantOffers();
@@ -782,14 +1014,23 @@ function buildWarnButton(warning, scope) {
         // Not ready, or the fresh canStart inside proposeTradeRelations disagreed with the
         // cached offer this button was drawn from - either way, the fallback this button has
         // always offered.
-        openDiplomacyWith(warning.leaderId);
+        openDiplomacyWith(leaderId);
     });
 
     const mount = makeElement('div', `${WARN_CLASS}-mount`);
+    const waitTitle = queued ? 'LOC_NAJANE_COMMERCE_QUEUE_WAITING' : 'LOC_NAJANE_COMMERCE_QUEUE';
     appendWithFramedTooltip(mount, button, {
         scope,
-        title: 'LOC_NAJANE_COMMERCE_TRADE_FULL',
-        text: `${warningText(warning)}[N][N]${warnActionText(warning, offer)}`,
+        title: canWait ? waitTitle : 'LOC_NAJANE_COMMERCE_TRADE_FULL',
+        text: canWait
+            /*
+             * ⚠️ The capacity sentence only where there IS a warning. A card queued after the slot
+             * came free still shows the hourglass - the request is still waiting on Influence -
+             * and telling the player their limit is full would be a plain lie.
+             */
+            ? [warning ? warningText(warning) : '', queueActionText(leaderId, offer, targetCity, queued)]
+                .filter(Boolean).join('[N][N]')
+            : `${warningText(warning)}[N][N]${warnActionText(warning, offer, targetCity)}`,
     });
     return mount;
 }
@@ -897,6 +1138,44 @@ function buildCancelErrandButton(unit, targetCity, scope) {
     });
 }
 
+/**
+ * Calls off a queued request. The same mark, the same tint and the same shape as the X that calls
+ * a merchant off its errand (user's instruction, 2026-09-10) - it undoes the same kind of thing.
+ */
+function buildCancelQueueButton(targetCity, scope) {
+    return makeIconButton({
+        icon: CANCEL_ICON,
+        tint: 'grayscale(1) brightness(1.7) fxs-color-tint(#e0564a)',
+        title: 'LOC_NAJANE_COMMERCE_QUEUE_CANCEL',
+        text: Locale.compose('LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP', Locale.compose(targetCity.name ?? '')),
+        scope,
+        className: CANCEL_CLASS,
+        onActivate: () => {
+            cancelTradeAction(targetCity);
+            log(() => `cancelled the queued trade action for ${Locale.compose(targetCity.name ?? '')}`);
+            // `cancelTradeAction` announces; the tab redraws every card off that.
+        },
+    });
+}
+
+/** The waiting hourglass, the pin that finds its merchant, and the X that calls it off. */
+function queueRow(leaderId, warning, targetCity, scope) {
+    const row = makeElement('div', QUEUE_ROW_CLASS);
+    row.appendChild(buildWarnButton(leaderId, warning, targetCity, scope));
+    /*
+     * ⚠️ `merchantsOrderedTo`, NOT `merchantsBoundFor`. A queued request sends its merchant on the
+     * first turn and only proposes the treaty once the Influence is there, so the merchant is
+     * often standing AT the target waiting for the limit to rise - not travelling, and invisible
+     * to the question the errand row asks. It is still the merchant the player wants to find.
+     */
+    const sent = merchantsOrderedTo(targetCity)[0];
+    if (sent) {
+        row.appendChild(buildLocateButton(sent, targetCity, scope));
+    }
+    row.appendChild(buildCancelQueueButton(targetCity, scope));
+    return row;
+}
+
 /** The pin and the X together; see `.${ERRAND_ROW_CLASS}`. */
 function errandRow(unit, targetCity, scope) {
     const row = makeElement('div', ERRAND_ROW_CLASS);
@@ -972,9 +1251,16 @@ function buildSendSpareImproveButton(stack, route, targetCity, offer, scope) {
  * ⚠️ Returns the price button UNWRAPPED when there is nothing spare, so a card that cannot
  * offer this keeps exactly the markup it had before the feature existed.
  */
-function priceRow(priceMount, targetCity, heading, scope) {
-    // One errand per settlement: a card already waiting on a merchant is not asking for another.
-    const spare = heading > 0 ? null : nearestIdleMerchant(targetCity);
+function priceRow(priceMount, targetCity, heading, warning, scope) {
+    /*
+     * One errand per settlement: a card already waiting on a merchant is not asking for another.
+     *
+     * ⚠️ AND NONE AT ALL WHERE THE SLOT IS ALREADY SPOKEN FOR. The limit is counted per LEADER,
+     * so "one route possible, one merchant on the way" leaves nothing to send a second merchant
+     * into - and offering it anyway sent one across the map for a slot it could never have. That
+     * is exactly what `capacityWarning` already measures; the plus now answers to it too.
+     */
+    const spare = heading > 0 || warning ? null : nearestIdleMerchant(targetCity);
     if (!spare) {
         return priceMount;
     }
@@ -1115,20 +1401,44 @@ function renderAvailableStack(stack, route, targetCity) {
     const scope = scopeForStack(stack);
     disposeFramedTooltips(scope);
     clearChildren(stack);
-    // ⚠️ No price at all while a merchant is already walking here: a second one sent to a slot
-    // the first will take is money thrown away.
-    if (heading.length === 0) {
+    // ⚠️ Read BEFORE the price row, not after it: the plus in that row is now suppressed by the
+    // very same warning, so the two cannot be worked out in the other order.
+    const warning = capacityWarning(route, targetCity);
+    // ⚠️ And a queued card offers no price either: the request already has a merchant, or is about
+    // to buy one, so a second bought here would be money spent on a slot that is spoken for.
+    const queued = isTradeActionQueued(targetCity);
+    /*
+     * ⚠️ No price at all while a merchant is already walking here: a second one sent to a slot the
+     * first will take is money thrown away.
+     *
+     * ⚠️ AND NONE WHERE THE LEADER HAS NO SLOT LEFT EITHER. The limit is counted per LEADER, so
+     * "limit 2, two merchants already sent" leaves nothing for a third to open - and a gold price
+     * on that card offers to buy one anyway. What remains on such a card is the influence button,
+     * which is the only thing that can actually change the answer.
+     */
+    if (heading.length === 0 && !warning && !queued) {
         stack.appendChild(priceRow(
             buildBuyButton(stack, route, targetCity, site, heading.length, scope),
-            targetCity, heading.length, scope,
+            targetCity, heading.length, warning, scope,
         ));
     }
     // The slot under the price holds one of the two, never both.
-    const warning = capacityWarning(route, targetCity);
-    if (heading.length > 0) {
+    /*
+     * ⚠️ QUEUED WINS OVER "ON THE WAY", and that order is the whole point. A queued request sends
+     * its merchant on the first turn, so the card would otherwise flip to the ordinary errand row
+     * the moment it set off - and a merchant fetched by the queue became indistinguishable from
+     * one the player sent by hand, with the treaty still owed and nothing on the card saying so.
+     * The hourglass stays until the request is finished with.
+     *
+     * ⚠️ The X is a SIBLING of the hourglass, not a second press on it: a queued request is undone
+     * the same way a merchant is called off its errand, by the same mark in the same place.
+     */
+    if (queued) {
+        stack.appendChild(queueRow(route.leaderId, warning, targetCity, scope));
+    } else if (heading.length > 0) {
         stack.appendChild(errandRow(heading[0], targetCity, scope));
     } else if (warning) {
-        stack.appendChild(buildWarnButton(warning, scope));
+        stack.appendChild(buildWarnButton(route.leaderId, warning, targetCity, scope));
     }
     stack.dataset.najaneGeneration = String(generation);
 }

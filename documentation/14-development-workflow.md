@@ -184,8 +184,7 @@ mid-game.
 ```
 CLAUDE.md                 what an agent reads first; points at documentation/README.md
 README.md                 the player- and author-facing document
-CHANGELOG.md              the full history, with reasoning
-STEAM_CHANGELOG.bbcode    ⚠️ the SHORT form of it; see below. 8000-character limit
+STEAM_CHANGELOG.bbcode    ⚠️ the ONLY changelog; see below. 8000-character limit
 TODO.md                   ⚠️ "For AI agents: Don't edit this file unless asked."
 documentation/            this folder
 steam-description.bbcode  the Workshop page, 6000-character limit
@@ -193,23 +192,20 @@ deploy.sh, deploy-on-mac.sh
 .idea/, .git/
 ```
 
-### ⚠️ The changelog is written TWICE
+### ⚠️ There is ONE changelog, and it is the Steam one
 
-Every entry added to `CHANGELOG.md` is condensed into `STEAM_CHANGELOG.bbcode` **in the same
-pass**. Skip it once and the two drift apart within a release or two, at which point nobody
-knows which is right.
+`STEAM_CHANGELOG.bbcode` is written for a player on the Workshop page: what changed, one bullet
+each, fixes folded into a single "Fixed:" bullet per version, BBCode with `[h2]` per version and
+the house style from `steam-description.bbcode`.
 
-| | `CHANGELOG.md` | `STEAM_CHANGELOG.bbcode` |
-|---|---|---|
-| Audience | whoever maintains this next | a player on the Workshop page |
-| Carries | the cause, the ⚠️ notes, the approaches that failed | what changed, one bullet each |
-| Fixes | one entry per fix, explained | folded into a single "Fixed:" bullet per version |
-| Format | Markdown, newest first | BBCode, `[h2]` per version, house style from `steam-description.bbcode` |
+⚠️ **`CHANGELOG.md` was deleted** (user's instruction, 2026-09-10). The REASONING behind a change
+does not go into the bullets — it goes where it is actually useful: a `⚠️` comment beside the code
+it constrains, or a page in this folder. A cause recorded in a file nobody opens while editing is
+a cause nobody reads.
 
-`deploy.sh` prints both character counts and refuses to deploy over either limit. When
-the Steam file approaches 8000, **drop the oldest version section** rather than trimming the
-recent ones — old releases are what nobody reads, and the full history is in the Markdown file
-either way.
+`deploy.sh` prints the character count and refuses to deploy over the limit. When the file
+approaches 8000, **drop the oldest version section** rather than trimming the recent ones — old
+releases are what nobody reads, and git still has them.
 
 There is currently no `config/` directory; the deploy script tolerates a content directory that
 does not exist.

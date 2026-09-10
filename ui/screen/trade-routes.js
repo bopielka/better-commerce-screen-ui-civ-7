@@ -18,9 +18,16 @@ import { onCleanup, onMount, untrack } from '/core/vendor/solid-js/dist/solid.js
 import { ComponentRegistry } from '/core/ui-next/services/component-registry.js';
 import { TradeRouteCard } from '/base-standard/ui-next/screens/commerce/trade-route-card.js';
 
-import { MerchantOrdersChangedEventName } from '../engine/merchant-orders.js';
+import { MerchantOrdersChangedEventName, merchantsOrderedTo } from '../engine/merchant-orders.js';
+import { TradeQueueChangedEventName, isTradeActionQueued } from '../engine/trade-queue.js';
 import { disposeFramedTooltips } from './framed-tooltip.js';
+import {
+    RELATIONSHIP_FOOTER_STYLE,
+    startRelationshipFooter,
+    stopRelationshipFooter,
+} from './relationship-trade-footer.js';
 import { ensureScreenLayout } from './layout.js';
+import { startTabIcons } from './tab-icons.js';
 import {
     BUY_STACK_CLASS,
     BUY_STYLE,
@@ -37,6 +44,7 @@ import {
     ensureSortTabs,
     matchesFilter,
     removeSortTabs,
+    removeSortTabsFrom,
     setSortRoutes,
     startSortTabs,
 } from './trade-sort-tabs.js';
@@ -107,8 +115,15 @@ ${CARD_SELECTOR} ${LEADER_CORNER_SELECTOR} > .size-12 { display: none; }
  * parent's natural width - so the frame fell back to the min-w-72 on its content, about
  * 16rem, and every reason for the relationship wrapped over three lines. Raising the floor
  * is enough; the rows then fill whatever they are given.
+ *
+ * The floor is also a CEILING here, because the frame has no maximum of its own: the agenda
+ * description is a full sentence and without one it ran the tooltip across the cards it was
+ * opened from.
  */
-${RELATIONSHIP_TOOLTIP_SELECTOR} { min-width: 30rem; }
+${RELATIONSHIP_TOOLTIP_SELECTOR} {
+    min-width: 24rem;
+    max-width: 24rem;
+}
 
 /*
  * The whole line on one row: route name, arrow, destination, domain icon. The strip the
@@ -402,6 +417,192 @@ function routeInfo() {
  * ⚠️ Written in place and only when it differs: the sections are entries in the model's store, so
  * replacing them with copies would give Solid new identities and rebuild every card.
  */
+/**
+ * Our mark on the section this mod adds, so re-entering the tab does not add a second one.
+ *
+ * ⚠️ A marker rather than a count: `commerce-screen-model.js` builds `tradeRouteTabData` ONCE per
+ * screen-open, but the tab BODY re-mounts every time the player comes back to this tab, and this
+ * function runs on each of those against the same data.
+ */
+const UNDERWAY_SECTION_MARK = 'najaneUnderwaySection';
+
+/**
+ * The targets that were lifted into that section, so its ROW can be recognised later.
+ *
+ * ⚠️ The section is a fact about the DATA and the row is a fact about the DOM, with nothing
+ * joining them - the container renders one row per section and names neither. Keyed by the target
+ * settlement, which both sides carry.
+ */
+const underwayTargets = new Set();
+
+/**
+ * ⚠️ THE OWNER IS PART OF THE KEY. A `ComponentID`'s `id` is unique only WITHIN one player, so
+ * three different empires' settlements came back as 65536 and any set keyed on it alone treated
+ * them as one place. Seen in UI.log as Gao, Ostia and Parsa all reporting `cityID=65536`.
+ */
+function targetKey(id) {
+    if (id === undefined || id === null) {
+        return '';
+    }
+    return typeof id === 'object' ? `${id.owner}:${id.id}` : String(id);
+}
+
+/**
+ * Whether a merchant of ours is already spoken for this route's target.
+ * ⚠️ `merchantsOrderedTo`, not `merchantsBoundFor`: a merchant standing AT the target waiting for
+ * a trade slot is not travelling any more, and the route is still very much being established.
+ */
+function routeIsUnderway(route) {
+    try {
+        const city = Cities.get(route?.cityID);
+        if (!city) {
+            return false;
+        }
+        /*
+         * ⚠️ TWO WAYS IN, and both are "something is already happening about this route": a
+         * merchant carrying an order for it, or a request queued against it that has not found its
+         * merchant yet. A queued route with no merchant yet is still not one the player is being
+         * asked to start (user's instruction, 2026-09-10).
+         */
+        return merchantsOrderedTo(city).length > 0 || isTradeActionQueued(city);
+    } catch (error) {
+        warn(`could not tell whether a trade route is under way: ${error}`);
+        return false;
+    }
+}
+
+/**
+ * Lifts the routes that already have a merchant coming into a section of their own, between the
+ * running routes and the ones that could be started.
+ *
+ * ⚠️ DONE IN THE DATA, BEFORE SOLID RENDERS IT - the one way this is possible at all. Moving a
+ * CARD between sections afterwards means moving a node between two `<For>`s over two arrays, which
+ * is what `reconcileArrays` cannot survive; restructuring the array it renders FROM costs nothing,
+ * because nothing has been rendered yet.
+ *
+ * ⚠️ AND THEREFORE IT IS FIXED FOR THE LIFE OF THE SCREEN. The model builds this data once per
+ * screen-open, so a route that gains a merchant while the screen is open keeps its place until the
+ * screen is opened again - it still changes what it DRAWS, gaining the pin and losing its price.
+ *
+ * ⚠️ The array is spliced IN PLACE and the sections themselves are the model's own objects, moved
+ * rather than copied: a copy would give Solid new identities and rebuild every card in them.
+ */
+/**
+ * The tab data currently on screen, so the split can be redone when an errand starts or is called
+ * off. ⚠️ Held for the life of the SCREEN, not of this module: `commerce-screen-model.js` builds
+ * this object once per screen-open and the next opening brings a different one.
+ */
+let tradeTabData = null;
+
+/** Availability, as `commerce-screen-model.js` stamps it on every route. */
+const AVAILABILITY_AVAILABLE = 2;
+
+function underwaySectionIn(sections) {
+    return sections.find((section) => section?.[UNDERWAY_SECTION_MARK]) ?? null;
+}
+
+function makeUnderwaySection() {
+    return {
+        tradeRoutes: [],
+        collapsibleContainerData: {
+            titleText: Locale.compose('LOC_NAJANE_COMMERCE_GROUP_UNDERWAY'),
+            centerTitle: true,
+        },
+        emptyDescription: '',
+        [UNDERWAY_SECTION_MARK]: true,
+    };
+}
+
+/**
+ * Puts every route where its errand says it belongs: those with a merchant coming into a section
+ * of their own, and those without back among the ones that could be started.
+ *
+ * ⚠️ THE DATA IS MOVED, NEVER THE CARD. Moving a card between two `<For>`s by hand is the one
+ * thing `reconcileArrays` cannot survive; moving a ROUTE between the arrays they render from is
+ * ordinary work - Solid drops the card from one and builds a fresh one in the other, which is
+ * exactly what it does whenever the tab's data changes anyway.
+ *
+ * ⚠️ Called again whenever an order or a queued request changes, so cancelling an errand puts the
+ * route back where it came from without closing the screen.
+ *
+ * ⚠️ Splices IN PLACE and moves the model's own route objects, never copies: a copy would give
+ * Solid new identities and rebuild every card in the section rather than the one that moved.
+ */
+function syncUnderwaySection(tabData) {
+    const sections = tabData?.tradeRouteSections;
+    if (!Array.isArray(sections) || sections.length === 0) {
+        return;
+    }
+    underwayTargets.clear();
+
+    let section = underwaySectionIn(sections);
+    const underway = [];
+    const returning = [];
+
+    // ⚠️ The FIRST section is the routes already running - established, not being established.
+    for (const other of sections) {
+        if (other === section || other === sections[0]) {
+            continue;
+        }
+        const staying = [];
+        for (const route of other?.tradeRoutes ?? []) {
+            (routeIsUnderway(route) ? underway : staying).push(route);
+        }
+        if (staying.length !== (other?.tradeRoutes?.length ?? 0)) {
+            other.tradeRoutes.splice(0, other.tradeRoutes.length, ...staying);
+        }
+    }
+    for (const route of section?.tradeRoutes ?? []) {
+        (routeIsUnderway(route) ? underway : returning).push(route);
+    }
+
+    for (const route of underway) {
+        underwayTargets.add(targetKey(route?.cityID));
+    }
+
+    // Back where the model put them, by the availability it stamped on each one.
+    for (const route of returning) {
+        const home = route?.availability === AVAILABILITY_AVAILABLE
+            ? sections.find((entry) => entry !== section && entry !== sections[0])
+            : sections[sections.length - 1];
+        home?.tradeRoutes?.push(route);
+    }
+
+    if (underway.length === 0) {
+        // ⚠️ Taken out rather than left empty: an ornate section bar over nothing reads as a bug.
+        if (section) {
+            sections.splice(sections.indexOf(section), 1);
+        }
+        return;
+    }
+    if (!section) {
+        /*
+         * ⚠️ FILLED BEFORE IT IS HANDED OVER, and this is not tidiness. `tradeRouteSections` is a
+         * Solid store: what `splice` puts in is the store's OWN wrapper around the object, not the
+         * object itself. Writing to the local one afterwards writes somewhere nothing renders - the
+         * section appeared empty and the route that created it was lost on the next pass.
+         */
+        const fresh = makeUnderwaySection();
+        fresh.tradeRoutes = underway.slice();
+        sections.splice(1, 0, fresh);
+        return;
+    }
+    // ⚠️ `section` here came OUT of the store, so writing through it is writing to the store.
+    section.tradeRoutes.splice(0, section.tradeRoutes.length, ...underway);
+}
+
+/** Redoes the split against the data on screen; safe to call when there is no screen. */
+export function refreshUnderwaySection() {
+    if (!tradeTabData) {
+        return;
+    }
+    try {
+        untrack(() => syncUnderwaySection(tradeTabData));
+    } catch (error) {
+        warn(`could not re-sort the trade route sections: ${error}`);
+    }
+}
+
 export function prepareTradeTabData(tabData) {
     // ⚠️ Untracked: this reads out of a mutable store and writes back, from inside the tab's own
     // reactive scope. Tracking it would make the write wake the read.
@@ -412,6 +613,8 @@ export function prepareTradeTabData(tabData) {
                 collapsible.initiallyCollapsed = false;
             }
         }
+        tradeTabData = tabData;
+        syncUnderwaySection(tabData);
     });
     return tabData;
 }
@@ -681,10 +884,25 @@ function blockedReasons(route) {
 }
 
 /** Fixed order: what only the limit blocks first, out of range after. */
-const GROUPS = [
-    { kind: 'limit', labelKey: 'LOC_NAJANE_COMMERCE_BLOCKED_LIMIT' },
-    { kind: 'range', labelKey: 'LOC_NAJANE_COMMERCE_BLOCKED_RANGE' },
-];
+/**
+ * The runs each section is split into, in the order they are drawn.
+ *
+ * ⚠️ `underway` IS IN BOTH. A route with a merchant walking to it can be available (only the
+ * signature is left) or held back by the trade limit, and in either case the answer to "what is
+ * already happening about this one" is the same. The card cannot move between SECTIONS - the
+ * model builds those once per screen-open - but within one it is only an ordering and a header.
+ */
+/*
+ * ⚠️ NO `underway` GROUP HERE ANY MORE. It began as a run inside the available section and is now
+ * a section of its own - see `splitOutUnderway`. Two of them would have put the same cards under
+ * two headings.
+ */
+const GROUPS_BY_SECTION = {
+    unavailable: [
+        { kind: 'limit', labelKey: 'LOC_NAJANE_COMMERCE_BLOCKED_LIMIT' },
+        { kind: 'range', labelKey: 'LOC_NAJANE_COMMERCE_BLOCKED_RANGE' },
+    ],
+};
 
 /** The header that names a group, positioned in front of that group's first card. */
 function positionGroupHeader(row, group, firstCard, order, collapsed) {
@@ -781,6 +999,20 @@ function applyFilterAndHeaders() {
         if (!kind) {
             continue;
         }
+        /*
+         * ⚠️ NO SORT STRIP ON THE "BEING ESTABLISHED" SECTION (user's instruction, 2026-09-10).
+         * The strip answers "what should be at the front of the list of things I could start",
+         * and nothing in that section is something to start - each one already has a merchant
+         * walking to it. A filter there could only hide errands in progress.
+         */
+        const isUnderwayRow = entries.some(
+            (entry) => entry && underwayTargets.has(targetKey(entry.targetCityId)),
+        );
+        if (isUnderwayRow) {
+            removeSortTabsFrom(row);
+            row.querySelectorAll(`.${GROUP_CLASS}`).forEach((header) => header.remove());
+            continue;
+        }
         ensureSortTabs(row, kind);
 
         // One bucket per group, so a group's cards are ordered among themselves and the
@@ -830,13 +1062,12 @@ function applyFilterAndHeaders() {
         }
         reorderCards(row, cards, wanted);
 
-        // Only the unavailable section is split into groups; the available one is one list,
-        // and a header left in it from an earlier pass has to go.
-        if (kind !== 'unavailable') {
+        const groups = GROUPS_BY_SECTION[kind] ?? [];
+        if (groups.length === 0) {
             row.querySelectorAll(`.${GROUP_CLASS}`).forEach((header) => header.remove());
             continue;
         }
-        for (const group of GROUPS) {
+        for (const group of groups) {
             const items = buckets.get(group.kind) ?? [];
             const collapsed = collapsedGroups.has(group.kind);
             if (items.length === 0) {
@@ -909,16 +1140,26 @@ export function startTradeRoutes() {
     // Carries the rule that hides the instruction line; this tab can be the first one
     // opened, so it cannot wait for the Resources tab to put it there.
     ensureScreenLayout();
+    /*
+     * ⚠️ SAME REASON, AND IT ONLY BECAME REACHABLE WITH THE DOCK BUTTON. `startTabIcons` runs from
+     * the RESOURCES tab body's onMount, so a screen opened straight onto this tab never ran it and
+     * the whole strip stayed as text. Idempotent: a second call on a strip already ours only
+     * re-runs the pass.
+     */
+    startTabIcons();
     styleElement = ensureStyle(STYLE_ID, `${STYLE}
 ${SUMMARY_STYLE}
 ${BUY_STYLE}
-${SORT_STYLE}`);
+${SORT_STYLE}
+${RELATIONSHIP_FOOTER_STYLE}`);
     // Which tab is in force outlives one visit to the tab; what it needs handing over is how
     // to read a card and how to redraw once the player picks a different one.
     startSortTabs({ onChange: scheduleDecorate });
     if (unwatch) {
         return;
     }
+    // ⚠️ Its own observer, on a root outside this screen; see relationship-trade-footer.js.
+    startRelationshipFooter();
     // Cards are Solid's and are rebuilt whenever the tab's data changes, so this stays watching.
     scheduleDecorate();
     // The title row cannot be measured until the cards have been laid out; ask for a pass
@@ -932,12 +1173,33 @@ ${SORT_STYLE}`);
     window.addEventListener(MerchantOrdersChangedEventName, onOrdersChanged);
     // ⚠️ Same, one layer up: a trade limit raised by this mod's own button.
     window.addEventListener(TradeCapacityChangedEventName, onCapacityChanged);
+    // ⚠️ Same footing as an order changing: it is not a DOM mutation, so nothing else notices.
+    window.addEventListener(TradeQueueChangedEventName, onOrdersChanged);
     log('trade route cards decorated');
 }
 
 function onOrdersChanged() {
     markMerchantStateStale();
-    scheduleDecorate();
+    /*
+     * ⚠️ BEFORE the redraw, not after: which SECTION a card belongs to is decided in the data, and
+     * the redraw only decorates whatever Solid has already built from it. An errand starting or
+     * being called off is exactly when that answer changes.
+     */
+    refreshUnderwaySection();
+    /*
+     * ⚠️ THE SAME TRAP AS `onCapacityChanged`, and for the same reason: the click that changed the
+     * order has only QUEUED its requests, so a redraw on the next frame asks the engine about a
+     * merchant it has not moved yet and a route it has not signed yet - and faithfully redraws the
+     * card exactly as it was. The pass after `GameCoreEventPlaybackComplete` is the one that sees
+     * the signed route or the merchant under way.
+     *
+     * ⚠️ The projection goes too, not just the merchant state: in the Modern age the order is
+     * signed and cleared within the click, so what changed is `startable`, which lives in the
+     * projection cache.
+     */
+    awaitingCore = true;
+    watchForCorePlayback();
+    onRoutesChanged();
 }
 
 /** Everything read from the projection is stale; read it again and redraw. */
@@ -975,6 +1237,7 @@ function onCorePlaybackComplete() {
 export function stopTradeRoutes() {
     unwatch?.();
     unwatch = null;
+    stopRelationshipFooter();
     // Nothing is drawing a route any more, so nothing needs telling that one changed.
     stopListeningForRouteChanges();
     stopWatchingForCorePlayback();
@@ -985,6 +1248,7 @@ export function stopTradeRoutes() {
     }
     window.removeEventListener(MerchantOrdersChangedEventName, onOrdersChanged);
     window.removeEventListener(TradeCapacityChangedEventName, onCapacityChanged);
+    window.removeEventListener(TradeQueueChangedEventName, onOrdersChanged);
     // ⚠️ Only the elements this mod created - the game owns the rest of what is on screen.
     document.querySelectorAll(`.${CLASS}`).forEach((element) => element.remove());
     document.querySelectorAll(`.${BUY_STACK_CLASS}`).forEach((element) => element.remove());
@@ -1000,6 +1264,10 @@ export function stopTradeRoutes() {
     // the Resources tab has just built.
     disposeFramedTooltips('trade-routes');
     hideTradeSummary();
+    // ⚠️ The model builds fresh tab data for the next opening; holding this one would re-sort a
+    // structure nothing is rendering any more.
+    tradeTabData = null;
+    underwayTargets.clear();
     styleElement?.remove();
     styleElement = null;
     measuredStyle?.remove();

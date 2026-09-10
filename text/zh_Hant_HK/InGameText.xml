@@ -478,5 +478,53 @@
         <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="zh_Hant_HK">
             <Text>Najane 模組: 商業介面</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_LIMIT" Language="zh_Hant_HK">
+            <Text>貿易路線上限</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ACTIVE" Language="zh_Hant_HK">
+            <Text>活躍貿易路線</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ON_THE_WAY" Language="zh_Hant_HK">
+            <Text>在途商人</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_DOCK_TRADE" Language="zh_Hant_HK">
+            <Text>查看貿易路線</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE" Language="zh_Hant_HK">
+            <Text>下回合執行</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL" Language="zh_Hant_HK">
+            <Text>取消</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="zh_Hant_HK">
+            <Text>已排入下回合開始：提高上限並向 {1_City} 派遣商人。點擊取消。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="zh_Hant_HK">
+            <Text>已自動提高 {1_Count} 項貿易路線上限 — 先前派出的商人現在可以開通路線。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="zh_Hant_HK">
+            <Text>已自動提高與 {1_Leader} 的貿易路線上限 — 派往 {2_City} 的商人現在可以開通路線。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_BUY" Language="zh_Hant_HK">
+            <Text>點擊以在回合開始時啟動：花費 {3_Gold} 金幣購買商人並立即派往 {4_City}，並在影響力足夠時向 {1_Leader} 提議「改善貿易關係」（{2_Cost} 影響力）。商人在此期間持續趕路。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE" Language="zh_Hant_HK">
+            <Text>點擊以在回合開始時啟動：立即將現有商人派往 {3_City}，並在影響力足夠時向 {1_Leader} 提議「改善貿易關係」（{2_Cost} 影響力）。商人在此期間持續趕路。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING" Language="zh_Hant_HK">
+            <Text>等待下回合</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING_TOOLTIP" Language="zh_Hant_HK">
+            <Text>進行中：商人正被派往 {1_City}，影響力足夠時即會提高貿易路線上限。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FREE_MERCHANTS" Language="zh_Hant_HK">
+            <Text>閒置商人：{1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_SENT" Language="zh_Hant_HK">
+            <Text>商人正前往 {2_City} — 影響力足夠時，將提高與 {1_Leader} 的貿易路線上限。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="zh_Hant_HK">
+            <Text>正在建立的貿易路線</Text>
+        </Row>
     </LocalizedText>
 </Database>

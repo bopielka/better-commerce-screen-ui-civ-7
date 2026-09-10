@@ -478,5 +478,53 @@
         <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="pt_BR">
             <Text>Mods de Najane: tela de comércio</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_LIMIT" Language="pt_BR">
+            <Text>Limite de rotas comerciais</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ACTIVE" Language="pt_BR">
+            <Text>Rotas comerciais ativas</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ON_THE_WAY" Language="pt_BR">
+            <Text>Mercadores a caminho</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_DOCK_TRADE" Language="pt_BR">
+            <Text>Ver rotas comerciais</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE" Language="pt_BR">
+            <Text>Fazer no próximo turno</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL" Language="pt_BR">
+            <Text>Cancelar</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="pt_BR">
+            <Text>Na fila para o início do próximo turno: aumentar o limite e enviar um mercador para {1_City}. Clique para cancelar.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="pt_BR">
+            <Text>{1_Count} limites de rotas comerciais aumentados automaticamente - os mercadores já enviados podem abrir suas rotas.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="pt_BR">
+            <Text>Limite de rotas comerciais com {1_Leader} aumentado automaticamente - o mercador enviado para {2_City} já pode abrir a rota.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_BUY" Language="pt_BR">
+            <Text>Clique para iniciar isso no começo do turno: comprar um mercador por {3_Gold} de ouro e enviá-lo imediatamente para {4_City}, e propor a {1_Leader} “Melhorar relações comerciais” por {2_Cost} de Influência assim que puder pagar. O mercador viaja enquanto isso.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE" Language="pt_BR">
+            <Text>Clique para iniciar isso no começo do turno: enviar imediatamente para {3_City} um mercador que você já tem e propor a {1_Leader} “Melhorar relações comerciais” por {2_Cost} de Influência assim que puder pagar. O mercador viaja enquanto isso.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING" Language="pt_BR">
+            <Text>Aguardando o próximo turno</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING_TOOLTIP" Language="pt_BR">
+            <Text>Em andamento: um mercador está sendo enviado para {1_City}, e o limite de rotas comerciais será aumentado assim que houver Influência.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FREE_MERCHANTS" Language="pt_BR">
+            <Text>Mercadores livres: {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_SENT" Language="pt_BR">
+            <Text>Um mercador está a caminho de {2_City} - o limite de rotas comerciais com {1_Leader} será aumentado assim que houver Influência.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="pt_BR">
+            <Text>Rotas comerciais em estabelecimento</Text>
+        </Row>
     </LocalizedText>
 </Database>

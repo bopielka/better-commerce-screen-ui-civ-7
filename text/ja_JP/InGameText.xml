@@ -478,5 +478,53 @@
         <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="ja_JP">
             <Text>Najane MOD: 商業画面</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_LIMIT" Language="ja_JP">
+            <Text>交易路の上限</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ACTIVE" Language="ja_JP">
+            <Text>有効な交易路</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ON_THE_WAY" Language="ja_JP">
+            <Text>移動中の商人</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_DOCK_TRADE" Language="ja_JP">
+            <Text>交易路を表示</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE" Language="ja_JP">
+            <Text>次のターンに実行</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL" Language="ja_JP">
+            <Text>キャンセル</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="ja_JP">
+            <Text>次のターン開始時に実行予定：上限を引き上げ、{1_City} へ商人を送ります。クリックで取消します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="ja_JP">
+            <Text>{1_Count} 件の交易路上限を自動で引き上げました - 送り出した商人が交易路を開設できます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="ja_JP">
+            <Text>{1_Leader} との交易路上限を自動で引き上げました - {2_City} へ送った商人が交易路を開設できます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_BUY" Language="ja_JP">
+            <Text>ターン開始時に開始します：金 {3_Gold} で商人を購入してただちに {4_City} へ送り、影響力 {2_Cost} が貯まり次第 {1_Leader} に「交易関係の改善」を提案します。その間も商人は移動します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE" Language="ja_JP">
+            <Text>ターン開始時に開始します：既存の商人をただちに {3_City} へ送り、影響力 {2_Cost} が貯まり次第 {1_Leader} に「交易関係の改善」を提案します。その間も商人は移動します。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING" Language="ja_JP">
+            <Text>次のターン待ち</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING_TOOLTIP" Language="ja_JP">
+            <Text>進行中：商人を {1_City} へ送っており、影響力が貯まり次第、交易路の上限を引き上げます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FREE_MERCHANTS" Language="ja_JP">
+            <Text>待機中の商人: {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_SENT" Language="ja_JP">
+            <Text>商人が {2_City} へ向かっています - {1_Leader} との交易路上限は、影響力が貯まり次第引き上げます。</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="ja_JP">
+            <Text>開設中の交易路</Text>
+        </Row>
     </LocalizedText>
 </Database>

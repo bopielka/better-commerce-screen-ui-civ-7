@@ -98,7 +98,28 @@ function migrate() {
 }
 
 /**
- * One section of this mod's namespace: `priorities` or `merchantOrders`.
+ * The seed of the game being played, as a string, or null before it can be read.
+ *
+ * ⚠️ EVERY PER-GAME STORE IS KEYED BY THIS. Unit and player ids are unique only within one game
+ * and are recycled between them, so anything filed under one without the seed would be inherited
+ * by whatever wore that id in the next game.
+ *
+ * ⚠️ Not cached here, deliberately: before the seed is readable the answer is null, and
+ * remembering that would strand every store in a game loaded mid-session. The callers that want a
+ * cache keep their own and clear it on `GameStarted` - engine/merchant-orders.js still has one of
+ * its own, predating this.
+ */
+export function currentGameKey() {
+    try {
+        const seed = Configuration.getGame()?.gameSeed;
+        return seed === undefined || seed === null ? null : String(seed);
+    } catch (error) {
+        return null;
+    }
+}
+
+/**
+ * One section of this mod's namespace: `priorities`, `merchantOrders` or `tradeQueue`.
  * @returns a plain object, never null - the caller may read straight through it.
  */
 export function readSection(section) {

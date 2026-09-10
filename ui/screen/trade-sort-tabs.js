@@ -499,3 +499,21 @@ export function ensureSortTabs(row, section) {
 export function removeSortTabs() {
     document.querySelectorAll(`.${SORT_CLASS}`).forEach((strip) => strip.remove());
 }
+
+/**
+ * The same, for ONE row - a section that should never have a strip at all.
+ *
+ * ⚠️ Its tooltips go with it. A framed tooltip left mounted around a discarded element floats to
+ * the top-left corner of the screen; the strip's own teardown is the only thing that knows the
+ * scope each of its tabs was built under.
+ */
+export function removeSortTabsFrom(row) {
+    for (const strip of row?.querySelectorAll(`.${SORT_CLASS}`) ?? []) {
+        // ⚠️ The section is stamped on the BAR, not on the strip - see `ensureSortTabs`.
+        const section = strip.querySelector(`.${BAR_CLASS}`)?.dataset.najaneSortSection;
+        if (section) {
+            disposeFramedTooltips(tooltipScopeFor(section));
+        }
+        strip.remove();
+    }
+}

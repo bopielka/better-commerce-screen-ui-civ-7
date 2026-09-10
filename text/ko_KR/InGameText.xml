@@ -478,5 +478,53 @@
         <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW" Language="ko_KR">
             <Text>Najane 모드: 상업 화면</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_LIMIT" Language="ko_KR">
+            <Text>교역로 제한</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ACTIVE" Language="ko_KR">
+            <Text>활성 교역로</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ON_THE_WAY" Language="ko_KR">
+            <Text>이동 중인 상인</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_DOCK_TRADE" Language="ko_KR">
+            <Text>교역로 보기</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE" Language="ko_KR">
+            <Text>다음 턴에 실행</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL" Language="ko_KR">
+            <Text>취소</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="ko_KR">
+            <Text>다음 턴 시작 시 실행 예정: 제한을 늘리고 {1_City}(으)로 상인을 보냅니다. 클릭하면 취소됩니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="ko_KR">
+            <Text>교역로 제한 {1_Count}개가 자동으로 늘어났습니다 - 이미 보낸 상인들이 교역로를 열 수 있습니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="ko_KR">
+            <Text>{1_Leader}와의 교역로 제한이 자동으로 늘어났습니다 - {2_City}(으)로 보낸 상인이 이제 교역로를 열 수 있습니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_BUY" Language="ko_KR">
+            <Text>턴 시작 시 시작합니다: 금 {3_Gold}로 상인을 구매해 즉시 {4_City}(으)로 보내고, 영향력 {2_Cost}가 모이는 대로 {1_Leader}에게 “교역 관계 개선”을 제안합니다. 그동안 상인은 계속 이동합니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE" Language="ko_KR">
+            <Text>턴 시작 시 시작합니다: 보유한 상인을 즉시 {3_City}(으)로 보내고, 영향력 {2_Cost}가 모이는 대로 {1_Leader}에게 “교역 관계 개선”을 제안합니다. 그동안 상인은 계속 이동합니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING" Language="ko_KR">
+            <Text>다음 턴 대기 중</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING_TOOLTIP" Language="ko_KR">
+            <Text>진행 중: 상인을 {1_City}(으)로 보내는 중이며, 영향력이 모이는 대로 교역로 제한을 늘립니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FREE_MERCHANTS" Language="ko_KR">
+            <Text>대기 중인 상인: {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_SENT" Language="ko_KR">
+            <Text>상인이 {2_City}(으)로 가는 중입니다 - {1_Leader}와의 교역로 제한은 영향력이 모이는 대로 늘어납니다.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="ko_KR">
+            <Text>개설 중인 교역로</Text>
+        </Row>
     </LocalizedText>
 </Database>

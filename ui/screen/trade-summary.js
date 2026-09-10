@@ -4,6 +4,7 @@
  * ⚠️ Counted per LEADER, because that is how the game counts it: the limit is a property of the
  * pairing, not of your empire, so one number for the whole screen would be a different fact.
  */
+import { idleMerchants } from '../engine/merchant-orders.js';
 import { makeElement, setTooltip } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
 import { hideTabSummary, showTabSummary } from './screen-parts.js';
@@ -18,16 +19,33 @@ export const STYLE = `
  * a separate rule rather than shared because the two tabs load independently and neither
  * may assume the other's stylesheet is present.
  */
+/*
+ * A COLUMN now, with the routes on the first line and the spare merchants under them. The two
+ * answer the same question from opposite ends - how much room is left, and what there is to fill
+ * it with - so they belong together rather than as a second readout somewhere else.
+ */
 .${CLASS} {
     position: absolute;
     left: 2rem;
     top: 0.15rem;
     z-index: 20;
     display: flex;
-    flex-direction: row;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     color: #ffffff;
     font-size: 1.05rem;
+}
+.${CLASS}__line {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+/* Quieter than the routes above it: it is the supporting figure, not the headline. */
+.${CLASS}__merchants {
+    margin-top: 0.1rem;
+    color: #b39e80;
+    font-size: 0.92rem;
+    white-space: nowrap;
 }
 .${CLASS}__label {
     margin-right: 0.9rem;
@@ -118,19 +136,34 @@ function build(list, startable) {
     const bar = makeElement('div', `${CLASS}${free === 0 ? ` ${CLASS}--full` : ''}`);
     setTooltip(bar, tooltipFor(list, startable));
 
+    const line = makeElement('div', `${CLASS}__line`);
+    bar.appendChild(line);
+
     const label = makeElement('div', `${CLASS}__label font-title`);
     label.textContent = `${Locale.compose('LOC_NAJANE_COMMERCE_TRADE_ROUTES_LABEL')}:`;
-    bar.appendChild(label);
+    line.appendChild(label);
 
     const count = makeElement('div', `${CLASS}__count`);
     count.textContent = `${used} / ${capacity}`;
-    bar.appendChild(count);
+    line.appendChild(count);
 
     if (free > 0) {
         const spare = makeElement('div', `${CLASS}__free`);
         spare.textContent = Locale.compose('LOC_NAJANE_COMMERCE_TRADE_SLOTS_FREE', free);
-        bar.appendChild(spare);
+        line.appendChild(spare);
     }
+
+    /*
+     * ⚠️ "Free" is `idleMerchants`, the same list the plus buttons are drawn from - so the figure
+     * here and the buttons on the cards can never disagree about how many there are to send. That
+     * excludes a merchant already carrying one of this mod's errands, which is the point.
+     */
+    const merchants = makeElement('div', `${CLASS}__merchants`);
+    merchants.textContent = Locale.compose(
+        'LOC_NAJANE_COMMERCE_FREE_MERCHANTS',
+        idleMerchants().length,
+    );
+    bar.appendChild(merchants);
     return bar;
 }
 

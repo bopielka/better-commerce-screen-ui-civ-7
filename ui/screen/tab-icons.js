@@ -20,6 +20,52 @@ const STYLE_ID = 'najane-tab-icons-style';
 const TAB_ITEM_SELECTOR = '[data-name="TabListItem"]';
 
 /**
+ * The sliding underline beneath the active tab, and the item it is under.
+ *
+ * ⚠️ IT IS POSITIONED FROM A MEASUREMENT TAKEN ONCE. `TabList` sets its `left` and `width` from
+ * `getBoundingClientRect` inside an effect that wakes only when the ACTIVE TAB changes - swapping
+ * a word for an icon changes every item's width and wakes nothing, so the underline stayed where
+ * the words had been. Visible as a bar sitting crooked under the strip.
+ *
+ * ⚠️ The selected item is the one carrying `text-secondary`; `TabListItem` toggles exactly that
+ * class on `selected`, and the alternative - an index - would be wrong in the ages where the tab
+ * list is a different length.
+ */
+const INDICATOR_SELECTOR = '.img-tab-selection-indicator';
+const SELECTED_ITEM_SELECTOR = `${TAB_ITEM_SELECTOR}.text-secondary`;
+
+/**
+ * Puts the underline back under the tab it belongs to, after the icons have changed the widths.
+ *
+ * ⚠️ On the NEXT FRAME: the icon has only just been appended, so the layout the widths come from
+ * has not been done yet and every rect would still be the one the words produced.
+ *
+ * ⚠️ The same two inline properties `TabList` writes itself, so when its own effect next runs it
+ * simply overwrites these with the same answer. Nothing is left fighting.
+ */
+function realignIndicator() {
+    requestAnimationFrame(() => {
+        try {
+            const list = document.querySelector(TAB_LIST_SELECTOR);
+            const indicator = list?.querySelector(INDICATOR_SELECTOR);
+            const selected = list?.querySelector(SELECTED_ITEM_SELECTOR);
+            if (!list || !indicator || !selected) {
+                return;
+            }
+            const listRect = list.getBoundingClientRect();
+            const itemRect = selected.getBoundingClientRect();
+            if (!itemRect.width) {
+                return;
+            }
+            indicator.style.left = `${itemRect.left - listRect.left}px`;
+            indicator.style.width = `${itemRect.width}px`;
+        } catch (error) {
+            warn(`could not realign the tab indicator: ${error}`);
+        }
+    });
+}
+
+/**
  * ⚠️ One scope PER TAB, and never the default one. The strip is rebuilt tab by tab, and a framed
  * tooltip left mounted around a discarded element floats to the top-left corner of the screen.
  * Disposing the DEFAULT scope to avoid that would take every other tab's tooltips with it.
@@ -245,6 +291,7 @@ export function startTabIcons() {
 
     if (observedList === list) {
         run();
+        realignIndicator();
         return;
     }
 
@@ -253,8 +300,15 @@ export function startTabIcons() {
     if (run()) {
         log('tab icons applied');
     }
+    // ⚠️ Every time, not only on the first pass: switching tabs re-renders the items, and the
+    // observer below re-applies the icons - which moves the widths again.
+    realignIndicator();
     // Switching tabs re-renders the items, which drops our icon - so keep watching.
-    observer = new MutationObserver(run);
+    observer = new MutationObserver(() => {
+        if (run()) {
+            realignIndicator();
+        }
+    });
     observer.observe(list, { childList: true, subtree: true });
 }
 

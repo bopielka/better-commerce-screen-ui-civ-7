@@ -521,5 +521,53 @@
         <Row Tag="LOC_OPTIONS_GROUP_NAJANE_MODS_COMMERCE_VIEW">
             <Text>Najane Mods: commerce screen</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_LIMIT">
+            <Text>Trade route limit</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ACTIVE">
+            <Text>Active trade routes</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_RELATIONSHIP_ON_THE_WAY">
+            <Text>Merchants on the way</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_DOCK_TRADE">
+            <Text>View trade routes</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE">
+            <Text>Do it next turn</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL">
+            <Text>Cancel</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP">
+            <Text>Queued for the start of the next turn: raise the limit and send a Merchant to {1_City}. Click to cancel.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY">
+            <Text>{1_Count} Trade Route limits raised automatically - the Merchants already sent can now open their routes.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE">
+            <Text>Trade Route limit with {1_Leader} raised automatically - the Merchant sent to {2_City} can now open the route.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_BUY">
+            <Text>Click to start this when the turn begins: buy a Merchant for {3_Gold} Gold and send it to {4_City} straight away, then propose "Improve Trade Relations" with {1_Leader} for {2_Cost} Influence as soon as you can afford it. The Merchant travels while you save up.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE">
+            <Text>Click to start this when the turn begins: send a Merchant you already have to {3_City} straight away, then propose "Improve Trade Relations" with {1_Leader} for {2_Cost} Influence as soon as you can afford it. The Merchant travels while you save up.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING">
+            <Text>Waiting for the next turn</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_WAITING_TOOLTIP">
+            <Text>Under way: a Merchant is being sent to {1_City}, and the Trade Route limit will be raised as soon as the Influence is there.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_FREE_MERCHANTS">
+            <Text>Free Merchants: {1_Count}</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_SENT">
+            <Text>A Merchant is on its way to {2_City} - the Trade Route limit with {1_Leader} will be raised as soon as the Influence is there.</Text>
+        </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY">
+            <Text>Trade routes being established</Text>
+        </Row>
     </EnglishText>
 </Database>
