@@ -526,5 +526,8 @@
         <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="ja_JP">
             <Text>開設中の交易路</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT" Language="ja_JP">
+            <Text>クリックで予定します：金 {1_Gold} で商人を購入し、余裕ができ次第 {2_City} へ送ります。それまでは何も消費しません。</Text>
+        </Row>
     </LocalizedText>
 </Database>

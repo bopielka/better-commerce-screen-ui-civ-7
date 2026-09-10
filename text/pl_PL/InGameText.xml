@@ -549,5 +549,8 @@
         <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="pl_PL">
             <Text>Szlaki handlowe w trakcie zakładania</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT" Language="pl_PL">
+            <Text>Kliknij, aby to zaplanować: kupić kupca za {1_Gold} złota i wysłać go do {2_City}, gdy tylko będzie Cię na to stać. Do tego czasu nic nie zostanie wydane.</Text>
+        </Row>
     </LocalizedText>
 </Database>

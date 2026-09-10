@@ -526,5 +526,8 @@
         <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="ko_KR">
             <Text>개설 중인 교역로</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT" Language="ko_KR">
+            <Text>클릭하면 예약됩니다: 금 {1_Gold}로 상인을 구매해 {2_City}(으)로 보냅니다. 여유가 생길 때까지 아무것도 소비하지 않습니다.</Text>
+        </Row>
     </LocalizedText>
 </Database>

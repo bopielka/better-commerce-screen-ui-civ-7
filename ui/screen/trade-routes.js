@@ -33,6 +33,7 @@ import {
     BUY_STYLE,
     LEADER_LINK_CLASS,
     TradeCapacityChangedEventName,
+    canRaiseLimitLater,
     decorateBuyMerchant,
     decorateLeaderLink,
     forgetMerchantOffers,
@@ -345,6 +346,14 @@ ${CARD_SELECTOR}.${HIDDEN_CARD_CLASS} { display: none !important; }
 let styleElement = null;
 let unwatch = null;
 let routesByCityName = null;
+/**
+ * The same entries keyed by the target settlement.
+ *
+ * ⚠️ The by-NAME map is what a card can be matched on - a card carries its title and nothing else.
+ * The SECTION pass works on the model's route data, which carries `cityID` and no name we could
+ * trust, so it needs the other key. One index, filled by the same walk.
+ */
+let routesByTarget = null;
 
 /** Leaders we could sign a route with right now; filled by the same pass as the map. */
 let startableLeaders = null;
@@ -366,6 +375,7 @@ function routeInfo() {
         return routesByCityName;
     }
     routesByCityName = new Map();
+    routesByTarget = new Map();
     startableLeaders = new Set();
     try {
         const trade = Players.get(GameContext.localPlayerID)?.Trade;
@@ -392,6 +402,7 @@ function routeInfo() {
                 resources: importedResourceTypes(route),
             };
             routesByCityName.set(Locale.compose(target.name), entry);
+            routesByTarget.set(targetKey(route.targetCityId), entry);
 /** SUCCESS means every criterion is met - the route only needs signing. */
             if (status.includes(TradeRouteStatus.SUCCESS) && target.owner !== undefined) {
                 startableLeaders.add(target.owner);
@@ -434,6 +445,15 @@ const UNDERWAY_SECTION_MARK = 'najaneUnderwaySection';
  * settlement, which both sides carry.
  */
 const underwayTargets = new Set();
+
+/**
+ * The targets that are blocked by NOTHING BUT the trade limit, lifted into the available section.
+ *
+ * ⚠️ They belong there because they are a decision, not a dead end (user's instruction,
+ * 2026-09-10): a slot can be bought with Influence, and the card offers exactly that. "Unavailable"
+ * is now only what no amount of diplomacy fixes - out of range.
+ */
+const limitBlockedTargets = new Set();
 
 /**
  * ⚠️ THE OWNER IS PART OF THE KEY. A `ComponentID`'s `id` is unique only WITHIN one player, so
@@ -528,12 +548,63 @@ function makeUnderwaySection() {
  * ⚠️ Splices IN PLACE and moves the model's own route objects, never copies: a copy would give
  * Solid new identities and rebuild every card in the section rather than the one that moved.
  */
+/** The route entry this mod holds for one of the model's routes, or null. */
+function entryForRoute(route) {
+    routeInfo();
+    return routesByTarget?.get(targetKey(route?.cityID)) ?? null;
+}
+
+/**
+ * Moves the routes that only the trade limit holds back out of "unavailable" and into "available",
+ * after the ones that need nothing.
+ *
+ * ⚠️ A DECISION, NOT A DEAD END (user's instruction, 2026-09-10). A slot can be bought with
+ * Influence and the card carries that price; burying such a route under "unavailable" - a heading
+ * that also starts out collapsed - hid the one thing the player could act on. What is left under
+ * that heading is only what no amount of diplomacy fixes.
+ *
+ * ⚠️ Moved in the DATA, before Solid renders it, exactly like the section above; and ordered
+ * BELOW the untouched ones by `applyFilterAndHeaders`, which reads `limitBlockedTargets`.
+ */
+function liftLimitBlocked(sections, underwaySection) {
+    const available = sections.find((entry) => entry !== underwaySection && entry !== sections[0]);
+    const unavailable = sections[sections.length - 1];
+    if (!available || !unavailable || available === unavailable) {
+        return;
+    }
+    const staying = [];
+    const lifted = [];
+    for (const route of unavailable.tradeRoutes ?? []) {
+        const entry = entryForRoute(route);
+        /*
+         * ⚠️ ONLY WHERE THE LIMIT CAN ACTUALLY BE RAISED (user's instruction, 2026-09-10). Held
+         * back by the limit is a decision the player can buy their way out of - unless the two are
+         * hostile, when the treaty is shut and no turn opens it. Such a route is genuinely
+         * unavailable and stays under that heading.
+         */
+        if (entry && unavailableGroupFor(entry) === 'limit' && canRaiseLimitLater(entry.leaderId)) {
+            lifted.push(route);
+        } else {
+            staying.push(route);
+        }
+    }
+    for (const route of lifted) {
+        limitBlockedTargets.add(targetKey(route?.cityID));
+    }
+    if (lifted.length === 0) {
+        return;
+    }
+    unavailable.tradeRoutes.splice(0, unavailable.tradeRoutes.length, ...staying);
+    available.tradeRoutes.push(...lifted);
+}
+
 function syncUnderwaySection(tabData) {
     const sections = tabData?.tradeRouteSections;
     if (!Array.isArray(sections) || sections.length === 0) {
         return;
     }
     underwayTargets.clear();
+    limitBlockedTargets.clear();
 
     let section = underwaySectionIn(sections);
     const underway = [];
@@ -567,6 +638,8 @@ function syncUnderwaySection(tabData) {
             : sections[sections.length - 1];
         home?.tradeRoutes?.push(route);
     }
+
+    liftLimitBlocked(sections, section);
 
     if (underway.length === 0) {
         // ⚠️ Taken out rather than left empty: an ornate section bar over nothing reads as a bug.
@@ -603,6 +676,35 @@ export function refreshUnderwaySection() {
     }
 }
 
+/**
+ * Drops the criteria a route already MEETS from the list under its card.
+ *
+ * ⚠️ Only the failing ones are news (user's instruction, 2026-09-10). "In range ✓" and "at peace ✓"
+ * are three lines of card telling the player nothing they were asking about; what they came for is
+ * the one line in red.
+ *
+ * ⚠️ Filtered in the DATA and IN PLACE, like the sections: the list is a `<For>` over
+ * `tradeRoute.statuses`, so removing entries is ordinary work for it, while hiding the rows by
+ * style would leave the black band sized for lines nobody can see.
+ *
+ * ⚠️ `isNegative` is the game's own mark for "this one is not met" - `CommerceCriteriaDisplay`
+ * paints exactly that red and gives it the failure icon.
+ */
+function hideMetCriteria(tabData) {
+    for (const section of tabData?.tradeRouteSections ?? []) {
+        for (const route of section?.tradeRoutes ?? []) {
+            const statuses = route?.statuses;
+            if (!Array.isArray(statuses) || statuses.length === 0) {
+                continue;
+            }
+            const failing = statuses.filter((status) => status?.isNegative);
+            if (failing.length !== statuses.length) {
+                statuses.splice(0, statuses.length, ...failing);
+            }
+        }
+    }
+}
+
 export function prepareTradeTabData(tabData) {
     // ⚠️ Untracked: this reads out of a mutable store and writes back, from inside the tab's own
     // reactive scope. Tracking it would make the write wake the read.
@@ -615,6 +717,7 @@ export function prepareTradeTabData(tabData) {
         }
         tradeTabData = tabData;
         syncUnderwaySection(tabData);
+        hideMetCriteria(tabData);
     });
     return tabData;
 }
@@ -622,11 +725,45 @@ export function prepareTradeTabData(tabData) {
 /** Routes change when one is signed or a settlement changes hands. */
 export function forgetTradeRoutes() {
     routesByCityName = null;
+    routesByTarget = null;
     startableLeaders = null;
     summaryShown = false;
     // What a merchant costs and where it can be bought changes with the same events - a
     // route signed, gold spent, a settlement lost.
     forgetMerchantOffers();
+}
+
+/**
+ * ⚠️ THE ENGINE ANSWERS "YOU CANNOT AFFORD THIS" WRONGLY AS THE SCREEN OPENS, and answers it
+ * correctly a moment later. Measured in UI.log on every card at once: `cost=830 gold=1027
+ * canBuy=false funds=true`. Opening the tab a second time in the same turn was already right,
+ * which is what says the question - not the caches - is what was early.
+ *
+ * ⚠️ A wall-clock delay, not a frame count: a frame-based wait stretches exactly when the game is
+ * busy, which is precisely when the screen is opening. One shot per visit, handed back with the
+ * tab so a screen closed inside the window leaves nothing behind.
+ */
+const OFFER_RECHECK_MS = 400;
+
+let offerRecheck = null;
+
+function scheduleOfferRecheck() {
+    if (offerRecheck !== null) {
+        return;
+    }
+    offerRecheck = setTimeout(() => {
+        offerRecheck = null;
+        forgetMerchantOffers();
+        scheduleDecorate();
+    }, OFFER_RECHECK_MS);
+}
+
+function stopOfferRecheck() {
+    if (offerRecheck === null) {
+        return;
+    }
+    clearTimeout(offerRecheck);
+    offerRecheck = null;
 }
 
 let summaryShown = false;
@@ -898,10 +1035,9 @@ function blockedReasons(route) {
  * two headings.
  */
 const GROUPS_BY_SECTION = {
-    unavailable: [
-        { kind: 'limit', labelKey: 'LOC_NAJANE_COMMERCE_BLOCKED_LIMIT' },
-        { kind: 'range', labelKey: 'LOC_NAJANE_COMMERCE_BLOCKED_RANGE' },
-    ],
+    // ⚠️ The limit group lives in AVAILABLE now; see `liftLimitBlocked`.
+    available: [{ kind: 'limit', labelKey: 'LOC_NAJANE_COMMERCE_BLOCKED_LIMIT' }],
+    unavailable: [{ kind: 'range', labelKey: 'LOC_NAJANE_COMMERCE_BLOCKED_RANGE' }],
 };
 
 /** The header that names a group, positioned in front of that group's first card. */
@@ -975,7 +1111,12 @@ function sectionKindOf(entries) {
 }
 
 /** The place in the ordering each group's cards start at. */
-const GROUP_ORDER = { all: 100, limit: 100, range: 1100, other: 2100 };
+/*
+ * ⚠️ `all` AND `limit` NOW SHARE A SECTION, so they may no longer share a base - the limit-blocked
+ * cards have to fall below the ones that need nothing. They were both 100 while they lived in
+ * different sections and nothing could compare them.
+ */
+const GROUP_ORDER = { all: 100, limit: 1100, range: 2100, other: 3100 };
 
 /**
  * Hides what the tab is not asking to see, orders what is left, and names each group.
@@ -1020,7 +1161,15 @@ function applyFilterAndHeaders() {
         const buckets = new Map();
         cards.forEach((card, index) => {
             const route = entries[index];
-            const group = route && kind === 'unavailable' ? unavailableGroupFor(route) : null;
+            let group = null;
+            if (route) {
+                group = kind === 'unavailable'
+                    ? unavailableGroupFor(route)
+                    // ⚠️ Read from the SET the section pass filled, not from the status again: a
+                    // card sits in this run because it was MOVED here, and that is the only place
+                    // that decision was taken.
+                    : (limitBlockedTargets.has(targetKey(route.targetCityId)) ? 'limit' : null);
+            }
             const hidden = Boolean(route)
                 && (!matchesFilter(route, kind) || (group !== null && collapsedGroups.has(group)));
             card.classList.toggle(HIDDEN_CARD_CLASS, hidden);
@@ -1160,6 +1309,8 @@ ${RELATIONSHIP_FOOTER_STYLE}`);
     }
     // ⚠️ Its own observer, on a root outside this screen; see relationship-trade-footer.js.
     startRelationshipFooter();
+    // ⚠️ The prices the engine gives at this instant are not to be trusted; see the note above.
+    scheduleOfferRecheck();
     // Cards are Solid's and are rebuilt whenever the tab's data changes, so this stays watching.
     scheduleDecorate();
     // The title row cannot be measured until the cards have been laid out; ask for a pass
@@ -1238,6 +1389,7 @@ export function stopTradeRoutes() {
     unwatch?.();
     unwatch = null;
     stopRelationshipFooter();
+    stopOfferRecheck();
     // Nothing is drawing a route any more, so nothing needs telling that one changed.
     stopListeningForRouteChanges();
     stopWatchingForCorePlayback();
@@ -1268,6 +1420,7 @@ export function stopTradeRoutes() {
     // structure nothing is rendering any more.
     tradeTabData = null;
     underwayTargets.clear();
+    limitBlockedTargets.clear();
     styleElement?.remove();
     styleElement = null;
     measuredStyle?.remove();

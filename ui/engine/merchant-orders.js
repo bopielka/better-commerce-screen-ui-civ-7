@@ -621,6 +621,19 @@ export function forgetMerchantState() {
     merchantState = null;
 }
 
+function merchantStates() {
+    if (merchantState && Date.now() - merchantStateAt < STATE_CACHE_MS) {
+        return merchantState;
+    }
+    merchantState = localMerchants().map((unit) => ({
+        unit,
+        plotIndex: readOrder(unitKey(unit.id)),
+        travelling: isTravelling(unit),
+    }));
+    merchantStateAt = Date.now();
+    return merchantState;
+}
+
 /**
  * Merchants free to be given a NEW errand.
  *

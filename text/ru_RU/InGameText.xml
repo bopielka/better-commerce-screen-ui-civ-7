@@ -536,5 +536,8 @@
         <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="ru_RU">
             <Text>Торгові шляхи у процесі створення</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT" Language="ru_RU">
+            <Text>Натисніть, щоб це запланувати: купити купця за {1_Gold} золота й надіслати його до {2_City}, щойно вистачить коштів. До того часу нічого не витрачається.</Text>
+        </Row>
     </LocalizedText>
 </Database>

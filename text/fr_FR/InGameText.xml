@@ -526,5 +526,8 @@
         <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="fr_FR">
             <Text>Routes commerciales en cours d’établissement</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT" Language="fr_FR">
+            <Text>Cliquez pour le planifier : acheter un marchand pour {1_Gold} or et l’envoyer à {2_City} dès que vous en aurez les moyens. Rien n’est dépensé avant.</Text>
+        </Row>
     </LocalizedText>
 </Database>

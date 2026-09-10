@@ -23,7 +23,7 @@
  */
 import { isFactoryAge } from '../engine/age.js';
 import { grantsBonusSlots } from '../engine/resource-slots.js';
-import { resourceClassOf, resourceYieldTypes } from '../planner/facts.js';
+import { resourceClassOf, resourceYieldEffects } from '../planner/facts.js';
 import { PRIORITY_OPTIONS } from '../planner/priorities.js';
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
 import { iconBackground, resourceIcon, yieldIcon } from './icons.js';
@@ -238,15 +238,43 @@ onGameDataStale(() => {
     classCache.clear();
 });
 
+/**
+ * What a resource actually pays, for the purpose of filtering the cards.
+ *
+ * ⚠️ THE MODIFIERS, WHICH ARE WHAT THE RESOURCE'S OWN TOOLTIP IS BUILT FROM. This is the source
+ * the Empire tab's figures already come from, and it is the only one that survived being checked
+ * against the tooltips on the cards.
+ *
+ * ⚠️ `TypeTags` IS A CATEGORY, NOT A YIELD LIST, and that is what made it look right. The game
+ * does index resources by it (`indexResourceTypes` in commerce-screen-model.js), so it seemed
+ * authoritative - but Iron is tagged PRODUCTION while its tooltip reads "+1 Combat Strength for
+ * infantry", and Horses the same for cavalry. Filtering by tags put both under Production, where
+ * neither pays a single hammer.
+ *
+ * ⚠️ MODIFIER-BORNE EFFECTS ONLY - `resourceYieldEffects` FALLS BACK to `Resource_YieldChanges`
+ * for a resource whose modifiers name no yield, and that fallback is the whole remaining bug.
+ * Iron, Niter and Horses pay COMBAT STRENGTH, through modifiers that carry no `YieldType`; the
+ * fallback then hands back the table's answer, which calls all three production. Traced in UI.log
+ * as `PROBE pays: RESOURCE_NITER = YIELD_PRODUCTION` beside a tooltip reading "+1 Combat Strength
+ * for siege and naval units". A fallback entry is marked - `modifierId` is null on it - so it can
+ * be told apart without changing what the planner sees.
+ *
+ * ⚠️ An EMPTY answer is a real answer. Those three pay no yield at all in this age, so no yield
+ * tab counts them, which is exactly right.
+ */
 function yieldsOf(resourceTypeName) {
     if (!yieldCache.has(resourceTypeName)) {
-        let types = [];
+        const found = new Set();
         try {
-            types = resourceYieldTypes({ resourceType: resourceTypeName }) ?? [];
+            for (const effect of resourceYieldEffects({ resourceType: resourceTypeName }) ?? []) {
+                if (effect?.yieldType && effect.modifierId) {
+                    found.add(effect.yieldType);
+                }
+            }
         } catch (error) {
             warn(`could not read what ${resourceTypeName} pays: ${error}`);
         }
-        yieldCache.set(resourceTypeName, types);
+        yieldCache.set(resourceTypeName, Array.from(found));
     }
     return yieldCache.get(resourceTypeName);
 }

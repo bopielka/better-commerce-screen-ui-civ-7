@@ -26,8 +26,11 @@
 import { RaiseDiplomacyEvent } from '/base-standard/ui/diplomacy/diplomacy-events.js';
 
 import {
+    hasProposedThisTurn,
     influenceBalance,
     proposeTradeRelations,
+    relationshipBlocksTrade,
+    requiredRelationshipIcon,
     tradeRelationsOffer,
 } from '../engine/diplomacy.js';
 import {
@@ -110,6 +113,16 @@ const QUEUE_ROW_CLASS = `${BUY_CLASS}-queue-row`;
  * hourglass means one thing across both mods.
  */
 const QUEUED_COLOUR = '#f6ce55';
+
+/**
+ * How every hourglass in this file is tinted.
+ *
+ * ⚠️ ONE FILTER, STATED ONCE (user's instruction, 2026-09-10). It was written three times - white
+ * on the gold button, white on the limit button, amber once queued - so the same mark meant
+ * "later" in two different colours depending on which control it sat in. The game's art is grey;
+ * `fxs-color-tint` is the engine's own filter for recolouring icon art.
+ */
+const WAIT_ICON_FILTER = `fxs-color-tint(${QUEUED_COLOUR})`;
 
 /** The green of the "send a spare merchant" plus - the game's own positive colour. */
 const SEND_PLUS_COLOUR = '#9ad48f';
@@ -396,7 +409,7 @@ ${ICON_BUTTON_STYLE}
  * the two marks stay on the same baseline.
  */
 .${WARN_CLASS}__icon.${WARN_CLASS}__wait-icon {
-    filter: grayscale(1) brightness(1.6);
+    filter: ${WAIT_ICON_FILTER};
     /*
      * ⚠️ WRITTEN AS A COMPOUND SELECTOR, and that is what makes it apply at all. The element wears
      * both classes; at one class each, the two rules tie on specificity and the LATER one wins -
@@ -420,7 +433,7 @@ ${ICON_BUTTON_STYLE}
 }
 .${WARN_CLASS}--queued:hover { border-color: ${QUEUED_COLOUR}; }
 .${WARN_CLASS}--queued .${WARN_CLASS}__icon.${WARN_CLASS}__wait-icon {
-    filter: fxs-color-tint(${QUEUED_COLOUR});
+    filter: ${WAIT_ICON_FILTER};
 }
 /* Queued, and there is nothing left to press: the X beside it is what undoes it. */
 .${WARN_CLASS}--queued { cursor: default; }
@@ -515,6 +528,23 @@ ${ICON_BUTTON_STYLE}
 }
 .${BUY_CLASS}__cost { pointer-events: none; }
 /*
+ * The hourglass INSIDE the gold button, on a card whose only obstacle is the money.
+ *
+ * ⚠️ ONE BUTTON, NOT TWO (user's instruction, 2026-09-10). "Buy it now" and "buy it when you can"
+ * are two readings of the same price; a second control beside it read as a second cost.
+ *
+ * ⚠️ Same shrink as everywhere else this artwork is used: the game's own marks carry a margin
+ * inside the image and "HourGlass.png" fills it edge to edge, so at the shared "contain" it comes
+ * out larger than the gold coin beside it. Stated as a compound selector because ".__icon" sets
+ * "background-size" too and the two would otherwise tie on specificity.
+ */
+.${BUY_CLASS}__icon.${BUY_CLASS}__wait-icon {
+    margin-right: 0;
+    margin-left: 0.35rem;
+    background-size: 74%;
+    filter: ${WAIT_ICON_FILTER};
+}
+/*
  * Dark, not gone. A price that cannot be paid is still the answer to "what would this cost",
  * and the tooltip says which of the reasons it is.
  */
@@ -579,6 +609,12 @@ ${ICON_BUTTON_STYLE}
 /* Air between the two prices - given its own class rather than a structural selector, which
    this renderer has no proven support for; see the ⚠️ on widestCornerCard in trade-routes.js. */
 .${IMPROVE_CLASS}__influence-cost { margin-right: 0.5rem; }
+/* ⚠️ Compound selector: ".__icon" sets background-size too, and one class each would tie. */
+.${IMPROVE_CLASS}__icon.${IMPROVE_CLASS}__wait-icon {
+    margin-left: 0.35rem;
+    background-size: 74%;
+    filter: ${WAIT_ICON_FILTER};
+}
 `;
 
 /** The purchase decision, cached for as long as the tab's route list is. */
@@ -672,6 +708,70 @@ function capacityWarning(route, targetCity) {
         return null;
     }
     return { leaderId, capacity, used, pending };
+}
+
+/**
+ * Whether the treaty that would open a trade slot could be proposed LATER, if not now.
+ *
+ * ⚠️ THE DIFFERENCE BETWEEN "NOT YET" AND "NOT EVER", and the card must not offer to wait for the
+ * second. Two refusals clear with the turn - the Influence is short, or this mod has already
+ * proposed to this leader this turn. Anything else is structural: hostile relations, or war. No
+ * number of turns fixes those, and a route so blocked is not one to plan (user's instruction,
+ * 2026-09-10).
+ *
+ * ⚠️ Derived from what the engine already answers rather than from a relationship threshold. The
+ * hostile band is `-30..-2` in `diplomacy-actions.xml`, and pinning that number here would be a
+ * balance constant this mod has no business carrying.
+ */
+function treatyCanComeLater(leaderId, offer) {
+    if (!offer) {
+        return false;
+    }
+    /*
+     * ⚠️ ASKED FIRST, AND THAT ORDER IS THE FIX. "Short of Influence" was tested before this and
+     * answered yes on its own - so a hostile pairing that the player also could not afford came out
+     * as "wait and it will happen", and the route was lifted into the available section. Hostility
+     * is not a price; it has to rule the answer out before any price is considered.
+     */
+    if (relationshipBlocksTrade(leaderId)) {
+        return false;
+    }
+    if (offer.canStart) {
+        return true;
+    }
+    return offer.cost > influenceBalance() || hasProposedThisTurn(leaderId);
+}
+
+/**
+ * Whether the trade limit with this leader could be raised at all, now or later.
+ *
+ * ⚠️ Exported for the SECTION pass: a route held back only by the limit belongs among the
+ * available ones because it is a decision - but not while the two are hostile, when the limit is
+ * simply shut. See `liftLimitBlocked` in trade-routes.js.
+ */
+export function canRaiseLimitLater(leaderId) {
+    return treatyCanComeLater(leaderId, improveOfferFor(leaderId));
+}
+
+/**
+ * The engine's refusal, with the relationship icon in front of it where relations are the refusal.
+ *
+ * ⚠️ ONLY THERE. The reasons list also carries "you cannot afford it" and the like, and a
+ * relationship mark in front of those would name the wrong obstacle.
+ */
+function refusalText(leaderId, offer) {
+    const reason = offer?.reasons?.join(' ') ?? '';
+    if (!reason || !relationshipBlocksTrade(leaderId)) {
+        return reason;
+    }
+    /*
+     * ⚠️ AFTER the sentence, not before it (user's instruction, 2026-09-10). The line NAMES the
+     * level it wants and the mark belongs to that name; in front it read as a bullet on the whole
+     * sentence. Appended rather than spliced in beside the word: the sentence is the game's own and
+     * is worded differently in every language, so there is no position inside it to aim at.
+     */
+    const icon = requiredRelationshipIcon().trim();
+    return icon ? `${reason} ${icon}` : reason;
 }
 
 function leaderName(leaderId) {
@@ -877,7 +977,7 @@ function warnActionText(warning, offer, targetCity = null) {
         return openLine;
     }
     if (!offer.canStart) {
-        const reason = offer.reasons.join(' ');
+        const reason = refusalText(warning.leaderId, offer);
         return reason ? `${reason}[N]${openLine}` : openLine;
     }
     // canStart, but Influence is short.
@@ -904,19 +1004,30 @@ function warnActionText(warning, offer, targetCity = null) {
  * ⚠️ The GOLD price is named only where a merchant would have to be bought. Naming it while a
  * spare is standing idle would promise a cost the pass will not pay.
  */
-function queueActionText(leaderId, offer, targetCity, queued) {
+function queueActionText(leaderId, offer, targetCity, site, queued, limitBlocked) {
     const city = Locale.compose(targetCity?.name ?? '');
     if (queued) {
         // ⚠️ Says only what is waiting. What UNDOES it is the X beside it, and that button's own
         // tooltip is where "click to cancel" belongs.
         return Locale.compose('LOC_NAJANE_COMMERCE_QUEUE_WAITING_TOOLTIP', city);
     }
+    /*
+     * ⚠️ THE TREATY IS NAMED ONLY WHERE THE LIMIT IS WHAT BLOCKS IT. With a slot already free the
+     * plan is nothing but "buy a merchant and send it", and promising a treaty - with a price
+     * attached - would be an Influence cost the pass will never pay.
+     */
+    if (!limitBlocked) {
+        return Locale.compose(
+            'LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT',
+            site?.offer?.cost ?? 0,
+            city,
+        );
+    }
     const leader = leaderName(leaderId);
     const cost = offer?.cost ?? 0;
     if (nearestIdleMerchant(targetCity)) {
         return Locale.compose('LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE', leader, cost, city);
     }
-    const site = siteFor({ nearestCityId: null }, targetCity);
     return site?.offer
         ? Locale.compose('LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_BUY', leader, cost, site.offer.cost, city)
         : Locale.compose('LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_SPARE', leader, cost, city);
@@ -926,29 +1037,52 @@ function queueActionText(leaderId, offer, targetCity, queued) {
  * @param leaderId whose limit this is about - passed separately because `warning` is absent on a
  *        card that is queued but no longer short of a slot.
  */
-function buildWarnButton(leaderId, warning, targetCity, scope) {
+function buildWarnButton(leaderId, warning, targetCity, site, limitBlocked, scope) {
     const offer = improveOfferFor(leaderId);
     const ready = Boolean(offer?.canStart) && offer.cost <= influenceBalance();
-    const spare = ready ? nearestIdleMerchant(targetCity) : null;
-    /*
-     * ⚠️ THE THIRD STATE, AND THE REASON THE WARNING MARK IS NOW RARE. The treaty cannot be
-     * proposed - already proposed this turn, or the Influence is short - but BOTH of those answers
-     * change when the turn does. That is a wait, not a refusal, so the button offers to do it then
-     * (engine/trade-queue.js) instead of merely warning that it cannot be done now.
-     *
-     * ⚠️ An offer that does not EXIST is still only a warning: at war, or a pairing the action does
-     * not apply to, no amount of waiting helps and the fallback is diplomacy.
-     */
+    // ⚠️ Asked whatever `ready` says: with no merchant to send, the button is a PLAN rather than an
+    // action, and that is decided below on this very answer.
+    const spare = nearestIdleMerchant(targetCity);
     // ⚠️ Asked of the SETTLEMENT, not the leader: the request is "send one THERE", and asked of
     // the leader it lit the button on every card that leader owns.
     const queued = isTradeActionQueued(targetCity);
-    const canWait = Boolean(offer) && !ready;
+
+    /*
+     * THE TWO THINGS THAT CAN BE IN THE WAY, named separately because the card reads differently
+     * for each: the trade limit, and simply having no merchant to send.
+     */
+    const canGetMerchantNow = Boolean(spare) || Boolean(site?.offer?.canBuy);
+
+    /*
+     * ⚠️ NOTHING TO ADD, and returning null is the honest answer. The route can be started on this
+     * click - the price row and the plus beside it already offer exactly that - so a third control
+     * here would be a second way to say the same thing.
+     */
+    if (!queued && !limitBlocked && canGetMerchantNow) {
+        return null;
+    }
+
+    /*
+     * ⚠️ ANYTHING THAT CANNOT BE FINISHED ON THIS CLICK BUT COULD BE FINISHED LATER IS A WAIT,
+     * not a refusal - so the button offers to do it then (engine/trade-queue.js). Three ways in,
+     * and the last two were both missed at different times:
+     *   - the treaty cannot be proposed yet (already proposed this turn, or Influence short);
+     *   - the treaty is affordable but every merchant is spoken for;
+     *   - the limit is fine and the only thing missing is a merchant and the gold for one.
+     *
+     * ⚠️ Where the LIMIT is what blocks it, an offer that does not EXIST is still only a warning:
+     * at war, or a pairing the action does not apply to, no amount of waiting helps and the
+     * fallback is diplomacy.
+     */
+    const canWait = limitBlocked
+        ? (treatyCanComeLater(leaderId, offer) && (!ready || !spare))
+        : true;
 
     const button = makeElement('div', WARN_CLASS);
     button.classList.toggle(`${WARN_CLASS}--blocked`, !ready && !canWait);
     button.classList.toggle(`${WARN_CLASS}--queued`, queued);
 
-    if (spare) {
+    if (limitBlocked && spare && ready) {
         const plus = makeElement('div', `${WARN_CLASS}__plus`);
         plus.textContent = '+';
         button.appendChild(plus);
@@ -962,7 +1096,12 @@ function buildWarnButton(leaderId, warning, targetCity, scope) {
         button.appendChild(icon);
     }
 
-    if (offer) {
+    /*
+     * ⚠️ THE INFLUENCE PRICE ONLY WHERE THE TREATY WILL BE PROPOSED. With a trade slot standing
+     * free the plan never touches diplomacy, and a cost printed on the button is a bill the pass
+     * will not send - "0/2 routes used" beside "110 Influence" is simply wrong.
+     */
+    if (offer && limitBlocked) {
         const influenceIconEl = makeElement('div', `${WARN_CLASS}__icon ${WARN_CLASS}__influence-icon`);
         const url = influenceIcon();
         if (url) {
@@ -1028,20 +1167,39 @@ function buildWarnButton(leaderId, warning, targetCity, scope) {
              * came free still shows the hourglass - the request is still waiting on Influence -
              * and telling the player their limit is full would be a plain lie.
              */
-            ? [warning ? warningText(warning) : '', queueActionText(leaderId, offer, targetCity, queued)]
+            ? [warning ? warningText(warning) : '',
+                queueActionText(leaderId, offer, targetCity, site, queued, limitBlocked)]
                 .filter(Boolean).join('[N][N]')
             : `${warningText(warning)}[N][N]${warnActionText(warning, offer, targetCity)}`,
     });
     return mount;
 }
 
-function buildBuyButton(stack, route, targetCity, site, onTheWay, scope) {
+/**
+ * @param canPlan whether pressing this while it is unaffordable should QUEUE the purchase instead
+ *        of doing nothing - see `renderAvailableStack`.
+ */
+function buildBuyButton(stack, route, targetCity, site, onTheWay, canPlan, scope) {
     const busy = busyTargets.has(cityKey(targetCity));
     const ready = Boolean(site?.offer?.canBuy) && onTheWay === 0 && !busy;
+    /*
+     * ⚠️ ONLY THE FUNDS. Everything else the engine refuses a purchase for - a settlement in
+     * unrest, an age that does not field merchants yet - is not something waiting fixes, and an
+     * hourglass on those would promise a turn that never comes.
+     */
+    const waitingForGold = canPlan && !ready && !busy && onTheWay === 0
+        && Boolean(site?.offer?.insufficientFunds);
+
 
     const button = makeElement('div', BUY_CLASS);
+    /*
+     * ⚠️ FULLY LIT WHILE IT ANSWERS A CLICK (user's instruction, 2026-09-10). `--blocked` is the
+     * "nothing to press" look; wearing any part of it while the hourglass invites a press gives a
+     * control that reads as disabled and is not. Dimming only the price was still wrong - it made
+     * this one number pale where every other card shows it in the same amber.
+     */
 /** One errand per settlement at a time; a second merchant would arrive to a spent slot. */
-    button.classList.toggle(`${BUY_CLASS}--blocked`, !ready);
+    button.classList.toggle(`${BUY_CLASS}--blocked`, !ready && !waitingForGold);
     button.classList.toggle(`${BUY_CLASS}--sent`, onTheWay > 0);
     button.classList.toggle(`${BUY_CLASS}--busy`, busy);
 
@@ -1056,18 +1214,34 @@ function buildBuyButton(stack, route, targetCity, site, onTheWay, scope) {
     cost.textContent = site?.offer ? String(site.offer.cost) : '-';
     button.appendChild(cost);
 
+    if (waitingForGold) {
+        const wait = makeElement('div', `${BUY_CLASS}__icon ${BUY_CLASS}__wait-icon`);
+        wait.style.backgroundImage = `url(${WAIT_ICON})`;
+        button.appendChild(wait);
+    }
+
     bindActivatable(button, () => {
-        if (!ready) {
+        if (ready) {
+            buyAndSend(stack, route, targetCity);
             return;
         }
-        buyAndSend(stack, route, targetCity);
+        if (waitingForGold) {
+            queueTradeAction(targetCity);
+        }
     });
 
     const mount = makeElement('div', `${BUY_CLASS}-mount`);
     appendWithFramedTooltip(mount, button, {
         scope,
-        title: 'LOC_NAJANE_COMMERCE_BUY_MERCHANT',
-        text: buyTooltip(site, targetCity, onTheWay, capacityWarning(route, targetCity)),
+        /*
+         * ⚠️ The card is never QUEUED here - a queued card draws no price row at all, and its
+         * hourglass lives on the errand row with the X that cancels it. So this is only ever the
+         * offer, never the "already waiting" state.
+         */
+        title: waitingForGold ? 'LOC_NAJANE_COMMERCE_QUEUE' : 'LOC_NAJANE_COMMERCE_BUY_MERCHANT',
+        text: waitingForGold
+            ? queueActionText(route.leaderId, null, targetCity, site, false, false)
+            : buyTooltip(site, targetCity, onTheWay, capacityWarning(route, targetCity)),
     });
     return mount;
 }
@@ -1159,9 +1333,11 @@ function buildCancelQueueButton(targetCity, scope) {
 }
 
 /** The waiting hourglass, the pin that finds its merchant, and the X that calls it off. */
-function queueRow(leaderId, warning, targetCity, scope) {
+function queueRow(leaderId, warning, targetCity, site, limitBlocked, scope) {
     const row = makeElement('div', QUEUE_ROW_CLASS);
-    row.appendChild(buildWarnButton(leaderId, warning, targetCity, scope));
+    // ⚠️ Never null here: the request IS queued, and `buildWarnButton` only declines on a card
+    // that has nothing waiting on it.
+    row.appendChild(buildWarnButton(leaderId, warning, targetCity, site, limitBlocked, scope));
     /*
      * ⚠️ `merchantsOrderedTo`, NOT `merchantsBoundFor`. A queued request sends its merchant on the
      * first turn and only proposes the treaty once the Influence is there, so the merchant is
@@ -1251,7 +1427,7 @@ function buildSendSpareImproveButton(stack, route, targetCity, offer, scope) {
  * ⚠️ Returns the price button UNWRAPPED when there is nothing spare, so a card that cannot
  * offer this keeps exactly the markup it had before the feature existed.
  */
-function priceRow(priceMount, targetCity, heading, warning, scope) {
+function priceRow(priceMount, targetCity, heading, warning, extra, scope) {
     /*
      * One errand per settlement: a card already waiting on a merchant is not asking for another.
      *
@@ -1261,12 +1437,22 @@ function priceRow(priceMount, targetCity, heading, warning, scope) {
      * is exactly what `capacityWarning` already measures; the plus now answers to it too.
      */
     const spare = heading > 0 || warning ? null : nearestIdleMerchant(targetCity);
-    if (!spare) {
+    if (!spare && !extra) {
         return priceMount;
     }
     const row = makeElement('div', PRICE_ROW_CLASS);
     row.appendChild(priceMount);
-    row.appendChild(buildSendSpareButton(targetCity, spare, scope));
+    if (spare) {
+        row.appendChild(buildSendSpareButton(targetCity, spare, scope));
+    }
+    /*
+     * ⚠️ BESIDE THE GOLD, not on a row of its own (user's instruction, 2026-09-10). Where the only
+     * thing missing is the money, "buy it now" and "buy it when you can" are two readings of the
+     * same price and belong on the same line.
+     */
+    if (extra) {
+        row.appendChild(extra);
+    }
     return row;
 }
 
@@ -1325,7 +1511,8 @@ function improveTooltip(leaderId, offer, site, targetCity, onTheWay) {
         return `${opening}[N][N]${Locale.compose('LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED')}`;
     }
     if (!offer.canStart) {
-        const reason = offer.reasons.join(' ') || Locale.compose('LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED');
+        const reason = refusalText(leaderId, offer)
+            || Locale.compose('LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED');
         return `${opening}[N][N]${reason}`;
     }
     if (offer.cost > influenceBalance()) {
@@ -1345,13 +1532,27 @@ function improveTooltip(leaderId, offer, site, targetCity, onTheWay) {
     return opening;
 }
 
+/**
+ * ⚠️ ONE BUTTON, WITH OR WITHOUT THE HOURGLASS (user's instruction, 2026-09-10) - the same rule the
+ * gold button follows. It carries both prices; a second control beside it carrying one of them
+ * again read as a third cost.
+ */
 function buildImproveButton(stack, route, targetCity, site, offer, onTheWay, scope) {
     const busy = busyTargets.has(cityKey(targetCity));
     const ready = Boolean(offer?.canStart) && offer.cost <= influenceBalance()
         && Boolean(site?.offer?.canBuy) && onTheWay === 0 && !busy;
+    /*
+     * ⚠️ WAITING, NOT REFUSED, wherever the offer EXISTS but one of the two prices is out of reach
+     * this turn - or every merchant is spoken for. All of those change when the turn does, and the
+     * queue does the whole errand: merchant first, treaty when the Influence is there.
+     */
+    const canWait = !ready && !busy && onTheWay === 0
+        && treatyCanComeLater(route.leaderId, offer)
+        && (Boolean(site?.offer) || Boolean(nearestIdleMerchant(targetCity)));
 
     const button = makeElement('div', IMPROVE_CLASS);
-    button.classList.toggle(`${IMPROVE_CLASS}--blocked`, !ready);
+    // ⚠️ Fully lit while it answers a click; see the same note on the gold button.
+    button.classList.toggle(`${IMPROVE_CLASS}--blocked`, !ready && !canWait);
     button.classList.toggle(`${BUY_CLASS}--sent`, onTheWay > 0);
     button.classList.toggle(`${IMPROVE_CLASS}--busy`, busy);
 
@@ -1375,18 +1576,29 @@ function buildImproveButton(stack, route, targetCity, site, offer, onTheWay, sco
     goldCost.textContent = site?.offer ? String(site.offer.cost) : '-';
     button.appendChild(goldCost);
 
+    if (canWait) {
+        const wait = makeElement('div', `${IMPROVE_CLASS}__icon ${IMPROVE_CLASS}__wait-icon`);
+        wait.style.backgroundImage = `url(${WAIT_ICON})`;
+        button.appendChild(wait);
+    }
+
     bindActivatable(button, () => {
-        if (!ready) {
+        if (ready) {
+            improveAndSend(stack, route, targetCity, offer);
             return;
         }
-        improveAndSend(stack, route, targetCity, offer);
+        if (canWait) {
+            queueTradeAction(targetCity);
+        }
     });
 
     const mount = makeElement('div', `${IMPROVE_CLASS}-mount`);
     appendWithFramedTooltip(mount, button, {
         scope,
-        title: 'LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY',
-        text: improveTooltip(route.leaderId, offer, site, targetCity, onTheWay),
+        title: canWait ? 'LOC_NAJANE_COMMERCE_QUEUE' : 'LOC_NAJANE_COMMERCE_IMPROVE_AND_BUY',
+        text: canWait
+            ? queueActionText(route.leaderId, offer, targetCity, site, false, true)
+            : improveTooltip(route.leaderId, offer, site, targetCity, onTheWay),
     });
     return mount;
 }
@@ -1416,10 +1628,22 @@ function renderAvailableStack(stack, route, targetCity) {
      * on that card offers to buy one anyway. What remains on such a card is the influence button,
      * which is the only thing that can actually change the answer.
      */
+    /*
+     * ⚠️ WHERE THE ONLY OBSTACLE IS THE MONEY, THE PLAN IS THE GOLD BUTTON ITSELF (user's
+     * instruction, 2026-09-10) - it grows an hourglass instead of standing beside a second
+     * control. "Buy it now" and "buy it when you can" are two readings of one price, and two
+     * buttons read as two costs.
+     *
+     * ⚠️ Not where a merchant is already standing idle: the green plus in this same row is the
+     * thing to press then, and it costs nothing.
+     */
+    const canPlanTheBuy = heading.length === 0 && !warning && !queued
+        && !nearestIdleMerchant(targetCity);
+
     if (heading.length === 0 && !warning && !queued) {
         stack.appendChild(priceRow(
-            buildBuyButton(stack, route, targetCity, site, heading.length, scope),
-            targetCity, heading.length, warning, scope,
+            buildBuyButton(stack, route, targetCity, site, heading.length, canPlanTheBuy, scope),
+            targetCity, heading.length, warning, null, scope,
         ));
     }
     // The slot under the price holds one of the two, never both.
@@ -1434,11 +1658,20 @@ function renderAvailableStack(stack, route, targetCity) {
      * the same way a merchant is called off its errand, by the same mark in the same place.
      */
     if (queued) {
-        stack.appendChild(queueRow(route.leaderId, warning, targetCity, scope));
+        stack.appendChild(queueRow(route.leaderId, warning, targetCity, site, Boolean(warning), scope));
     } else if (heading.length > 0) {
         stack.appendChild(errandRow(heading[0], targetCity, scope));
     } else if (warning) {
-        stack.appendChild(buildWarnButton(route.leaderId, warning, targetCity, scope));
+        /*
+         * ⚠️ ITS OWN CONTROL ONLY WHERE THE LIMIT IS THE OBSTACLE, because only then does it carry
+         * a SECOND price - the Influence for the treaty - which has no business inside a button
+         * showing a gold cost. Where the money is the only thing missing, the gold button above is
+         * the plan; see `canPlanTheBuy`.
+         */
+        const plan = buildWarnButton(route.leaderId, warning, targetCity, site, true, scope);
+        if (plan) {
+            stack.appendChild(plan);
+        }
     }
     stack.dataset.najaneGeneration = String(generation);
 }
@@ -1452,13 +1685,24 @@ function renderImproveStack(stack, route, targetCity) {
     const scope = scopeForStack(stack);
     disposeFramedTooltips(scope);
     clearChildren(stack);
-    stack.appendChild(buildImproveButton(stack, route, targetCity, site, offer, heading.length, scope));
+    const queued = isTradeActionQueued(targetCity);
+    if (!queued) {
+        stack.appendChild(buildImproveButton(stack, route, targetCity, site, offer, heading.length, scope));
+    }
     // ⚠️ Its OWN ROW under the price, not beside it like the plus on an available card: this
     // button carries two prices and there is no width left on the title row.
-    if (heading.length === 0 && offer && nearestIdleMerchant(targetCity)) {
+    if (!queued && heading.length === 0 && offer && nearestIdleMerchant(targetCity)) {
         stack.appendChild(buildSendSpareImproveButton(stack, route, targetCity, offer, scope));
     }
-    if (heading.length > 0) {
+    /*
+     * ⚠️ NO SEPARATE PLAN BUTTON HERE. The improve button above carries both prices and grows its
+     * own hourglass when neither can be paid yet; a second control repeating one of those prices
+     * read as a third cost. The queued state is the exception - then the price is gone and what
+     * remains is the hourglass with the X that calls it off.
+     */
+    if (queued) {
+        stack.appendChild(queueRow(route.leaderId, null, targetCity, site, true, scope));
+    } else if (heading.length > 0) {
         stack.appendChild(errandRow(heading[0], targetCity, scope));
     }
     stack.dataset.najaneGeneration = String(generation);

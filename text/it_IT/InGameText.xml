@@ -526,5 +526,8 @@
         <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="it_IT">
             <Text>Rotte commerciali in via di apertura</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT" Language="it_IT">
+            <Text>Clicca per pianificarlo: comprare un mercante per {1_Gold} oro e inviarlo a {2_City} appena potrai permettertelo. Fino ad allora non si spende nulla.</Text>
+        </Row>
     </LocalizedText>
 </Database>

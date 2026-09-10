@@ -526,5 +526,8 @@
         <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="zh_Hans_CN">
             <Text>正在建立的贸易路线</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT" Language="zh_Hans_CN">
+            <Text>点击以进行规划：在金币足够时花费 {1_Gold} 金币购买商人并派往 {2_City}。在此之前不会有任何花费。</Text>
+        </Row>
     </LocalizedText>
 </Database>

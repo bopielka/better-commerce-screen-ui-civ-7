@@ -3,6 +3,24 @@
 One bullet per change. Newest first.
 
 [hr][/hr]
+[h2]1.16[/h2]
+
+[list]
+[*][b]Fixed: the trade route cards lost every button.[/b] A mistake in 1.15 left the Trade Routes tab with no gold button, no plus, no pin and no cancel mark, and the "Free Merchants" line blank. Sorry.
+[*][b]Plan any route you cannot start yet, not just the ones held back by the trade limit.[/b] The hourglass now appears wherever waiting would help: no spare Merchant, not enough Gold to buy one, or a limit that needs raising first. Press it and the mod buys or sends when it can, then raises the limit once the Influence is there.
+[*][b]One button per card instead of two.[/b] The price button grows its own hourglass rather than standing beside a second control repeating the same cost - and it stays fully lit, because it still answers a click.
+[*][b]A spare Merchant now leaves the moment you plan the route,[/b] instead of waiting for the turn to turn. Six routes planned while four Merchants stood about was four wasted turns of travel. Buying still waits for the turn, so Gold never leaves your treasury on a click.
+[*][b]A planned route no longer proposes a treaty it does not need.[/b] If a trade slot is already free by the time the Merchant is on its way, the Influence is left alone.
+[*][b]"Unavailable trade routes" now means what it says.[/b] Routes held back by nothing but the trade limit sit under the available ones instead - they are a decision you can buy your way out of, not a dead end. What stays unavailable is out of range, or a leader too hostile to raise the limit with at all.
+[*][b]No planning offered where waiting cannot help.[/b] Hostile relations shut the treaty, and no number of turns opens it - so those cards say so instead of promising something that will never come. Whether a war stops a route is left to the game, which knows the civilizations that trade through one.
+[*][b]The cards stop listing what is already fine.[/b] "In range ✔" and "At peace ✔" said nothing you were asking about; only the line in red remains.
+[*][b]Fixed: filtering trade routes by yield was wrong in both directions.[/b] Ivory pays Production and the Production filter hid it; Iron, Niter and Horses pay Combat Strength and it showed them. The filter now reads what each resource actually does - the same source as the figures on the Empire tab - so it agrees with the tooltips on the cards. Influence works as a filter too.
+[*][b]Fixed: opening the tab could claim you could not afford a Merchant when you could.[/b] The game answers that question wrongly for a moment as the screen opens; the prices are now asked again once it has settled.
+[*][b]The refusal about relationships carries the relationship's own icon.[/b]
+[/list]
+
+[hr][/hr]
+
 [h2]1.15[/h2]
 
 [list]
@@ -36,13 +54,4 @@ One bullet per change. Newest first.
 
 [list]
 [*][b]Fixed: this mod could wipe other mods' settings.[/b] Its per-game data (settlement priorities and merchant orders) sat in its own entries in browser storage instead of the shared "modSettings" record every other mod uses, and several popular mods erase the whole store the moment they see anything else in there - taking everyone's settings with it, including their own. Everything now lives inside the shared record under this mod's own name, and the old entries are cleaned up on first load. Your own priorities and orders carry across.
-[/list]
-
-[h2]1.12[/h2]
-[list]
-[*][b]Fixed: "Reassign All" could leave Resources in the pool with empty slots all over your empire.[/b] Three causes, all in the same path. Emptying the empire came back before the game had finished doing it, so the layout that followed ran against a board that was still changing and stopped early. A Resource the game turned down in ONE settlement was set aside for the whole pass instead of just for that settlement, so it was never offered anywhere else. And a single operation the game would not accept ended the run outright, abandoning everything after it.
-[*][b]A Treasure Convoy that sails home by itself now says so.[/b] A short line appears at the top of the screen when one unloads, naming the GDP and Gold it just paid out. Automatic return was silent before this — the only sign of it was the convoy no longer being on the map.
-[*][b]Several convoys arriving together are announced once, with the totals[/b], rather than as a stack of lines replacing each other faster than any of them could be read.
-[*]The figures are the same ones the Treasure Convoys tab already prints on the card, so the two cannot disagree. Nothing about the return itself changed, and the line only appears when [b]Send convoys home[/b] is on.
-[*][b]Fixed: the mod reported itself as version 1.10.[/b]
 [/list]

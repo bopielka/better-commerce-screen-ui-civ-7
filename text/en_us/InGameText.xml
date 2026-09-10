@@ -569,5 +569,8 @@
         <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY">
             <Text>Trade routes being established</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT">
+            <Text>Click to plan this: buy a Merchant for {1_Gold} Gold and send it to {2_City} as soon as you can afford one. Nothing is spent until then.</Text>
+        </Row>
     </EnglishText>
 </Database>

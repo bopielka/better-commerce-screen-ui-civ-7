@@ -526,5 +526,8 @@
         <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="pt_BR">
             <Text>Rotas comerciais em estabelecimento</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT" Language="pt_BR">
+            <Text>Clique para planejar: comprar um mercador por {1_Gold} de ouro e enviá-lo para {2_City} assim que puder pagar. Nada é gasto até lá.</Text>
+        </Row>
     </LocalizedText>
 </Database>

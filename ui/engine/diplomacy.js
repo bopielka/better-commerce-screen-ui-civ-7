@@ -34,6 +34,104 @@ const proposedThisTurn = new Set();
 // five modules here already listen for; see engine/events.js.
 onEngineEvent('LocalPlayerTurnBegin', () => proposedThisTurn.clear());
 
+// ⚠️ `GameInfo` holds the age being played; the bands are read from it and belong to that age.
+onEngineEvent('GameAgeEnded', () => { hostileCeiling = undefined; });
+
+/**
+ * Whether this mod has already proposed to this leader since the turn began.
+ *
+ * ⚠️ Exported so the SCREEN can tell "not yet, but soon" from "not ever". A refusal for having
+ * proposed already clears with the turn; a refusal because the two are hostile does not, and a
+ * card must not offer to wait for something waiting will not bring.
+ */
+export function hasProposedThisTurn(leaderId) {
+    return proposedThisTurn.has(leaderId);
+}
+
+/**
+ * The relationship band below which this mod stops offering to raise the trade limit.
+ * ⚠️ The NAME is hardcoded, the NUMBER is not: the band's edge lives in
+ * `DiplomacyPlayerRelationships` (`-2` today) and is balance data this mod has no business
+ * carrying. Same footing as the action name at the top of this file.
+ */
+const HOSTILE_RELATIONSHIP = 'PLAYER_RELATIONSHIP_HOSTILE';
+
+let hostileCeiling;
+
+function hostileBandCeiling() {
+    if (hostileCeiling !== undefined) {
+        return hostileCeiling;
+    }
+    hostileCeiling = null;
+    try {
+        for (const row of GameInfo.DiplomacyPlayerRelationships ?? []) {
+            if (row.DiplomacyPlayerRelationshipType === HOSTILE_RELATIONSHIP) {
+                const ceiling = Number(row.MaxRelationship);
+                hostileCeiling = Number.isFinite(ceiling) ? ceiling : null;
+                break;
+            }
+        }
+    } catch (error) {
+        warn(`could not read the relationship bands: ${error}`);
+    }
+    return hostileCeiling;
+}
+
+/**
+ * The `[icon:...]` markup for the relationship band the treaty needs, or ''.
+ *
+ * ⚠️ DERIVED, NOT NAMED. The band required is the one that begins where "hostile" ends, so it is
+ * found by matching `MinRelationship` against the hostile ceiling rather than by writing
+ * "unfriendly" down - which would be wrong the moment the bands are rebalanced.
+ *
+ * ⚠️ `[icon:TYPE]` is the game's own markup in composed text, and the relationship icons are
+ * registered under exactly these type names (`relationship-icons.xml`). An id the build does not
+ * know renders as nothing, which is why this is safe to prepend blind.
+ */
+export function requiredRelationshipIcon() {
+    const ceiling = hostileBandCeiling();
+    if (ceiling === null) {
+        return '';
+    }
+    try {
+        for (const row of GameInfo.DiplomacyPlayerRelationships ?? []) {
+            if (Number(row.MinRelationship) === ceiling) {
+                return `[icon:${row.DiplomacyPlayerRelationshipType}] `;
+            }
+        }
+    } catch (error) {
+        return '';
+    }
+    return '';
+}
+
+/**
+ * Whether relations with this leader rule the treaty out entirely.
+ *
+ * ⚠️ NOT A REFUSAL THAT A TURN CLEARS. Short Influence and "already proposed this turn" both pass
+ * with the turn; hostility does not, and a card must not offer to wait for it.
+ *
+ * ⚠️ WAR IS DELIBERATELY NOT ASKED ABOUT HERE (user's instruction, 2026-09-10: Prussia can trade
+ * while at war). Whether a war stops a route is a CIV ABILITY, and the engine already accounts for
+ * it - `projectPossibleTradeRoutes` reports `AT_WAR` in a route's status only where it actually
+ * blocks, and `unavailableGroupFor` reads that. A war test here would overrule the one thing that
+ * knows about the exceptions.
+ */
+export function relationshipBlocksTrade(leaderId) {
+    try {
+        const diplomacy = Players.get(GameContext.localPlayerID)?.Diplomacy;
+        if (!diplomacy) {
+            return false;
+        }
+        const level = Number(diplomacy.getRelationshipLevel?.(leaderId));
+        const ceiling = hostileBandCeiling();
+        return Number.isFinite(level) && ceiling !== null && level < ceiling;
+    } catch (error) {
+        // Cannot tell - assume it is not blocked, which only means the old behaviour.
+        return false;
+    }
+}
+
 function actionType() {
     return DiplomacyActionTypes[IMPROVE_TRADE_RELATIONS];
 }

@@ -36,6 +36,7 @@ import {
     goldBalance,
     purchaseAndCollectMerchant,
     purchaseSite,
+    tradeCapacityWith,
 } from './merchant.js';
 import { merchantsOrderedTo, nearestIdleMerchant, orderMerchantTo } from './merchant-orders.js';
 import { currentGameKey, readSection, writeSection } from './mod-storage.js';
@@ -368,6 +369,19 @@ async function runOne(plotIndex) {
      */
     if (merchantsOrderedTo(city).length === 0) {
         log('a queued trade action no longer has a merchant; dropped');
+        return true;
+    }
+
+    /*
+     * ⚠️ THE TREATY IS ONLY EVER THE SECOND HALF, and only where the LIMIT is what is in the way.
+     * A request can be queued because there was no merchant and no gold for one, with a trade slot
+     * standing free the whole time - and proposing a treaty then would spend Influence to raise a
+     * limit that was never reached. `used`, not `used + pending`: our own merchant is the one about
+     * to fill the slot we are asking about.
+     */
+    const { capacity, used } = tradeCapacityWith(leaderId);
+    if (used < capacity) {
+        log(() => `queued action: a slot with ${leaderName(leaderId)} is already free; no treaty needed`);
         return true;
     }
 

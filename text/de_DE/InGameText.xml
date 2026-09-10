@@ -526,5 +526,8 @@
         <Row Tag="LOC_NAJANE_COMMERCE_GROUP_UNDERWAY" Language="de_DE">
             <Text>Handelsrouten im Aufbau</Text>
         </Row>
+        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOOLTIP_MERCHANT" Language="de_DE">
+            <Text>Klicke, um dies zu planen: für {1_Gold} Gold einen Händler kaufen und nach {2_City} schicken, sobald du es dir leisten kannst. Bis dahin wird nichts ausgegeben.</Text>
+        </Row>
     </LocalizedText>
 </Database>
