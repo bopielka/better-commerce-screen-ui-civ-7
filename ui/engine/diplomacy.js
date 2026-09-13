@@ -38,17 +38,6 @@ onEngineEvent('LocalPlayerTurnBegin', () => proposedThisTurn.clear());
 onEngineEvent('GameAgeEnded', () => { hostileCeiling = undefined; });
 
 /**
- * Whether this mod has already proposed to this leader since the turn began.
- *
- * ⚠️ Exported so the SCREEN can tell "not yet, but soon" from "not ever". A refusal for having
- * proposed already clears with the turn; a refusal because the two are hostile does not, and a
- * card must not offer to wait for something waiting will not bring.
- */
-export function hasProposedThisTurn(leaderId) {
-    return proposedThisTurn.has(leaderId);
-}
-
-/**
  * The relationship band below which this mod stops offering to raise the trade limit.
  * ⚠️ The NAME is hardcoded, the NUMBER is not: the band's edge lives in
  * `DiplomacyPlayerRelationships` (`-2` today) and is balance data this mod has no business
@@ -78,38 +67,13 @@ function hostileBandCeiling() {
 }
 
 /**
- * The `[icon:...]` markup for the relationship band the treaty needs, or ''.
+ * Whether relations with this leader are too poor for this mod to present the treaty as a way out.
  *
- * ⚠️ DERIVED, NOT NAMED. The band required is the one that begins where "hostile" ends, so it is
- * found by matching `MinRelationship` against the hostile ceiling rather than by writing
- * "unfriendly" down - which would be wrong the moment the bands are rebalanced.
- *
- * ⚠️ `[icon:TYPE]` is the game's own markup in composed text, and the relationship icons are
- * registered under exactly these type names (`relationship-icons.xml`). An id the build does not
- * know renders as nothing, which is why this is safe to prepend blind.
- */
-export function requiredRelationshipIcon() {
-    const ceiling = hostileBandCeiling();
-    if (ceiling === null) {
-        return '';
-    }
-    try {
-        for (const row of GameInfo.DiplomacyPlayerRelationships ?? []) {
-            if (Number(row.MinRelationship) === ceiling) {
-                return `[icon:${row.DiplomacyPlayerRelationshipType}] `;
-            }
-        }
-    } catch (error) {
-        return '';
-    }
-    return '';
-}
-
-/**
- * Whether relations with this leader rule the treaty out entirely.
- *
- * ⚠️ NOT A REFUSAL THAT A TURN CLEARS. Short Influence and "already proposed this turn" both pass
- * with the turn; hostility does not, and a card must not offer to wait for it.
+ * ⚠️ NOT THE ENGINE'S ANSWER, and not a refusal at all: measured at `level=-8`, `canStart`
+ * still allowed the proposal and complained only about the price. This is a judgement about
+ * whether it would be ACCEPTED, so it decides one thing only - which SECTION a limit-blocked route
+ * is listed under (`canRaiseLimitLater`). What the buttons may offer to wait for is the engine's
+ * own refusal; see `refusalClearsWithTheTurn`.
  *
  * ⚠️ WAR IS DELIBERATELY NOT ASKED ABOUT HERE (user's instruction, 2026-09-10: Prussia can trade
  * while at war). Whether a war stops a route is a CIV ABILITY, and the engine already accounts for
@@ -144,6 +108,31 @@ function actionType() {
 const REASON_OVERRIDES = {
     LOC_DIPLOMACY_ACTION_FAILURE_DUPLICATE_PROJECT: 'LOC_NAJANE_COMMERCE_IMPROVE_STARTED',
 };
+
+/**
+ * Whether the engine's refusal of this offer is one that waiting fixes.
+ *
+ * ⚠️ THE REFUSALS CANNOT BE TOLD APART BY KEY. `canStart` hands back `FailureReasons` as
+ * COMPOSED, TRANSLATED SENTENCES - measured in UI.log as
+ * `keys=Potrzebujesz 150 punktow [icon:YIELD_DIPLOMACY] wplywow, ale masz tylko 44.` beside the one
+ * key this file injects itself. Matching them is out of the question: they are the player's
+ * language. See `tradeRelationsOffer`.
+ *
+ * ⚠️ So the question is put to the PRICE instead: Influence short, or already proposed this
+ * turn, are the two refusals a turn clears. If the player CAN afford it and the engine still
+ * refuses, the refusal is something else and no number of turns brings it.
+ *
+ * ⚠️ The corner this leaves - a structural refusal on a leader the player also cannot afford -
+ * promises a wait that will not come. It is the best the engine's answer allows, and it is not
+ * covered by asking about the relationship: hostility is not what refuses this action (measured at
+ * `level=-8`, where the price was the engine's only complaint).
+ */
+export function refusalClearsWithTheTurn(leaderId, offer) {
+    if (!offer) {
+        return false;
+    }
+    return proposedThisTurn.has(leaderId) || Number(offer.cost) > influenceBalance();
+}
 
 /** What proposing "Improve Trade Relations" with `leaderId` looks like right now. */
 export function tradeRelationsOffer(leaderId) {
@@ -192,7 +181,13 @@ export function tradeRelationsOffer(leaderId) {
         args,
         cost,
         canStart: result.Success === true,
-    // ⚠️ Already localisation KEYS, not composed text - the same shape the game passes around.
+        /*
+         * ⚠️ WHAT COMES BACK HERE IS ALREADY COMPOSED TEXT, whatever the shape suggests: measured
+         * as a full Polish sentence in `FailureReasons`. `Locale.compose` passes such a string
+         * through unchanged, which is why this reads the same either way - but nothing downstream
+         * may treat these as keys. The override below therefore only ever matches the ONE key this
+         * file injects above. See `refusalClearsWithTheTurn`.
+         */
         reasons: (result.FailureReasons ?? []).map((reason) => {
             const key = REASON_OVERRIDES[reason] ?? reason;
             try {

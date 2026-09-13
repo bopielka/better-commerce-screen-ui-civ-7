@@ -705,6 +705,35 @@ function hideMetCriteria(tabData) {
     }
 }
 
+/**
+ * Takes the "where did this come from" marks off the resources on a trade card: the import banner
+ * tinted with the other empire's colours, and the "Origin:" line in the resource's tooltip.
+ *
+ * ⚠️ BOTH ANSWER A QUESTION THE CARD ALREADY ANSWERS (user's instruction, 2026-09-13). Every
+ * resource on one of these cards is imported, and from the settlement written across the top of
+ * the card; the banner therefore tinted all of them the same and the line repeated the title.
+ *
+ * ⚠️ TAKEN OFF THE DATA, NOT HIDDEN IN CSS. `FramedResource` draws the banner only under a
+ * `Show` on `importFlag`, and the game's `ResourceTooltip` draws the origin line only under a
+ * `Show` on `resourceOrigin` - so clearing the two props removes both at the source. The banner
+ * carries no class of its own and the tooltip is portalled out of the card entirely, which leaves
+ * style rules nothing dependable to aim at.
+ *
+ * ⚠️ Safe to mutate: `incomingResources` holds objects the model builds fresh per route in
+ * `getResourceProps`, not shared ones. Cost is one more walk of the list the criteria pass above
+ * already walks, and only when the tab data is rebuilt.
+ */
+function stripResourceOrigins(tabData) {
+    for (const section of tabData?.tradeRouteSections ?? []) {
+        for (const route of section?.tradeRoutes ?? []) {
+            for (const resource of route?.incomingResources ?? []) {
+                resource.importFlag = undefined;
+                resource.resourceOrigin = undefined;
+            }
+        }
+    }
+}
+
 export function prepareTradeTabData(tabData) {
     // ⚠️ Untracked: this reads out of a mutable store and writes back, from inside the tab's own
     // reactive scope. Tracking it would make the write wake the read.
@@ -718,6 +747,7 @@ export function prepareTradeTabData(tabData) {
         tradeTabData = tabData;
         syncUnderwaySection(tabData);
         hideMetCriteria(tabData);
+        stripResourceOrigins(tabData);
     });
     return tabData;
 }

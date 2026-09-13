@@ -26,11 +26,10 @@
 import { RaiseDiplomacyEvent } from '/base-standard/ui/diplomacy/diplomacy-events.js';
 
 import {
-    hasProposedThisTurn,
     influenceBalance,
     proposeTradeRelations,
+    refusalClearsWithTheTurn,
     relationshipBlocksTrade,
-    requiredRelationshipIcon,
     tradeRelationsOffer,
 } from '../engine/diplomacy.js';
 import {
@@ -153,9 +152,6 @@ const LOCATE_ICON = 'blp:culture_pin_major';
  * `UNITCOMMAND_CANCEL`, which is the command this button sends.
  */
 const CANCEL_ICON = 'blp:Action_Cancel.png';
-
-/** The game's own attention mark; `misc-icons.xml`, ID "ATTENTION". */
-const WARN_ICON = 'blp:fonticon_attention';
 
 /**
  * The game's own plain hourglass, and the same one Better City UI puts on a purchase that has to
@@ -392,12 +388,6 @@ ${ICON_BUTTON_STYLE}
     outline: 0.12rem solid #ffca7a;
     outline-offset: 0.08rem;
 }
-/*
- * The fix is not always on offer - see buildWarnButton - and when it is not, the button
- * still opens diplomacy on a click. Dimmed rather than the sharper "--blocked" amber-on-dark
- * the other buttons use, since clicking this one is never actually inert.
- */
-.${WARN_CLASS}--blocked { opacity: 0.7; }
 /*
  * The hourglass. Flattened and tinted the same three-step way the cancel mark is - the game's
  * art is pale and would read as disabled against the amber frame.
@@ -711,67 +701,81 @@ function capacityWarning(route, targetCity) {
 }
 
 /**
- * Whether the treaty that would open a trade slot could be proposed LATER, if not now.
+ * Whether the treaty could be PROPOSED on a later turn, if not on this one.
  *
- * ⚠️ THE DIFFERENCE BETWEEN "NOT YET" AND "NOT EVER", and the card must not offer to wait for the
- * second. Two refusals clear with the turn - the Influence is short, or this mod has already
- * proposed to this leader this turn. Anything else is structural: hostile relations, or war. No
- * number of turns fixes those, and a route so blocked is not one to plan (user's instruction,
- * 2026-09-10).
+ * ⚠️ THE BUTTON'S QUESTION, and deliberately not the section's below. A button's `ready` test
+ * never asks about relations, so this one must not either: measured in UI.log as `canStart=false
+ * cost=150 influence=44 level=-8`, where the engine refused for the price ALONE. Vetoing the wait
+ * on hostility there gave one card that proposed the treaty happily while it was affordable and
+ * then refused to PLAN the same thing once the price rose past the balance.
  *
- * ⚠️ Derived from what the engine already answers rather than from a relationship threshold. The
- * hostile band is `-30..-2` in `diplomacy-actions.xml`, and pinning that number here would be a
- * balance constant this mod has no business carrying.
+ * ⚠️ What counts as "a turn fixes this" is the engine layer's to answer, and it cannot do it by
+ * reading the refusal - see `refusalClearsWithTheTurn`.
  */
-function treatyCanComeLater(leaderId, offer) {
+function treatyCanBeProposedLater(leaderId, offer) {
     if (!offer) {
         return false;
     }
-    /*
-     * ⚠️ ASKED FIRST, AND THAT ORDER IS THE FIX. "Short of Influence" was tested before this and
-     * answered yes on its own - so a hostile pairing that the player also could not afford came out
-     * as "wait and it will happen", and the route was lifted into the available section. Hostility
-     * is not a price; it has to rule the answer out before any price is considered.
-     */
+    return Boolean(offer.canStart) || refusalClearsWithTheTurn(leaderId, offer);
+}
+
+/**
+ * Whether the trade limit with this leader could be RAISED later - the section's question, which
+ * is not the same as whether the treaty can be proposed.
+ *
+ * ⚠️ HOSTILITY RULES IT OUT HERE AND ONLY HERE (user's instruction, 2026-09-10): such a route
+ * stays under "unavailable" rather than being lifted among the ones the player can buy their way
+ * into. It is a judgement about whether the other leader would ACCEPT, which is not a thing the
+ * engine answers - `canStart` only says whether the proposal may be made, and at `level=-8` it
+ * still says yes.
+ *
+ * ⚠️ ASKED FIRST, AND THAT ORDER IS THE FIX. "Short of Influence" was tested before this and
+ * answered yes on its own - so a hostile pairing that the player also could not afford came out as
+ * "wait and it will happen", and the route was lifted into the available section.
+ */
+function treatyCanComeLater(leaderId, offer) {
     if (relationshipBlocksTrade(leaderId)) {
         return false;
     }
-    if (offer.canStart) {
-        return true;
-    }
-    return offer.cost > influenceBalance() || hasProposedThisTurn(leaderId);
+    return treatyCanBeProposedLater(leaderId, offer);
 }
 
 /**
  * Whether the trade limit with this leader could be raised at all, now or later.
  *
  * ⚠️ Exported for the SECTION pass: a route held back only by the limit belongs among the
- * available ones because it is a decision - but not while the two are hostile, when the limit is
- * simply shut. See `liftLimitBlocked` in trade-routes.js.
+ * available ones because it is a decision - but not while the two are hostile, when the treaty is
+ * not worth offering as one. See `liftLimitBlocked` in trade-routes.js, and `treatyCanComeLater`
+ * for why that is a judgement rather than the engine's answer.
  */
 export function canRaiseLimitLater(leaderId) {
     return treatyCanComeLater(leaderId, improveOfferFor(leaderId));
 }
 
 /**
- * The engine's refusal, with the relationship icon in front of it where relations are the refusal.
+ * The engine's refusal, as the engine words it.
  *
- * ⚠️ ONLY THERE. The reasons list also carries "you cannot afford it" and the like, and a
- * relationship mark in front of those would name the wrong obstacle.
+ * ⚠️ NO RELATIONSHIP MARK ON IT (user's instruction, 2026-09-12). It used to be appended where
+ * relations were poor, and it named an obstacle the sentence was not about - the refusal in hand
+ * reads "you need 150 Influence and have 44", which relations have nothing to do with.
  */
-function refusalText(leaderId, offer) {
-    const reason = offer?.reasons?.join(' ') ?? '';
-    if (!reason || !relationshipBlocksTrade(leaderId)) {
-        return reason;
+function refusalText(offer) {
+    return offer?.reasons?.join(' ') ?? '';
+}
+
+/**
+ * Whether a purchase is out of reach for the MONEY.
+ *
+ * ⚠️ NOT `offer.insufficientFunds` ALONE. The engine refuses the purchase without always setting
+ * that flag - measured as `cost=320 gold=288 canBuy=false funds=false` - so the price is compared
+ * here too. The flag is kept as the first test because where it IS set it is authoritative, and
+ * it can be set for a cost this mod did not compute.
+ */
+function shortOfGoldFor(site) {
+    if (!site?.offer) {
+        return false;
     }
-    /*
-     * ⚠️ AFTER the sentence, not before it (user's instruction, 2026-09-10). The line NAMES the
-     * level it wants and the mark belongs to that name; in front it read as a bullet on the whole
-     * sentence. Appended rather than spliced in beside the word: the sentence is the game's own and
-     * is worded differently in every language, so there is no position inside it to aim at.
-     */
-    const icon = requiredRelationshipIcon().trim();
-    return icon ? `${reason} ${icon}` : reason;
+    return Boolean(site.offer.insufficientFunds) || Number(site.offer.cost) > goldBalance();
 }
 
 function leaderName(leaderId) {
@@ -816,7 +820,9 @@ function buyTooltip(site, targetCity, onTheWay, warning) {
         // own card, so the warning arrives as a separate card rather than as more prose.
         return warning ? `${offered}[N][N]${warningText(warning)}` : offered;
     }
-    if (site?.offer?.insufficientFunds) {
+    // ⚠️ The same test the button uses; see `shortOfGoldFor`. Two answers here would have the
+    // tooltip say "blocked" under an hourglass that says "waiting for the gold".
+    if (shortOfGoldFor(site)) {
         return Locale.compose(
             'LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS',
             site.offer.cost,
@@ -977,7 +983,7 @@ function warnActionText(warning, offer, targetCity = null) {
         return openLine;
     }
     if (!offer.canStart) {
-        const reason = refusalText(warning.leaderId, offer);
+        const reason = refusalText(offer);
         return reason ? `${reason}[N]${openLine}` : openLine;
     }
     // canStart, but Influence is short.
@@ -1075,24 +1081,33 @@ function buildWarnButton(leaderId, warning, targetCity, site, limitBlocked, scop
      * fallback is diplomacy.
      */
     const canWait = limitBlocked
-        ? (treatyCanComeLater(leaderId, offer) && (!ready || !spare))
+        ? (treatyCanBeProposedLater(leaderId, offer) && (!ready || !spare))
         : true;
 
+    /*
+     * ⚠️ NO DARK BUTTON ANY MORE (user's instruction, 2026-09-12): where the card can neither act
+     * on this click nor offer to wait, there is nothing to press and nothing is drawn - the same
+     * rule the rest of this file follows. The attention mark it used to wear said "blocked" on a
+     * control that now means "plan it", and the two read as the same button in two moods.
+     *
+     * ⚠️ THE WARNING ITSELF GOES WITH IT on such a card, because the price row is already
+     * suppressed by that warning. It is the rare case - the treaty has to be refused for something
+     * no turn clears - and a dark button is the thing that was asked to go.
+     */
+    if (!ready && !canWait && !queued) {
+        return null;
+    }
+
     const button = makeElement('div', WARN_CLASS);
-    button.classList.toggle(`${WARN_CLASS}--blocked`, !ready && !canWait);
     button.classList.toggle(`${WARN_CLASS}--queued`, queued);
 
     if (limitBlocked && spare && ready) {
         const plus = makeElement('div', `${WARN_CLASS}__plus`);
         plus.textContent = '+';
         button.appendChild(plus);
-    } else if (canWait) {
+    } else {
         const icon = makeElement('div', `${WARN_CLASS}__icon ${WARN_CLASS}__wait-icon`);
         icon.style.backgroundImage = `url(${WAIT_ICON})`;
-        button.appendChild(icon);
-    } else {
-        const icon = makeElement('div', `${WARN_CLASS}__icon`);
-        icon.style.backgroundImage = `url(${WARN_ICON})`;
         button.appendChild(icon);
     }
 
@@ -1187,8 +1202,14 @@ function buildBuyButton(stack, route, targetCity, site, onTheWay, canPlan, scope
      * unrest, an age that does not field merchants yet - is not something waiting fixes, and an
      * hourglass on those would promise a turn that never comes.
      */
-    const waitingForGold = canPlan && !ready && !busy && onTheWay === 0
-        && Boolean(site?.offer?.insufficientFunds);
+    /*
+     * ⚠️ THE ENGINE'S `insufficientFunds` IS NOT RELIABLE, so the price is compared here as well.
+     * Measured in UI.log: `cost=320 gold=288 canBuy=false funds=false` - the purchase was refused,
+     * the gold really was short, and the flag saying so was not set. Hanging the hourglass on that
+     * flag alone left those cards with a price the player could not pay and no way to plan it,
+     * while an identical card beside them offered one.
+     */
+    const waitingForGold = canPlan && !ready && !busy && onTheWay === 0 && shortOfGoldFor(site);
 
 
     const button = makeElement('div', BUY_CLASS);
@@ -1335,9 +1356,12 @@ function buildCancelQueueButton(targetCity, scope) {
 /** The waiting hourglass, the pin that finds its merchant, and the X that calls it off. */
 function queueRow(leaderId, warning, targetCity, site, limitBlocked, scope) {
     const row = makeElement('div', QUEUE_ROW_CLASS);
-    // ⚠️ Never null here: the request IS queued, and `buildWarnButton` only declines on a card
-    // that has nothing waiting on it.
-    row.appendChild(buildWarnButton(leaderId, warning, targetCity, site, limitBlocked, scope));
+    // ⚠️ Never null while the request is queued - `buildWarnButton` declines only where there is
+    // nothing to press - but appended defensively: a null here would take the X down with it.
+    const hourglass = buildWarnButton(leaderId, warning, targetCity, site, limitBlocked, scope);
+    if (hourglass) {
+        row.appendChild(hourglass);
+    }
     /*
      * ⚠️ `merchantsOrderedTo`, NOT `merchantsBoundFor`. A queued request sends its merchant on the
      * first turn and only proposes the treaty once the Influence is there, so the merchant is
@@ -1511,7 +1535,7 @@ function improveTooltip(leaderId, offer, site, targetCity, onTheWay) {
         return `${opening}[N][N]${Locale.compose('LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED')}`;
     }
     if (!offer.canStart) {
-        const reason = refusalText(leaderId, offer)
+        const reason = refusalText(offer)
             || Locale.compose('LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED');
         return `${opening}[N][N]${reason}`;
     }
@@ -1524,7 +1548,7 @@ function improveTooltip(leaderId, offer, site, targetCity, onTheWay) {
     }
     if (!site?.offer?.canBuy) {
         return `${opening}[N][N]${
-            site?.offer?.insufficientFunds
+            shortOfGoldFor(site)
                 ? Locale.compose('LOC_NAJANE_COMMERCE_BUY_MERCHANT_FUNDS', site.offer.cost, Math.floor(goldBalance()))
                 : Locale.compose('LOC_NAJANE_COMMERCE_BUY_MERCHANT_BLOCKED')
         }`;
@@ -1547,7 +1571,7 @@ function buildImproveButton(stack, route, targetCity, site, offer, onTheWay, sco
      * queue does the whole errand: merchant first, treaty when the Influence is there.
      */
     const canWait = !ready && !busy && onTheWay === 0
-        && treatyCanComeLater(route.leaderId, offer)
+        && treatyCanBeProposedLater(route.leaderId, offer)
         && (Boolean(site?.offer) || Boolean(nearestIdleMerchant(targetCity)));
 
     const button = makeElement('div', IMPROVE_CLASS);
