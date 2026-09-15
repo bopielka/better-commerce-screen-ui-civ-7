@@ -472,9 +472,6 @@
             <Text>Покращення торговельних відносин коштує {1_Cost} впливу, а у вас {2_Balance}.</Text>
         </Row>
 
-        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="ru_RU">
-            <Text>Натисніть, щоб запропонувати «Покращення торговельних відносин» з {1_Leader} за {2_Cost} впливу - це підвищить ліміт торгових шляхів з цим лідером.</Text>
-        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="ru_RU">
             <Text>Натисніть, щоб натомість відкрити дипломатію з {1_Leader}.</Text>
         </Row>
@@ -508,9 +505,6 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="ru_RU">
             <Text>У черзі на початок наступного ходу: підняти ліміт і надіслати купця до {1_City}. Натисніть, щоб скасувати.</Text>
-        </Row>
-        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="ru_RU">
-            <Text>Автоматично підвищено лімітів торгових шляхів: {1_Count} - надіслані раніше купці тепер можуть відкрити свої шляхи.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="ru_RU">
             <Text>Ліміт торгових шляхів із {1_Leader} підвищено автоматично - купець, надісланий до {2_City}, тепер може відкрити шлях.</Text>

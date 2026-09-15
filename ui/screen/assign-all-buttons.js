@@ -11,7 +11,7 @@ import { isFactoryAge } from '../engine/age.js';
 import { onEngineEvents, stopEngineEvents } from '../engine/events.js';
 import { getCommerceModel } from '../model/screen-model.js';
 import { createAssignSwitches } from './assign-switches.js';
-import { HELP_CLASS, HELP_STYLE, makeHelpMark } from './help-mark.js';
+import { HELP_STYLE, makeHelpMark } from './help-mark.js';
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
 import { watchCommerceScreen } from './screen-observer.js';
 import { commerceTabRow } from './screen-parts.js';
@@ -150,6 +150,16 @@ let gdpSubscriptions = [];
 /** The GDP readout, kept so it can be rebuilt when the board changes. */
 let gdpMount = null;
 let gdpTimer = null;
+/** What the readout on screen says, figure and breakdown; see `refreshGdpSoon`. */
+let gdpShown = null;
+
+/**
+ * The readout's own tooltip scope, under the default one so the teardown still takes it.
+ * ⚠️ Its own because it is REPLACED while the bar stays: filed under the bar's scope, every refresh
+ * left the old root registered with TooltipModel, holding the detached readout, until the tab
+ * unmounted - dozens per Reassign All. An inactive root does no per-mousemove work; memory is the cost.
+ */
+const GDP_TOOLTIP_SCOPE = 'screen:gdp';
 
 /** Events after which the figure is out of date. */
 // ⚠️ Every one is raised for EVERY player. An AI assigning a resource cannot change your GDP.
@@ -168,7 +178,15 @@ function refreshGdpSoon() {
             return;
         }
         try {
-            const replacement = makeGdpTotal();
+            const gdp = readGdp();
+            // ⚠️ Nothing is rebuilt when nothing changed: a cap change or a building often moves no
+            // figure, and a rebuild is a new tooltip root and a DOM replace.
+            if (gdp.key === gdpShown) {
+                return;
+            }
+            // ⚠️ Before the old readout goes; see `disposeFramedTooltips`.
+            disposeFramedTooltips(GDP_TOOLTIP_SCOPE);
+            const replacement = makeGdpTotal(gdp);
             parent.replaceChild(replacement, gdpMount);
             gdpMount = replacement;
         } catch (error) {
@@ -221,21 +239,9 @@ function gdpCard(key, amount, requirement) {
     return `${line}[N]${Locale.compose('LOC_NAJANE_COMMERCE_GDP_LOCKED', requirement)}`;
 }
 
-/**
- * What every assigned resource is earning per turn, in one figure.
- * ⚠️ Rebuilt rather than edited: the tooltip breaks the same number down by source, so editing
- * only the total would leave it disagreeing with itself.
- */
-function makeGdpTotal() {
+/** The figure and its breakdown, as the readout would show them. */
+function readGdp() {
     const { fromCities, fromImports, fromFactories, fromBuildings, total, locked } = gdpPerTurn();
-
-    const readout = makeElement('div', GDP_CLASS);
-    const value = makeElement('div', 'font-fit-shrink');
-    value.textContent = `+${total}`;
-    const icon = makeElement('div', `${GDP_CLASS}__icon`);
-    icon.style.backgroundImage = `url(${GDP_ICON})`;
-    appendAll(readout, value, icon);
-
     const cards = [
         gdpCard('LOC_NAJANE_COMMERCE_GDP_FROM_CITIES', fromCities, locked.cities),
         gdpCard('LOC_NAJANE_COMMERCE_GDP_FROM_IMPORTS', fromImports, locked.imports),
@@ -244,12 +250,30 @@ function makeGdpTotal() {
         cards.push(gdpCard('LOC_NAJANE_COMMERCE_GDP_FROM_FACTORIES', fromFactories, locked.factories));
     }
     cards.push(gdpCard('LOC_NAJANE_COMMERCE_GDP_FROM_BUILDINGS', fromBuildings, locked.buildings));
+    const text = cards.join('[N][N]');
+    return { total, text, key: `${total}|${text}` };
+}
+
+/**
+ * What every assigned resource is earning per turn, in one figure.
+ * ⚠️ Rebuilt rather than edited: the tooltip breaks the same number down by source, so editing
+ * only the total would leave it disagreeing with itself.
+ */
+function makeGdpTotal(gdp = readGdp()) {
+    const readout = makeElement('div', GDP_CLASS);
+    const value = makeElement('div', 'font-fit-shrink');
+    value.textContent = `+${gdp.total}`;
+    const icon = makeElement('div', `${GDP_CLASS}__icon`);
+    icon.style.backgroundImage = `url(${GDP_ICON})`;
+    appendAll(readout, value, icon);
 
     const mount = makeElement('div', `${BUTTON_CLASS}-mount`);
     appendWithFramedTooltip(mount, readout, {
+        scope: GDP_TOOLTIP_SCOPE,
         title: 'LOC_NAJANE_COMMERCE_GDP_TOTAL',
-        text: cards.join('[N][N]'),
+        text: gdp.text,
     });
+    gdpShown = gdp.key;
     return mount;
 }
 
@@ -305,6 +329,9 @@ export function startAssignAllButtons() {
     stopEngineEvents(gdpSubscriptions);
     gdpSubscriptions = onEngineEvents(GDP_EVENTS, refreshGdpSoon);
 
+    // A watcher from a start whose stop has not run yet would otherwise be left subscribed.
+    unwatch?.();
+    unwatch = null;
     if (inject()) {
         return;
     }
@@ -312,13 +339,20 @@ export function startAssignAllButtons() {
      * The tab row may not exist yet - the content renders behind a Suspense boundary. This watcher
      * unsubscribes as soon as the bar is in, because the bar does not need re-injecting: nothing
      * that mutates on every pass needs one.
+     *
+     * ⚠️ It stops ITSELF, through its own handle. Reading `unwatch` instead took off whichever
+     * watcher was stored last, and a start re-run before the old stop left this one subscribed for
+     * the session, pinning the shared observer to the closed screen.
      */
-    unwatch = watchCommerceScreen(() => {
+    const stop = watchCommerceScreen(() => {
         if (inject()) {
-            unwatch?.();
-            unwatch = null;
+            stop();
+            if (unwatch === stop) {
+                unwatch = null;
+            }
         }
     });
+    unwatch = stop;
 }
 
 export function stopAssignAllButtons() {
@@ -330,11 +364,11 @@ export function stopAssignAllButtons() {
         gdpTimer = null;
     }
     gdpMount = null;
+    gdpShown = null;
     // Every framed tooltip owns a Solid root created outside the tree; see framed-tooltip.js.
     disposeFramedTooltips();
     bar?.remove();
     bar = null;
-    document.querySelectorAll(`.${HELP_CLASS}`).forEach((mark) => mark.remove());
     document.querySelectorAll(`.${HIDDEN_CLASS}`).forEach((element) => element.classList.remove(HIDDEN_CLASS));
     styleElement?.remove();
     styleElement = null;

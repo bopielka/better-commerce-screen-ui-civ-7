@@ -462,9 +462,6 @@
             <Text>교역 관계 개선에는 영향력 {1_Cost}이(가) 필요하지만 보유 영향력은 {2_Balance}입니다.</Text>
         </Row>
 
-        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="ko_KR">
-            <Text>클릭하면 {1_Leader}에게 영향력 {2_Cost}으로 '교역 관계 개선'을 제안하여 이 상대와의 교역로 한도를 늘립니다.</Text>
-        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="ko_KR">
             <Text>대신 클릭하면 {1_Leader}과(와)의 외교가 열립니다.</Text>
         </Row>
@@ -498,9 +495,6 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="ko_KR">
             <Text>다음 턴 시작 시 실행 예정: 제한을 늘리고 {1_City}(으)로 상인을 보냅니다. 클릭하면 취소됩니다.</Text>
-        </Row>
-        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="ko_KR">
-            <Text>교역로 제한 {1_Count}개가 자동으로 늘어났습니다 - 이미 보낸 상인들이 교역로를 열 수 있습니다.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="ko_KR">
             <Text>{1_Leader}와의 교역로 제한이 자동으로 늘어났습니다 - {2_City}(으)로 보낸 상인이 이제 교역로를 열 수 있습니다.</Text>

@@ -8,6 +8,7 @@
  * tabs untouched by construction rather than by selector.
  */
 import { COMMERCE_SCREEN_SELECTOR, TAB_LIST_SELECTOR } from './screen-parts.js';
+import { watchCommerceScreen } from './screen-observer.js';
 import { log, warn } from '../support/diagnostics.js';
 import { ensureStyle } from '../support/dom.js';
 
@@ -67,7 +68,7 @@ ${FILTER_SLOT_SELECTOR} .dropdown__open-arrow {
 `;
 
 let styleElement = null;
-let observer = null;
+let unwatchHeader = null;
 
 function checkDescription() {
     const matches = document.querySelectorAll(DESCRIPTION_SELECTOR).length;
@@ -87,8 +88,6 @@ function tryAttachToHeaderBar() {
     if (!document.querySelector(FILTER_SLOT_SELECTOR)?.parentElement) {
         return false;
     }
-    observer?.disconnect();
-    observer = null;
     checkDescription();
     log('layout adjustments applied');
     return true;
@@ -114,24 +113,27 @@ export function startLayout() {
     }
 
     /*
-     * ⚠️ STOPS THE MOMENT IT HAS ITS BAR. The content renders behind a Suspense, so this can only
-     * fall back to `document.body` with `subtree: true` - and it used to throw the answer away and
-     * keep watching, so every unit flag, notification and yield banner in the HUD woke it for the
-     * rest of the screen's life. That is the cost screen-observer.js exists to avoid.
+     * ⚠️ STOPS THE MOMENT IT HAS ITS BAR. The content renders behind a Suspense, and this used to
+     * throw the answer away and keep watching, so every unit flag, notification and yield banner
+     * in the HUD woke it for the rest of the screen's life.
+     *
+     * ⚠️ The shared watcher, not an observer of its own: a private one on `document.body` woke on
+     * every HUD mutation, unbatched. It stops itself through its own handle.
      */
-    const screen = document.querySelector(COMMERCE_SCREEN_SELECTOR) ?? document.body;
-    observer = new MutationObserver(() => {
+    const stop = watchCommerceScreen(() => {
         if (tryAttachToHeaderBar()) {
-            observer?.disconnect();
-            observer = null;
+            stop();
+            if (unwatchHeader === stop) {
+                unwatchHeader = null;
+            }
         }
     });
-    observer.observe(screen, { childList: true, subtree: true });
+    unwatchHeader = stop;
 }
 
 export function stopLayout() {
-    observer?.disconnect();
-    observer = null;
+    unwatchHeader?.();
+    unwatchHeader = null;
     styleElement?.remove();
     styleElement = null;
 }

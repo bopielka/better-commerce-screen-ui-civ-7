@@ -12,14 +12,11 @@ import { storedSwitch } from '../engine/stored-setting.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
 
-export const FactoryFirstChangedEventName = 'najane-commerce-factory-first-changed';
-
 // Never touched: on. The switch is there to turn that off, not to opt into it.
 const setting = storedSwitch({
     option: `${MOD_ID}.factoryFirstChoice`,
     defaultValue: true,
     label: 'factories first',
-    changedEventName: FactoryFirstChangedEventName,
 });
 
 /** ⚠️ Age-gated as well as switched: there are no factories before the Modern age. */

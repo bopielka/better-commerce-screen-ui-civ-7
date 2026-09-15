@@ -86,7 +86,7 @@ function cargoAmount(unit) {
     }
 }
 
-export function isTreasureConvoy(unit) {
+function isTreasureConvoy(unit) {
     return Boolean(unit) && unit.owner === GameContext.localPlayerID && cargoAmount(unit) > 0;
 }
 
@@ -100,7 +100,7 @@ export function isTreasureConvoy(unit) {
  * a recycled id would strand a real convoy.
  *
  * ⚠️ Emptied whenever a unit appears or leaves, because that is when an id can come to mean a
- * different unit.
+ * different unit - and when another game is loaded, which recycles every id at once.
  */
 const notAConvoy = new Set();
 
@@ -286,7 +286,8 @@ function isWaterPlot(location) {
  * Everywhere a convoy could unload, unsorted and shared.
  *
  * ⚠️ Built once per PASS, not once per convoy: the list is the same for all of them and only the
- * ordering below is per unit. It walks every settlement and every plot each owns.
+ * ordering below is per unit. It walks every settlement and every plot each owns, and is dropped
+ * when the pass ends.
  */
 let homeDestinations = null;
 
@@ -311,8 +312,8 @@ function buildHomeDestinations() {
                     locations.set(`${location.x},${location.y}`, {
                         x: location.x,
                         y: location.y,
-                        // Carried rather than asked again: the list is walked once per convoy.
-                        water: isWaterPlot(location),
+                        // Filled by `isSeaTarget` on first use: only a sea-going convoy asks.
+                        water: undefined,
                         centre: isCentre,
                     });
                 }
@@ -329,7 +330,25 @@ function buildHomeDestinations() {
     return Array.from(locations.values());
 }
 
-/** Everywhere THIS convoy could be sent, nearest first. */
+/** A plot a ship can be sent to: the centre, or water. Asked once per plot per pass. */
+function isSeaTarget(entry) {
+    if (entry.centre) {
+        return true;
+    }
+    if (entry.water === undefined) {
+        entry.water = isWaterPlot(entry);
+    }
+    return entry.water;
+}
+
+/**
+ * Where THIS convoy could be sent: the `MAX_MOVE_PROBES` nearest, nearest first.
+ *
+ * ⚠️ Picked, not sorted. `sailHome` never probes past that many, and sorting the whole list asked
+ * the engine for two distances per COMPARISON - by count, about fifteen thousand calls per convoy
+ * for eight hundred plots. Here it is one per plot, and equal distances keep list order, exactly
+ * as the stable sort did.
+ */
 function homeTargets(unit) {
     homeDestinations ??= buildHomeDestinations();
     /*
@@ -337,13 +356,27 @@ function homeTargets(unit) {
      * its water and its centre - the same fact the header records. Every other owned plot is a
      * pathfinder query that was always going to fail, and failure is the expensive answer.
      */
-    const reachable = travelsBySea(unit)
-        ? homeDestinations.filter((entry) => entry.water || entry.centre)
-        : homeDestinations;
-
-    return [...reachable].sort(
-        (first, second) => plotDistance(unit.location, first) - plotDistance(unit.location, second),
-    );
+    const bySea = travelsBySea(unit);
+    const from = unit.location;
+    const nearest = [];
+    for (const entry of homeDestinations) {
+        if (bySea && !isSeaTarget(entry)) {
+            continue;
+        }
+        const distance = plotDistance(from, entry);
+        if (nearest.length === MAX_MOVE_PROBES && distance >= nearest[nearest.length - 1].distance) {
+            continue;
+        }
+        let index = nearest.length;
+        while (index > 0 && nearest[index - 1].distance > distance) {
+            index--;
+        }
+        nearest.splice(index, 0, { entry, distance });
+        if (nearest.length > MAX_MOVE_PROBES) {
+            nearest.pop();
+        }
+    }
+    return nearest.map((candidate) => candidate.entry);
 }
 
 function moveArgs(location) {
@@ -356,6 +389,12 @@ function moveArgs(location) {
     };
 }
 
+/**
+ * unit key -> `{ turn, count }`.
+ * ⚠️ Pruned of other turns at every pass and emptied on `GameStarted`: a convoy sunk, captured or
+ * unloaded by hand never reaches the delete in `processConvoys`, and a recycled id with a matching
+ * turn number would inherit a spent budget.
+ */
 const attempts = new Map();
 
 function currentTurn() {
@@ -363,6 +402,16 @@ function currentTurn() {
         return Number(Game.turn);
     } catch (error) {
         return 0;
+    }
+}
+
+/** Entries from another turn; `mayAttempt` already treats them as absent. */
+function pruneAttempts() {
+    const turn = currentTurn();
+    for (const [key, entry] of attempts) {
+        if (entry.turn !== turn) {
+            attempts.delete(key);
+        }
     }
 }
 
@@ -384,14 +433,11 @@ function sailHome(unit) {
     if (!mayAttempt(unitKey(unit.id))) {
         return false;
     }
+    // ⚠️ The cap lives in `homeTargets`, which hands over no more than MAX_MOVE_PROBES: the convoy
+    // simply waits and tries again next turn rather than paying for a search of everything it can
+    // reach.
     let probes = 0;
     for (const location of homeTargets(unit)) {
-        // ⚠️ The cap, not a break in disguise: the convoy simply waits and tries again next
-        // turn rather than paying for a search of everything it can reach. See MAX_MOVE_PROBES.
-        if (probes >= MAX_MOVE_PROBES) {
-            log(`no reachable homeland plot among the ${probes} nearest; the convoy holds for a turn`);
-            return false;
-        }
         probes++;
         try {
             if (!Game.UnitOperations.canStart(unit.id, UnitOperationTypes.MOVE_TO, moveArgs(location), false).Success) {
@@ -403,6 +449,9 @@ function sailHome(unit) {
             warn(`sending a treasure convoy home failed: ${error}`);
             return false;
         }
+    }
+    if (probes >= MAX_MOVE_PROBES) {
+        log(`no reachable homeland plot among the ${probes} nearest; the convoy holds for a turn`);
     }
     return false;
 }
@@ -417,8 +466,7 @@ function processConvoys(maySail) {
         return;
     }
     processing = true;
-    // A settlement taken, lost or grown since the last pass changes where home is.
-    forgetHomeDestinations();
+    pruneAttempts();
     try {
         const player = Players.get(GameContext.localPlayerID);
         for (const unit of localConvoys()) {
@@ -448,6 +496,8 @@ function processConvoys(maySail) {
             }
         }
     } finally {
+        // A settlement taken, lost or grown before the next pass changes where home is.
+        forgetHomeDestinations();
         processing = false;
     }
 }
@@ -531,6 +581,14 @@ export function startTreasureConvoys() {
     // note on SAIL_EVENTS.
     listenPerUnit('UnitOperationsCleared', false);
     listenPerUnit('UnitOperationDeactivated', false);
+
+    // A game loaded mid-session recycles unit ids, so everything keyed by one describes a unit
+    // that no longer exists.
+    onEngineEvent('GameStarted', () => {
+        attempts.clear();
+        notAConvoy.clear();
+        forgetHomeDestinations();
+    });
 
     // A convoy already at sea when the game is loaded gets its first pass now.
     scheduleProcess(true);

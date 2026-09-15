@@ -485,9 +485,6 @@
             <Text>Poprawa stosunków handlowych kosztuje {1_Cost} wpływów, a masz {2_Balance}.</Text>
         </Row>
 
-        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="pl_PL">
-            <Text>Kliknij, aby zaproponować „Poprawę stosunków handlowych” z {1_Leader} za {2_Cost} wpływów - podniesie to limit szlaków handlowych z tym przywódcą.</Text>
-        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="pl_PL">
             <Text>Kliknij, aby zamiast tego otworzyć dyplomację z {1_Leader}.</Text>
         </Row>
@@ -521,9 +518,6 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="pl_PL">
             <Text>W kolejce na początek następnej tury: podnieś limit i wyślij kupca do {1_City}. Kliknij, aby anulować.</Text>
-        </Row>
-        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="pl_PL">
-            <Text>Automatycznie podniesiono limity szlaków handlowych: {1_Count} - wysłani wcześniej kupcy mogą teraz otworzyć swoje szlaki.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="pl_PL">
             <Text>Automatycznie podniesiono limit szlaków handlowych z {1_Leader} - kupiec wysłany do {2_City} może teraz otworzyć szlak.</Text>

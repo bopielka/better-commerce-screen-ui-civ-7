@@ -12,15 +12,12 @@ import { storedSwitch } from '../engine/stored-setting.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
 
-export const ImportsFirstChangedEventName = 'najane-commerce-imports-first-changed';
-
 // ⚠️ Three-state even though the default is OFF: storing 0 for "off" is the shape that broke
 // when factories-first later defaulted to on.
 const setting = storedSwitch({
     option: `${MOD_ID}.importsFirstChoice`,
     defaultValue: false,
     label: 'imports first',
-    changedEventName: ImportsFirstChangedEventName,
 });
 
 export function isImportsFirstEnabled() {

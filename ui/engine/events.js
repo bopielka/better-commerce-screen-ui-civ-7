@@ -14,6 +14,8 @@
  */
 import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
 
+const OWNER_ON_ID = new Set(['NotificationAdded']);
+
 /**
  * Which player an event is about, or null when the payload does not say.
  *
@@ -21,9 +23,15 @@ import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
  * ComponentIDs, `player` is a plain id, and a payload carrying only `location` is answered by
  * asking the plot who owns it - what `panel-production-chooser.ts` does.
  */
-function eventOwner(data) {
+function eventOwner(name, data) {
     if (!data || typeof data !== 'object') {
         return null;
+    }
+    // ⚠️ `NotificationAdded` carries its owner only on `id` - what `panel-action` and the
+    // notification-train model read - and without this every AI notification passed as ours.
+    // Scoped by name: in other payloads `id` need not be about a player.
+    if (OWNER_ON_ID.has(name) && typeof data.id?.owner === 'number') {
+        return data.id.owner;
     }
     const direct =
         data.unit?.owner ??
@@ -54,12 +62,17 @@ function eventOwner(data) {
 }
 
 /** Whether this payload is about somebody else. Unknown counts as ours; see the header. */
-export function isSomeoneElses(data) {
-    const owner = eventOwner(data);
+function isSomeoneElses(name, data) {
+    const owner = eventOwner(name, data);
     return owner !== null && owner !== GameContext.localPlayerID;
 }
 
-/** name -> `{ listeners, dispatch }`, listeners in subscription order. */
+/**
+ * name -> `{ listeners, dispatch }`, listeners in subscription order.
+ * ⚠️ `listeners` is REPLACED on every change, never mutated: `deliver` iterates it directly, so a
+ * handler that subscribes or unsubscribes mid-dispatch cannot disturb the loop, and no event -
+ * thousands per AI turn - pays for a copy.
+ */
 const byName = new Map();
 
 // Counted only with diagnostics on; see logEventStats.
@@ -74,11 +87,12 @@ function deliver(entry, name, data) {
     // ⚠️ `mine` starts as "not asked yet", so a name whose listeners are all unfiltered never
     // calls eventOwner - which for a location-only payload is a map query.
     let mine = null;
-    // A listener may unsubscribe from inside its own handler; iterate over a copy.
-    for (const listener of Array.from(entry.listeners)) {
+    const listeners = entry.listeners;
+    for (let i = 0; i < listeners.length; i++) {
+        const listener = listeners[i];
         if (listener.localOnly) {
             if (mine === null) {
-                mine = !isSomeoneElses(data);
+                mine = !isSomeoneElses(name, data);
             }
             if (!mine) {
                 continue;
@@ -115,7 +129,7 @@ function subscribe(name, handler, localOnly) {
         byName.set(name, entry);
     }
     const listener = { name, handler, localOnly };
-    entry.listeners.push(listener);
+    entry.listeners = [...entry.listeners, listener];
     return listener;
 }
 
@@ -153,9 +167,8 @@ export function stopEngineEvents(handles) {
         if (!entry) {
             continue;
         }
-        const index = entry.listeners.indexOf(handle);
-        if (index >= 0) {
-            entry.listeners.splice(index, 1);
+        if (entry.listeners.includes(handle)) {
+            entry.listeners = entry.listeners.filter((listener) => listener !== handle);
         }
         // Nobody left behind the dispatcher, so the whole subscription goes.
         if (entry.listeners.length === 0) {

@@ -15,6 +15,9 @@ const CITY_ACTIVATABLE_SELECTOR = `[data-name$="${CITY_ACTIVATABLE_SUFFIX}"]`;
 /** One of these per rendered section of the unassigned pool (connected / disconnected). */
 const POOL_SELECTOR = '[data-name="commerce-unassigned-resources"]';
 
+/** The pool's column, which holds every POOL_SELECTOR container; the document when it is gone. */
+const POOL_COLUMN_SELECTOR = '[data-name="available-resources-container"]';
+
 /** The game gives every slotted resource an explicit size to work around a layout bug. */
 const SLOT_SELECTOR = '.size-19';
 
@@ -39,15 +42,22 @@ function hitTestElements(x, y) {
 let currentModel = null;
 
 /**
- * ⚠️ `settlementCards` is the busiest function here - two features call it on every pass over the
- * DOM - and it composed every name each time just to match a `data-name` attribute.
+ * ⚠️ `settlementCards` is the busiest function here - it runs on every pass over the DOM, for two
+ * features - and it composed every name each time just to match a `data-name` attribute.
  * `Locale.compose` is a call into the game for a string that cannot change while a screen is open.
  */
 const nameByCity = new Map();
 
+/**
+ * `settlementNameData.settlementName` -> its composed form, for the hit test's card match.
+ * ⚠️ Keyed by the string composed, so a rename is a new key; it runs per Shift-hover frame.
+ */
+const composedCardName = new Map();
+
 export function setCommerceModel(model) {
     currentModel = model;
     nameByCity.clear();
+    composedCardName.clear();
 }
 
 export function clearCommerceModel(model) {
@@ -56,6 +66,7 @@ export function clearCommerceModel(model) {
     if (currentModel === model) {
         currentModel = null;
         nameByCity.clear();
+        composedCardName.clear();
     }
 }
 
@@ -105,7 +116,15 @@ function findSettlementByCardName(model, cardName) {
     for (const section of settlementSections(model)) {
         for (const settlement of section.cityResources ?? []) {
             const name = settlement.settlementNameData?.settlementName;
-            if (name !== undefined && Locale.compose(name) === cardName) {
+            if (name === undefined) {
+                continue;
+            }
+            let composed = composedCardName.get(name);
+            if (composed === undefined) {
+                composed = Locale.compose(name);
+                composedCardName.set(name, composed);
+            }
+            if (composed === cardName) {
                 return settlement;
             }
         }
@@ -119,10 +138,26 @@ export function findSlottedResourceAtPoint(x, y) {
     if (!model) {
         return null;
     }
+    return slottedResourceAmong(model, hitTestElements(x, y));
+}
 
+/**
+ * The slotted resource under the point, else the unassigned one - what Shift-hover and Shift-click
+ * both ask. ⚠️ One `elementsFromPoint` for both halves; asked separately it was two per frame.
+ */
+export function findResourceAtPoint(x, y) {
+    const model = currentModel;
+    if (!model) {
+        return null;
+    }
+    const hits = hitTestElements(x, y);
+    return slottedResourceAmong(model, hits) ?? availableResourceAmong(model, hits);
+}
+
+function slottedResourceAmong(model, hits) {
     let slotElement = null;
     let cardElement = null;
-    for (const element of hitTestElements(x, y)) {
+    for (const element of hits) {
         slotElement ??= element.closest?.(SLOT_SELECTOR) ?? null;
         cardElement ??= element.closest?.(CITY_CARD_SELECTOR) ?? null;
         if (slotElement && cardElement) {
@@ -199,8 +234,12 @@ export function findSettlementAtPoint(x, y) {
     return null;
 }
 
-/** Every settlement card on screen, paired with its model entry. */
-export function settlementCards() {
+/**
+ * Every settlement card on screen, paired with its model entry.
+ * @param root where the cards are looked for. ⚠️ Handed in by the screen layer, which knows the
+ *   screen's element: the default is the whole document, HUD included, and this runs every pass.
+ */
+export function settlementCards(root = document) {
     const model = currentModel;
     if (!model) {
         return [];
@@ -217,7 +256,7 @@ export function settlementCards() {
     }
 
     const pairs = [];
-    for (const cardElement of document.querySelectorAll(CITY_ACTIVATABLE_SELECTOR)) {
+    for (const cardElement of root.querySelectorAll(CITY_ACTIVATABLE_SELECTOR)) {
         const name = cardElement.getAttribute('data-name')?.slice(0, -CITY_ACTIVATABLE_SUFFIX.length) ?? '';
         const settlement = byName.get(name);
         if (settlement) {
@@ -428,16 +467,11 @@ function refreshAvailableSlots(cards) {
     }
 }
 
-/** The unassigned resource under this screen point, if any. */
-export function findAvailableResourceAtPoint(x, y) {
-    const model = currentModel;
-    if (!model) {
-        return null;
-    }
-
+/** The unassigned resource among these hits, if any; see `findResourceAtPoint`. */
+function availableResourceAmong(model, hits) {
     let slotElement = null;
     let poolElement = null;
-    for (const element of hitTestElements(x, y)) {
+    for (const element of hits) {
         slotElement ??= element.closest?.(SLOT_SELECTOR) ?? null;
         poolElement ??= element.closest?.(POOL_SELECTOR) ?? null;
         if (slotElement && poolElement) {
@@ -454,7 +488,9 @@ export function findAvailableResourceAtPoint(x, y) {
         return null;
     }
 
-    const containers = Array.from(document.querySelectorAll(POOL_SELECTOR));
+    // ⚠️ Within the pool's own column, not the document: this runs per Shift-hover frame.
+    const column = poolElement.closest?.(POOL_COLUMN_SELECTOR) ?? document;
+    const containers = Array.from(column.querySelectorAll(POOL_SELECTOR));
     const section = renderedPoolSections(model)[containers.indexOf(poolElement)];
     if (!section) {
         log('no pool section in the model matches this container');

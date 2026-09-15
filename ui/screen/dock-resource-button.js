@@ -15,6 +15,7 @@
  * `Controls.decorate` does nothing to a `ui-next` component.
  */
 import { anythingCanBePlaced } from './assign-notification.js';
+import { isAssignmentInProgress } from '../planner/run.js';
 import { onEngineEvents, stopEngineEvents } from '../engine/events.js';
 import { ensureStyle } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
@@ -86,7 +87,6 @@ const STYLE = `
     transform-origin: 50% 50%;
     animation-duration: 2.2s;
     animation-iteration-count: infinite;
-    animation-fill-mode: forwards;
 }
 .${ASSIGNABLE_CLASS} .ssb__button-icon {
     animation-name: najaneDockAssignableIcon;
@@ -137,6 +137,9 @@ const REFRESH_EVENTS = [
     'LocalPlayerTurnBegin',
 ];
 
+/** How often a refresh held back by an assignment pass looks again; same as the icon's re-check. */
+const PASS_RECHECK_MS = 400;
+
 function isUnlocked(player) {
     try {
         // ⚠️ The engine's spelling, not a typo of ours: `isRessourceAssignmentLocked`.
@@ -153,6 +156,7 @@ class DockResourceButton {
         this.refresh = this.refresh.bind(this);
         this.refreshSoon = this.refreshSoon.bind(this);
         this.refreshFrame = null;
+        this.passTimer = null;
         /** The shared-dispatcher handles, kept so `afterDetach` can hand them back. */
         this.subscriptions = [];
     }
@@ -164,13 +168,23 @@ class DockResourceButton {
             ?? null;
     }
 
-/**
- * Coalesces a burst into one refresh, on the next frame. ⚠️ `anythingCanBePlaced` is the most
- * expensive call in this mod and these events arrive in clumps - a turn boundary raises several
- * at once, an assignment pass one per resource.
- */
+    /**
+     * Coalesces a burst into one refresh, on the next frame. ⚠️ `anythingCanBePlaced` is the most
+     * expensive call in this mod and these events arrive in clumps - a turn boundary raises several
+     * at once, an assignment pass one per resource.
+     * ⚠️ HELD while a pass runs: frames advance between placements, so a frame per event rebuilt
+     * the answer (an empire walk plus `canStart`) once per resource placed. The end of a pass raises
+     * no event, so the held refresh polls the flag rather than waiting to be told.
+     */
     refreshSoon() {
-        if (this.refreshFrame !== null) {
+        if (this.refreshFrame !== null || this.passTimer !== null) {
+            return;
+        }
+        if (isAssignmentInProgress()) {
+            this.passTimer = setTimeout(() => {
+                this.passTimer = null;
+                this.refreshSoon();
+            }, PASS_RECHECK_MS);
             return;
         }
         this.refreshFrame = requestAnimationFrame(() => {
@@ -232,9 +246,11 @@ class DockResourceButton {
             cancelAnimationFrame(this.refreshFrame);
             this.refreshFrame = null;
         }
+        if (this.passTimer !== null) {
+            clearTimeout(this.passTimer);
+            this.passTimer = null;
+        }
     }
-
-    onAttributeChanged(_name, _prev, _next) { }
 }
 
 let started = false;

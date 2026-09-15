@@ -34,13 +34,19 @@ function indexBonusSlots() {
 }
 
 /** How many extra slots this resource type grants its settlement (0 for most). */
-export function bonusSlotsFor(resourceType) {
+function bonusSlotsFor(resourceType) {
     indexBonusSlots();
     return bonusSlotsByType.get(resourceType) ?? 0;
 }
 
 export function grantsBonusSlots(resourceType) {
     return bonusSlotsFor(resourceType) > 0;
+}
+
+/** The first resource type in the table that grants slots (camels), or null in an age with none. */
+export function firstSlotGrantingType() {
+    indexBonusSlots();
+    return bonusSlotsByType.keys().next().value ?? null;
 }
 
 /**

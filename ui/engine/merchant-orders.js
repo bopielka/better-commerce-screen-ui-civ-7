@@ -25,7 +25,7 @@ import {
     signRoute,
     unitKey,
 } from './merchant.js';
-import { readSection, writeSection } from './mod-storage.js';
+import { currentGameKey, readSection, writeSection } from './mod-storage.js';
 import { onEngineEvent, onLocalPlayerEvent } from './events.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -77,22 +77,7 @@ const MOVE_EVENTS = ['UnitMovementPointsChanged'];
  */
 const FULL_PASS_EVENTS = ['LocalPlayerTurnBegin'];
 
-let gameKey = null;
-
 /** Unit ids are only unique within one game; the file is keyed by the game's seed. */
-function currentGameKey() {
-    if (gameKey !== null) {
-        return gameKey;
-    }
-    try {
-        const seed = Configuration.getGame()?.gameSeed;
-        gameKey = seed === undefined || seed === null ? null : String(seed);
-    } catch (error) {
-        gameKey = null;
-    }
-    return gameKey;
-}
-
 function optionName(key) {
     return `${MOD_ID}.merchantOrder.${currentGameKey()}.${key}`;
 }
@@ -101,11 +86,24 @@ function readFallback(key) {
     return readSection(SECTION)?.[currentGameKey()]?.[key];
 }
 
+/**
+ * ⚠️ A cleared order is DELETED, never written as 0: every reader treats absent and 0 alike, and
+ * the shared `modSettings` string - every mod's settings - is parsed whole on each read and write.
+ */
 function writeFallback(key, code) {
     writeSection(SECTION, (all) => {
         const game = currentGameKey();
-        all[game] ??= {};
-        all[game][key] = code;
+        if (code > 0) {
+            all[game] ??= {};
+            all[game][key] = code;
+            return;
+        }
+        if (all[game]) {
+            delete all[game][key];
+            if (Object.keys(all[game]).length === 0) {
+                delete all[game];
+            }
+        }
     });
 }
 
@@ -356,15 +354,24 @@ function forgetOrderIfAbandoned(unitID) {
     clearMerchantOrder(unitID);
 }
 
+/**
+ * Everything held in memory about one merchant's errand.
+ * ⚠️ ALL FOUR, wherever an order ends: ids are recycled, and a stale `wasTravelling` would read the
+ * next merchant wearing the id as "called back" and drop the order it had only just been given.
+ */
+function forgetUnitState(key) {
+    attempts.delete(key);
+    commandedAt.delete(key);
+    wasTravelling.delete(key);
+    spokenForOnTurn.delete(key);
+}
+
 export function clearMerchantOrder(unitID) {
     const key = unitKey(unitID);
     if (!key) {
         return;
     }
-    attempts.delete(key);
-    commandedAt.delete(key);
-    wasTravelling.delete(key);
-    spokenForOnTurn.delete(key);
+    forgetUnitState(key);
     writeOrder(key, 0);
 }
 
@@ -438,7 +445,7 @@ function pruneOrders(merchants) {
         if (alive.has(key)) {
             continue;
         }
-        attempts.delete(key);
+        forgetUnitState(key);
         // writeOrder announces the change and takes the key out of the set.
         writeOrder(key, 0);
         dropped++;
@@ -602,7 +609,7 @@ function isTravelling(unit) {
 /**
  * What every merchant of ours is doing, in ONE walk.
  *
- * ⚠️ THIS EXISTS BECAUSE OF THE TRADE ROUTE CARDS. `idleMerchants`, `merchantsBoundFor` and
+ * ⚠️ THIS EXISTS BECAUSE OF THE TRADE ROUTE CARDS. `idleMerchants`, `merchantsOrderedTo` and
  * `merchantsBoundForPlayer` each read the player's whole unit list and asked the engine about
  * every merchant in it - and one card calls all three, so a tab of forty cards walked the unit
  * list a hundred and twenty times over per redraw.
@@ -611,27 +618,46 @@ function isTravelling(unit) {
  * order written, a merchant sent), and the wall-clock backstop for everything it is not told
  * about - a merchant the player moved. Short enough that nothing on screen can look stale,
  * long enough that one pass over the cards is one reading.
+ *
+ * ⚠️ The per-target answers (nearest spare, plot, owner) are cached ON the snapshot object, so
+ * they are dropped with it and can never outlive the reading they were worked out from.
  */
 const STATE_CACHE_MS = 250;
 
-let merchantState = null;
-let merchantStateAt = 0;
+let merchantSnapshot = null;
+let merchantSnapshotAt = 0;
 
 export function forgetMerchantState() {
-    merchantState = null;
+    merchantSnapshot = null;
 }
 
-function merchantStates() {
-    if (merchantState && Date.now() - merchantStateAt < STATE_CACHE_MS) {
-        return merchantState;
+function currentSnapshot() {
+    if (merchantSnapshot && Date.now() - merchantSnapshotAt < STATE_CACHE_MS) {
+        return merchantSnapshot;
     }
-    merchantState = localMerchants().map((unit) => ({
-        unit,
-        plotIndex: readOrder(unitKey(unit.id)),
-        travelling: isTravelling(unit),
-    }));
-    merchantStateAt = Date.now();
-    return merchantState;
+    merchantSnapshot = {
+        states: localMerchants().map((unit) => ({
+            unit,
+            plotIndex: readOrder(unitKey(unit.id)),
+            travelling: isTravelling(unit),
+        })),
+        nearestByLocation: new Map(),
+        plotByLocation: new Map(),
+        ownerByPlot: new Map(),
+        unitsByPlot: null,
+    };
+    merchantSnapshotAt = Date.now();
+    return merchantSnapshot;
+}
+
+function locationKey(location) {
+    return `${location.x},${location.y}`;
+}
+
+function spareIn(snapshot) {
+    return snapshot.states
+        .filter((state) => !state.travelling && state.plotIndex < 0)
+        .map((state) => state.unit);
 }
 
 /**
@@ -653,17 +679,20 @@ function merchantStates() {
  * out a merchant it has already spoken for.
  */
 export function idleMerchants() {
-    return merchantStates()
-        .filter((state) => !state.travelling && state.plotIndex < 0)
-        .map((state) => state.unit);
+    return spareIn(currentSnapshot());
 }
 
 /** The spare merchant that would reach `city` soonest, or null when there is none. */
 export function nearestIdleMerchant(city) {
-    const spare = idleMerchants();
-    if (spare.length === 0 || !city?.location) {
+    const snapshot = currentSnapshot();
+    if (!city?.location) {
         return null;
     }
+    const key = locationKey(city.location);
+    if (snapshot.nearestByLocation.has(key)) {
+        return snapshot.nearestByLocation.get(key);
+    }
+    const spare = spareIn(snapshot);
     let best = null;
     let bestDistance = Number.POSITIVE_INFINITY;
     for (const unit of spare) {
@@ -680,55 +709,66 @@ export function nearestIdleMerchant(city) {
             bestDistance = distance;
         }
     }
-    return best ?? spare[0];
+    const answer = best ?? spare[0] ?? null;
+    snapshot.nearestByLocation.set(key, answer);
+    return answer;
 }
 
 export function merchantsBoundForPlayer(leaderId) {
     if (leaderId === undefined || leaderId === null) {
         return [];
     }
-    // Same rule as `merchantsBoundFor`: the ORDER is what spoke for the slot.
-    return merchantStates()
-        .filter((state) => state.plotIndex >= 0 && cityAtPlot(state.plotIndex)?.owner === leaderId)
+    // Same rule as `merchantsOrderedTo`: the ORDER is what spoke for the slot.
+    const snapshot = currentSnapshot();
+    return snapshot.states
+        .filter((state) => {
+            if (state.plotIndex < 0) {
+                return false;
+            }
+            if (!snapshot.ownerByPlot.has(state.plotIndex)) {
+                snapshot.ownerByPlot.set(state.plotIndex, cityAtPlot(state.plotIndex)?.owner);
+            }
+            return snapshot.ownerByPlot.get(state.plotIndex) === leaderId;
+        })
         .map((state) => state.unit);
 }
 
 /**
  * Every merchant carrying an order for this settlement, whether or not it is still moving.
  *
- * ⚠️ THE ORDER ALONE, deliberately - the opposite of `merchantsBoundFor`. That one asks "is one on
- * the road", which is what a card draws a pin from; this asks "have I already sent one there",
- * which is what stops a caller sending a second. A merchant that has ARRIVED and is waiting for a
- * trade slot is not on the road any more, and it is very much already sent.
+ * ⚠️ THE ORDER ALONE, never "is it still travelling": a merchant that has ARRIVED and waits for a
+ * trade slot is off the road but very much already sent. Asking about travel took a card's pin
+ * and cancel mark away and offered to buy a second merchant for the same errand.
+ *
+ * ⚠️ Trusting the order alone is safe only because the order is kept honest at both ends: a
+ * merchant the player calls back has its order dropped (`forgetOrderIfAbandoned`), and one that
+ * has merely arrived keeps it (`standsOnLandOf`).
  */
 export function merchantsOrderedTo(city) {
     if (!city?.location) {
         return [];
     }
-    let plotIndex = -1;
-    try {
-        plotIndex = GameplayMap.getIndexFromLocation(city.location);
-    } catch (error) {
-        return [];
+    const snapshot = currentSnapshot();
+    const key = locationKey(city.location);
+    let plotIndex = snapshot.plotByLocation.get(key);
+    if (plotIndex === undefined) {
+        try {
+            plotIndex = GameplayMap.getIndexFromLocation(city.location);
+        } catch (error) {
+            return [];
+        }
+        snapshot.plotByLocation.set(key, plotIndex);
     }
-    return merchantStates()
-        .filter((state) => state.plotIndex === plotIndex)
-        .map((state) => state.unit);
-}
-
-/**
- * ⚠️ THE SAME QUESTION AS `merchantsOrderedTo`, AND THAT IS THE FIX. This used to demand that the
- * merchant still be TRAVELLING, which dropped one that had arrived and was waiting for a trade
- * slot - so a card whose merchant stood at the gate lost its pin and its cancel mark and offered
- * to buy a second one, while the section header above it still said the route was being
- * established. Two questions, two answers, one merchant.
- *
- * ⚠️ Trusting the order alone is safe only because the order is now kept honest at both ends: a
- * merchant the player calls back has its order dropped (`forgetOrderIfAbandoned`), and one that
- * has merely arrived keeps it (`standsOnLandOf`). Before those, an order could outlive its errand.
- */
-export function merchantsBoundFor(city) {
-    return merchantsOrderedTo(city);
+    if (!snapshot.unitsByPlot) {
+        snapshot.unitsByPlot = new Map();
+        for (const state of snapshot.states) {
+            const units = snapshot.unitsByPlot.get(state.plotIndex) ?? [];
+            units.push(state.unit);
+            snapshot.unitsByPlot.set(state.plotIndex, units);
+        }
+    }
+    // A copy: the list is shared by every card that asks during this snapshot.
+    return (snapshot.unitsByPlot.get(plotIndex) ?? []).slice();
 }
 
 let listening = false;
@@ -769,9 +809,9 @@ export function startMerchantOrders() {
      * A game loaded mid-session brings its own seed, and with it its own orders.
      * ⚠️ ALL FIVE, not just the attempts. Unit ids are recycled between games, so anything keyed
      * by one describes a unit that no longer exists - and these grew for the whole session.
+     * The seed itself is dropped by mod-storage.js, after this handler; nothing here reads it.
      */
     onEngineEvent('GameStarted', () => {
-        gameKey = null;
         orderedKeys = null;
         attempts.clear();
         commandedAt.clear();

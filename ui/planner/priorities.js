@@ -3,6 +3,7 @@
  * storage is ./priority-store.js; this is the meaning in between.
  */
 import { forgetLoadedGame, isPriorityStoreReady, storePriority, storedPriority } from './priority-store.js';
+import { onEngineEvent } from '../engine/events.js';
 
 export const PRIORITY_OPTIONS = [
     { type: null },
@@ -51,8 +52,8 @@ export function cityKey(cityID) {
  * ⚠️ Not what Resource+ made it mean either: there a settlement with no priority took whichever
  * yield it had least of, which pulled every settlement towards the same shapeless middle.
  */
-export const DEFAULT_CITY_PRIORITY = 'YIELD_PRODUCTION';
-export const DEFAULT_TOWN_PRIORITY = 'YIELD_FOOD';
+const DEFAULT_CITY_PRIORITY = 'YIELD_PRODUCTION';
+const DEFAULT_TOWN_PRIORITY = 'YIELD_FOOD';
 
 /**
  * What the player chose, or null for Balanced - including "never chose anything".
@@ -92,6 +93,13 @@ export function forgetPriorityMemory() {
     priorityByCity.clear();
     forgetLoadedGame();
 }
+
+/*
+ * ⚠️ City ids repeat between games, and engine/mod-storage.js drops the seed on `GameStarted`, so
+ * this memo must go with it. `GameStarted` alone, not `GameAgeEnded`: settlements outlive an age,
+ * and the memo is only a copy of storage - dropping it costs a re-read, never a choice.
+ */
+onEngineEvent('GameStarted', forgetPriorityMemory);
 
 export function setPriority(cityID, yieldType) {
     const key = cityKey(cityID);

@@ -22,10 +22,10 @@
  * resources aggregate, and getting it backwards inflates every figure by the size of the empire.
  */
 import { effectTypeOf, resourceModifiers } from './effects.js';
-import { trackerRequirement } from './gdp.js';
+import { scoringRate, trackerRequirement } from './gdp.js';
 import { warn } from '../support/diagnostics.js';
 
-export const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
+const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
 
 const PLAYER_YIELD_PERCENT = 'ADJUST_PLAYER_YIELD_PER_SLOTTED_RESOURCE';
 const UNIT_PRODUCTION_PERCENT = 'ADJUST_UNIT_PRODUCTION_PER_SLOTTED_RESOURCE';
@@ -54,7 +54,7 @@ function numberOf(argumentsMap) {
 }
 
 /** What `count` slotted copies of this resource are worth. */
-export function factoryEffectTotals(resourceType, count) {
+function factoryEffectTotals(resourceType, count) {
     const totals = [];
     /** Coffee's two modifiers are one line - the same +5%, towards two different things. */
     const byKey = new Map();
@@ -198,9 +198,6 @@ export function absoluteWorth(yieldType, percent) {
  */
 const FACTORY_GDP_SCORING = 'VICTORY_TRACKER_SLOTTED_FACTORY';
 
-/** ⚠️ A full scan of the scoring table, and it was one per call. gdp.js memoises the same table. */
-let slottedRate;
-
 /**
  * What the factory tracker is still waiting to be researched, or null once it pays.
  * ⚠️ Mass Production in the Modern age; the row carries `RequiresActivation="true"` and pays
@@ -210,26 +207,13 @@ export function factoryGdpRequirement() {
     return trackerRequirement(FACTORY_GDP_SCORING);
 }
 
+/** ⚠️ Read through gdp.js, which memoises the whole scoring table once for both readouts. */
 export function gdpPerSlottedResource() {
-    if (slottedRate !== undefined) {
-        return slottedRate;
-    }
-    slottedRate = 0;
-    try {
-        for (const scoring of GameInfo.VictoryScorings ?? []) {
-            if (scoring.ScoringId === FACTORY_GDP_SCORING) {
-                slottedRate = Number(scoring.Points) || 0;
-                break;
-            }
-        }
-    } catch (error) {
-        warn(`could not read the GDP rate for factory resources: ${error}`);
-    }
-    return slottedRate;
+    return scoringRate(FACTORY_GDP_SCORING);
 }
 
 /** Which copies are in a factory, and where. */
-export function slottedFactoryResources() {
+function slottedFactoryResources() {
     const byType = new Map();
     try {
         const cities = Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? [];
@@ -256,7 +240,7 @@ export function slottedFactoryResources() {
 }
 
 /** Every factory resource the player holds, slotted or not, and where each came from. */
-export function heldFactoryResources() {
+function heldFactoryResources() {
     const byType = new Map();
     try {
         Players.get(GameContext.localPlayerID)?.Resources?.getResources()?.forEach((resource) => {

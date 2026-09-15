@@ -7,10 +7,9 @@
  * ⚠️ Only tabs there is something to filter by are drawn, built from the routes projected this
  * turn: a tab that hides every card is worse than no tab.
  *
- * ⚠️ NOTHING HERE MOVES A CARD. The cards are Solid's, rendered by a `For` over the model's array;
- * reordering those nodes by hand makes Solid's record a lie and the next reconcile dies on
- * `insertBefore ... is not a child of this node`. Ordering sorts THE MODEL'S ARRAY, as the game's
- * own sort dropdown does; filtering hides the card with a style.
+ * ⚠️ NOTHING HERE MOVES A CARD: this module only scores, and `applyFilterAndHeaders` in
+ * trade-routes.js hides with a class and orders within the card's own row. Never sort the model's
+ * array instead - the tab's own effect re-sorts it and the game hangs.
  *
  * ⚠️ Each section keeps its OWN choice - the two answer different questions.
  *
@@ -22,7 +21,7 @@
  * real strip by exactly that attribute, and `querySelector` takes the FIRST match in the document.
  */
 import { isFactoryAge } from '../engine/age.js';
-import { grantsBonusSlots } from '../engine/resource-slots.js';
+import { firstSlotGrantingType, grantsBonusSlots } from '../engine/resource-slots.js';
 import { resourceClassOf, resourceYieldEffects } from '../planner/facts.js';
 import { PRIORITY_OPTIONS } from '../planner/priorities.js';
 import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip.js';
@@ -31,14 +30,13 @@ import { appendAll, bindActivatable, makeElement } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
 import { onGameDataStale } from '../support/game-data.js';
 
-export const SORT_CLASS = 'najane-trade-sort';
+const SORT_CLASS = 'najane-trade-sort';
 
 const BAR_CLASS = `${SORT_CLASS}__bar`;
 const ITEM_CLASS = `${SORT_CLASS}__item`;
 const ICON_CLASS = `${SORT_CLASS}__icon`;
 const INDICATOR_CLASS = `${SORT_CLASS}__indicator`;
 const ACTIVE_CLASS = `${SORT_CLASS}__item--active`;
-const CARD_CLASS = 'trade-route-card';
 
 // ⚠️ Both classes, not just EMPIRE: planner/facts.js already treats the two as one kind, and
 // which resources fall in which changes with the age.
@@ -52,11 +50,40 @@ const FACTORY_ICON = 'blp:restype_factory_v2';
 /** How many frames the selection indicator may wait for a layout before giving up. */
 const MAX_INDICATOR_ATTEMPTS = 20;
 
-/** Whose teardown owns these tooltips - one scope per strip, under the tab's own. */
+/** Whose teardown owns these tooltips - one serial scope per strip, under the tab's own. */
 const TOOLTIP_SCOPE = 'trade-routes';
+let stripSerial = 0;
 
-function tooltipScopeFor(section) {
-    return `${TOOLTIP_SCOPE}:strip:${section}`;
+/** Every bar built and not yet released; see `releaseDiscardedStrips`. */
+const liveBars = new Set();
+
+function releaseStrip(bar) {
+    liveBars.delete(bar);
+    const scope = bar?.dataset.najaneTooltipScope;
+    if (scope) {
+        disposeFramedTooltips(scope);
+    }
+}
+
+/**
+ * Gives back the tooltips of strips whose row Solid threw away: a section ribbon collapsed and
+ * opened again renders a NEW row, and nothing else disposes the old strip's roots until the tab
+ * goes.
+ *
+ * ⚠️ Only while a row is IN the document. The tab's content sits in a Suspense that detaches and
+ * re-inserts the SAME nodes while images load, so a detached bar is known dead only while the
+ * content is on screen - and one Suspense holds every row. `=== false`, so an engine without
+ * `isConnected` keeps every root instead of losing live ones.
+ */
+function releaseDiscardedStrips(row) {
+    if (row.isConnected !== true) {
+        return;
+    }
+    for (const bar of Array.from(liveBars)) {
+        if (bar.isConnected === false) {
+            releaseStrip(bar);
+        }
+    }
 }
 
 export const SORT_STYLE = `
@@ -140,28 +167,37 @@ export const SORT_STYLE = `
 `;
 
 /** The resource that carries its own slots - camels, in the ages that have them. */
-let slotResource;
-
 function slotGrantingResource() {
-    if (slotResource !== undefined) {
-        return slotResource;
-    }
-    slotResource = null;
     try {
-        for (const resource of GameInfo.Resources) {
-            if ((resource.BonusResourceSlots ?? 0) > 0) {
-                slotResource = resource;
-                break;
-            }
-        }
+        const type = firstSlotGrantingType();
+        return type ? GameInfo.Resources.lookup(type) ?? null : null;
     } catch (error) {
         warn(`could not find the slot-granting resource: ${error}`);
+        return null;
     }
-    return slotResource;
 }
 
-/** The tabs, in the order they are drawn. */
+function countWhere(resources, test) {
+    let count = 0;
+    for (const type of resources) {
+        if (test(type)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+/**
+ * The tabs, in the order they are drawn.
+ * ⚠️ Built once per AGE: the yield names, the camel row and `isFactoryAge` are all the age's, and
+ * the reset below drops this with them.
+ */
+let tabList = null;
+
 function tabs() {
+    if (tabList) {
+        return tabList;
+    }
     const yieldTab = (yieldType) => ({
         key: yieldType,
         title: GameInfo.Yields.lookup(yieldType)?.Name ?? yieldType,
@@ -170,7 +206,7 @@ function tabs() {
             'LOC_NAJANE_COMMERCE_SORT_YIELD',
             Locale.compose(GameInfo.Yields.lookup(yieldType)?.Name ?? yieldType),
         ),
-        count: (resources) => resources.filter((type) => yieldsOf(type).includes(yieldType)).length,
+        count: (resources) => countWhere(resources, (type) => yieldsOf(type).includes(yieldType)),
     });
 
     const list = [
@@ -202,7 +238,7 @@ function tabs() {
                 'LOC_NAJANE_COMMERCE_SORT_RESOURCE',
                 Locale.compose(slots.Name),
             ),
-            count: (resources) => resources.filter((type) => grantsBonusSlots(type)).length,
+            count: (resources) => countWhere(resources, grantsBonusSlots),
         });
     }
 
@@ -211,7 +247,7 @@ function tabs() {
         title: 'LOC_NAJANE_COMMERCE_TAB_EMPIRE',
         icon: () => EMPIRE_ICON,
         tooltip: () => Locale.compose('LOC_NAJANE_COMMERCE_SORT_EMPIRE'),
-        count: (resources) => resources.filter((type) => EMPIRE_CLASS_TYPES.includes(classOf(type))).length,
+        count: (resources) => countWhere(resources, (type) => EMPIRE_CLASS_TYPES.includes(classOf(type))),
     });
 
     // Factory Resources exist as a class in every age's data, but only the Modern age has
@@ -222,21 +258,16 @@ function tabs() {
             title: 'LOC_NAJANE_COMMERCE_TAB_FACTORY',
             icon: () => FACTORY_ICON,
             tooltip: () => Locale.compose('LOC_NAJANE_COMMERCE_SORT_FACTORY'),
-            count: (resources) => resources.filter((type) => classOf(type) === FACTORY_CLASS_TYPE).length,
+            count: (resources) => countWhere(resources, (type) => classOf(type) === FACTORY_CLASS_TYPE),
         });
     }
+    tabList = list;
     return list;
 }
 
 /* Cached per resource TYPE: this asks about every resource on every card. */
 const yieldCache = new Map();
 const classCache = new Map();
-
-// What a resource pays and which class it is are the age's own; see support/game-data.js.
-onGameDataStale(() => {
-    yieldCache.clear();
-    classCache.clear();
-});
 
 /**
  * What a resource actually pays, for the purpose of filtering the cards.
@@ -296,6 +327,15 @@ function classOf(resourceTypeName) {
 let knownRoutes = [];
 const offeredCache = new Map();
 
+// What a resource pays, its class and the tab list are the age's own; see support/game-data.js.
+onGameDataStale(() => {
+    yieldCache.clear();
+    classCache.clear();
+    tabList = null;
+    offeredCache.clear();
+});
+
+/** @param routes this turn's route entries; `[]` when the tab goes, so none are held closed. */
 export function setSortRoutes(routes) {
     knownRoutes = routes ?? [];
     offeredCache.clear();
@@ -329,8 +369,8 @@ function activeKeyFor(section) {
     return activeKeyBySection.get(section) ?? DEFAULT_KEY;
 }
 
-    // ⚠️ Falls back to Balanced when the chosen tab is no longer on offer: what is in reach
-    // changes between turns, and a tab hiding every card looks like a broken screen.
+// ⚠️ Falls back to Balanced when the chosen tab is no longer on offer: what is in reach
+// changes between turns, and a tab hiding every card looks like a broken screen.
 function activeTabFor(section) {
     const list = offeredTabs(section);
     return list.find((tab) => tab.key === activeKeyFor(section)) ?? list[0];
@@ -345,33 +385,38 @@ export function startSortTabs(options) {
     onChange = options.onChange;
 }
 
-/** What the tab in force counts in this route, and how much the route carries in all. */
-function scoreOf(route, section) {
-    const resources = route?.resources ?? [];
-    try {
-        return { counted: activeTabFor(section).count(resources), total: resources.length };
-    } catch (error) {
-        warn(`could not score a trade route: ${error}`);
-        return { counted: 0, total: 0 };
-    }
-}
-
-/** Is this route one the section's tab is asking to see at all? */
-export function matchesFilter(route, section) {
-    if (!route) {
-        return true;
-    }
-    if (activeTabFor(section).key === DEFAULT_KEY) {
-        return true;
-    }
-    return scoreOf(route, section).counted > 0;
-}
-
-/** The order the section's routes belong in: most of what the tab counts first. */
-export function compareRoutes(first, second, section) {
-    const a = scoreOf(first, section);
-    const b = scoreOf(second, section);
-    return (b.counted - a.counted) || (b.total - a.total);
+/**
+ * The section's tab in force, as two questions about a route: is it one the tab asks to see, and
+ * which of two comes first (most of what the tab counts, then most resources in all).
+ *
+ * ⚠️ ONE PER PASS, never kept: it resolves the tab once and scores each route once, which holds only
+ * while neither changes - `pick` redraws on the next frame, and `routeInfo` replaces the entries.
+ */
+export function routeScorer(section) {
+    const tab = activeTabFor(section);
+    const scores = new Map();
+    const scoreOf = (route) => {
+        let score = scores.get(route);
+        if (score === undefined) {
+            const resources = route?.resources ?? [];
+            try {
+                score = { counted: tab.count(resources), total: resources.length };
+            } catch (error) {
+                warn(`could not score a trade route: ${error}`);
+                score = { counted: 0, total: 0 };
+            }
+            scores.set(route, score);
+        }
+        return score;
+    };
+    return {
+        matches: (route) => tab.key === DEFAULT_KEY || scoreOf(route).counted > 0,
+        compare: (first, second) => {
+            const a = scoreOf(first);
+            const b = scoreOf(second);
+            return (b.counted - a.counted) || (b.total - a.total);
+        },
+    };
 }
 
 function renderIcon(host, tab) {
@@ -398,6 +443,10 @@ function renderIcon(host, tab) {
     host.appendChild(cluster);
 }
 
+/** The last `left`/`width` written to each indicator, and the key each bar's items show. */
+const placedAt = new WeakMap();
+const paintedKey = new WeakMap();
+
 /** Slides the little brass marker under the tab in force. */
 function positionIndicator(bar, attempt = 0) {
     const indicator = bar.querySelector(`.${INDICATOR_CLASS}`);
@@ -413,8 +462,20 @@ function positionIndicator(bar, attempt = 0) {
         }
         return;
     }
-    indicator.style.left = `${itemRect.left - barRect.left}px`;
-    indicator.style.width = `${itemRect.width}px`;
+    /*
+     * ⚠️ Written only on a change: this runs for each strip on every pass, and a write between one
+     * strip's rect reads and the next strip's can make the second force a layout mid-pass.
+     * ⚠️ The READ is not skipped: the marker's place follows layout (UI scale, a strip measured
+     * before it settled), and nothing else here would notice it moving.
+     */
+    const left = `${itemRect.left - barRect.left}px`;
+    const width = `${itemRect.width}px`;
+    const placement = `${left} ${width}`;
+    if (placedAt.get(indicator) !== placement) {
+        indicator.style.left = left;
+        indicator.style.width = width;
+        placedAt.set(indicator, placement);
+    }
 }
 
 function paintSelection(bar) {
@@ -423,11 +484,15 @@ function paintSelection(bar) {
     }
     const section = bar.dataset.najaneSortSection ?? '';
     const active = activeKeyFor(section);
-    for (const item of bar.querySelectorAll(`.${ITEM_CLASS}`)) {
-        const selected = item.dataset.najaneSortKey === active;
-        item.classList.toggle(ACTIVE_CLASS, selected);
-        item.classList.toggle('text-secondary', selected);
-        item.classList.toggle('text-accent-1', !selected);
+    // The items are this module's own, so their classes change only when this paints them.
+    if (paintedKey.get(bar) !== active) {
+        for (const item of bar.querySelectorAll(`.${ITEM_CLASS}`)) {
+            const selected = item.dataset.najaneSortKey === active;
+            item.classList.toggle(ACTIVE_CLASS, selected);
+            item.classList.toggle('text-secondary', selected);
+            item.classList.toggle('text-accent-1', !selected);
+        }
+        paintedKey.set(bar, active);
     }
     positionIndicator(bar);
 }
@@ -459,6 +524,9 @@ function buildStrip(section) {
         `${BAR_CLASS} flex flex-row items-stretch relative uppercase font-title `
         + 'text-base text-accent-2 tracking-150 px-4',
     );
+    const scope = `${TOOLTIP_SCOPE}:strip:${++stripSerial}`;
+    bar.dataset.najaneTooltipScope = scope;
+    liveBars.add(bar);
 
     // The three pieces of the game's own bar: the ground, and an end cap at either side.
     appendAll(
@@ -478,10 +546,9 @@ function buildStrip(section) {
         renderIcon(item, tab);
         bindActivatable(item, () => pick(section, tab.key));
 
-/** The game's framed tooltip, as on the Resources tab buttons: a titled heading over a card. */
         const mount = makeElement('div', `${ITEM_CLASS}-mount`);
         appendWithFramedTooltip(mount, item, {
-            scope: tooltipScopeFor(section),
+            scope,
             title: tab.title,
             text: tab.tooltip(),
         });
@@ -501,16 +568,31 @@ function buildStrip(section) {
     return host;
 }
 
+/**
+ * A row's strips, looked for among its DIRECT children only - `ensureSortTabs` inserts them nowhere
+ * else, so a row of cards is not walked node by node on every pass.
+ */
+function stripsOf(row) {
+    const strips = [];
+    for (const child of row?.children ?? []) {
+        if (child.classList.contains(SORT_CLASS)) {
+            strips.push(child);
+        }
+    }
+    return strips;
+}
+
 /** Gives a section its strip, or brings the one it has up to date. */
 export function ensureSortTabs(row, section) {
-    const existing = row.querySelector(`.${SORT_CLASS}`);
+    const first = row.firstElementChild;
+    const existing = first?.classList.contains(SORT_CLASS) ? first : stripsOf(row)[0];
     const wanted = offeredTabs(section).map((tab) => tab.key).join(',');
     if (existing) {
         const bar = existing.querySelector(`.${BAR_CLASS}`);
-    // Rebuilt when the row has been reused for the other section.
+        // Rebuilt when the row has been reused for the other section.
         if (bar?.dataset.najaneSortSection !== section || bar?.dataset.najaneSortTabs !== wanted) {
             // The frames are anchored to the tabs about to be discarded.
-            disposeFramedTooltips(tooltipScopeFor(bar?.dataset.najaneSortSection ?? section));
+            releaseStrip(bar);
             existing.remove();
         } else {
             if (existing !== row.firstChild) {
@@ -521,10 +603,16 @@ export function ensureSortTabs(row, section) {
             return;
         }
     }
+    releaseDiscardedStrips(row);
     row.insertBefore(buildStrip(section), row.firstChild ?? null);
 }
 
 export function removeSortTabs() {
+    // ⚠️ Tooltips first, and every strip built this visit - a frame outliving its anchor draws in
+    // the top-left corner, and a bar left in the set would hold the closed tab's DOM.
+    for (const bar of Array.from(liveBars)) {
+        releaseStrip(bar);
+    }
     document.querySelectorAll(`.${SORT_CLASS}`).forEach((strip) => strip.remove());
 }
 
@@ -532,16 +620,11 @@ export function removeSortTabs() {
  * The same, for ONE row - a section that should never have a strip at all.
  *
  * ⚠️ Its tooltips go with it. A framed tooltip left mounted around a discarded element floats to
- * the top-left corner of the screen; the strip's own teardown is the only thing that knows the
- * scope each of its tabs was built under.
+ * the top-left corner of the screen; the scope its tabs were built under is stamped on the BAR.
  */
 export function removeSortTabsFrom(row) {
-    for (const strip of row?.querySelectorAll(`.${SORT_CLASS}`) ?? []) {
-        // ⚠️ The section is stamped on the BAR, not on the strip - see `ensureSortTabs`.
-        const section = strip.querySelector(`.${BAR_CLASS}`)?.dataset.najaneSortSection;
-        if (section) {
-            disposeFramedTooltips(tooltipScopeFor(section));
-        }
+    for (const strip of stripsOf(row)) {
+        releaseStrip(strip.querySelector(`.${BAR_CLASS}`));
         strip.remove();
     }
 }

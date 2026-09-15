@@ -4,6 +4,28 @@ One bullet per change. Newest first.
 
 [hr][/hr]
 
+[h2]1.18[/h2]
+
+[list]
+[*][b]Lighter on the game, above all during AI turns.[/b] This version is about performance: the mod asks the game fewer questions, repeats less work and lets go of what it no longer needs. What it decides and shows is meant to stay exactly the same.
+[*][b]Automatic assignment and Hands off ignore other players.[/b] Another empire's new settlement, resource slots or notifications no longer wake them up while the AI takes its turn.
+[*][b]A full empire costs nothing to wait on.[/b] With automatic assignment on and every settlement full, a resource waiting for a slot no longer recalculates your whole empire every 15 seconds.
+[*][b]Assigning resources is cheaper.[/b] Assign All, Reassign All and automatic assignment make fewer calls into the game per resource, and the Resource Allocation button on the HUD is re-checked once the run is over instead of after every resource placed.
+[*][b]Treasure Convoys sailing home cost less at the start of each turn.[/b]
+[*][b]The Trade Routes tab opens, redraws and closes with less work.[/b] Its setup and cleanup run once instead of once per route card, sorting and filtering score each route once, and every redraw asks the game less.
+[*][b]The Commerce screen opens lighter with many settlements.[/b] A settlement's priority menu is built the first time you open it, and the Empire and Factory tabs prepare a resource's tooltip the first time you hover it.
+[*][b]No more tooltips left behind in memory[/b] after collapsing and reopening a section, while the GDP figure updates during Assign All, or after closing the screen.
+[*][b]Holding Shift to preview resources does less work per frame,[/b] and padlocks switched off in the options cost nothing while the Resources tab is open.
+[*][b]Queued trade actions buy their Merchant as soon as you can afford one,[/b] even if you never open the Commerce screen in between. They used to go by the prices from the last time the tab was open.
+[*][b]Fixed: the "one trade slot away" group lost its header[/b] after you sent or queued a Merchant, or when you came back to the tab.
+[*][b]Fixed: a queued request on a card held back by the trade limit could leave that card with no buttons at all.[/b]
+[*][b]Fixed: the buy buttons could mix up two foreign settlements that share an internal number,[/b] naming the wrong one to buy from.
+[*][b]Fixed: the GDP breakdown counted resources from a city you had since captured as imports.[/b]
+[*][b]Fixed: trade route names were not shortened before the leader portrait[/b] while the "one trade slot away" group was collapsed or filtered out.
+[/list]
+
+[hr][/hr]
+
 [h2]1.17[/h2]
 
 [list]

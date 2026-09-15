@@ -11,8 +11,7 @@
  * replacement that reads it.
  */
 
-/** The `Tab.Item` names in screen/factory-tab.js; the request has to spell one of them. */
-export const TAB_RESOURCES = 'Resources';
+/** A `Tab.Item` name in screen/factory-tab.js; the request has to spell one of them. */
 export const TAB_TRADE = 'Trade';
 
 let requested = null;

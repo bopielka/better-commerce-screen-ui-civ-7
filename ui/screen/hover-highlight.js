@@ -5,7 +5,7 @@
  * ⚠️ Recomputed on a frame, not on every mousemove, and skipped entirely when Shift is up and
  * nothing is marked: this is a global `mousemove` listener.
  */
-import { findAvailableResourceAtPoint, findSlottedResourceAtPoint } from '../model/screen-model.js';
+import { findResourceAtPoint } from '../model/screen-model.js';
 import { isShiftHeld } from '../engine/shift.js';
 import { warn } from '../support/diagnostics.js';
 import { ensureStyle } from '../support/dom.js';
@@ -26,17 +26,21 @@ const STYLE = `
 let mouseX = 0;
 let mouseY = 0;
 let frame = null;
-let marked = false;
 let active = false;
 
+/**
+ * Every element this module put the class on and has not taken it off again.
+ * ⚠️ Only a record of OUR writes, never trusted as the state: every recompute re-derives the set
+ * and re-adds the class wherever the screen's own redraw took it off. Recomputes run per frame of
+ * Shift-hover, so there is no document-wide query and no write to a mark that has not changed.
+ */
+let markedElements = [];
+
 function clearMarks() {
-    if (!marked) {
-        return;
-    }
-    marked = false;
-    for (const element of document.querySelectorAll(`.${MARK_CLASS}`)) {
+    for (const element of markedElements) {
         element.classList.remove(MARK_CLASS);
     }
+    markedElements = [];
 }
 
 /** Does the screen already enlarge this slot itself? Marking it too multiplies the transforms. */
@@ -53,16 +57,16 @@ function recompute() {
 
     // A settlement card and the unassigned pool never overlap, so whichever answers
     // is the group the cursor is in.
-    const hit = findSlottedResourceAtPoint(mouseX, mouseY) ?? findAvailableResourceAtPoint(mouseX, mouseY);
+    const hit = findResourceAtPoint(mouseX, mouseY);
     if (!hit) {
         clearMarks();
         return;
     }
 
-    clearMarks();
     const { entries, resource: hovered, slotElements, slotIndex } = hit;
     const kind = hovered.resourceType;
 
+    const next = [];
     entries.forEach((resource, index) => {
         if (resource.resourceType !== kind) {
             return;
@@ -75,9 +79,21 @@ function recompute() {
             // (1.25 x 1.25) and leave it visibly bigger than its own kind.
             return;
         }
-        element.classList.add(MARK_CLASS);
-        marked = true;
+        next.push(element);
     });
+
+    const keep = new Set(next);
+    for (const element of markedElements) {
+        if (!keep.has(element)) {
+            element.classList.remove(MARK_CLASS);
+        }
+    }
+    for (const element of next) {
+        if (!element.classList.contains(MARK_CLASS)) {
+            element.classList.add(MARK_CLASS);
+        }
+    }
+    markedElements = next;
 }
 
 function scheduleRecompute() {
@@ -91,7 +107,7 @@ function scheduleRecompute() {
         return;
     }
     // Nothing is marked and Shift is up: there is no work to do and no state to fix.
-    if (!isShiftHeld() && !marked) {
+    if (markedElements.length === 0 && !isShiftHeld()) {
         return;
     }
     frame = requestAnimationFrame(() => {
@@ -144,8 +160,7 @@ export function stopHoverHighlight() {
     document.getElementById(STYLE_ID)?.remove();
 }
 
-/** The DOM is rebuilt after an unassign; whatever was marked is gone with it. */
+/** The DOM is rebuilt after an unassign; the next recompute marks the kin that are left. */
 export function refreshHighlight() {
-    marked = false;
     scheduleRecompute();
 }

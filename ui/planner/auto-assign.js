@@ -34,13 +34,12 @@ import CommerceOptions, {
 import { log, warn } from '../support/diagnostics.js';
 
 /**
- * Raised for EVERY player, several times a turn each, and there are hundreds in a late game.
- * They carry a `location`, so the plot is asked who owns it - the check
- * `panel-production-chooser.ts` makes on `ConstructibleAddedToMap`.
- *
- * ⚠️ The rest of the list below is deliberately NOT filtered. `CityTransfered` settles it: a
- * settlement changing hands is exactly when the owner on the payload is the ambiguous part, and
- * they are rare enough that leaving them alone is free.
+ * Raised for EVERY player, several times a turn each, and there are hundreds in a late game, so
+ * everybody else's are dropped by the shared dispatcher before they cost a debounce and four
+ * board walks each.
+ * ⚠️ The three settlement events carry the owner the game's own handlers filter on:
+ * `ResourceCapChanged` its `cityID` (commerce-screen-model), `CityAddedToMap` and
+ * `PlayerSettlementCapChanged` their `player` (panel-yield-banner).
  */
 const PER_PLAYER_TRIGGER_EVENTS = [
     'ConstructibleBuildCompleted', // a tile improved onto a resource - or a building with slots
@@ -50,17 +49,21 @@ const PER_PLAYER_TRIGGER_EVENTS = [
      */
     'ConstructibleAddedToMap',
     'ConstructibleChanged',
+    'ResourceCapChanged',
+    'CityAddedToMap',
+    'PlayerSettlementCapChanged',
 ];
 
+/**
+ * ⚠️ Deliberately NOT filtered. A settlement changing hands is exactly when the owner on the
+ * payload is the ambiguous part, and another leader's route can deliver imports to us.
+ */
 const TRIGGER_EVENTS = [
     'TradeRouteAddedToMap', // a new route brings its payload
     'TradeRouteChanged',
-    'ResourceCapChanged',
     'WonderCompleted', // the Colossus and friends carry resource slots
     'CityTransfered', // a settlement changing hands brings its resources with it
     'ConqueredSettlementIntegrated',
-    'CityAddedToMap',
-    'PlayerSettlementCapChanged',
     'LocalPlayerTurnBegin', // catch-all
 ];
 
@@ -324,7 +327,11 @@ function scheduleCheck(trigger, quiet = false, isSweep = false) {
     if (!placesResourcesAutomatically()) {
         return;
     }
-    clearLateArrivalChecks();
+    // ⚠️ Not for a sweep: it arms no retries of its own, so clearing here would cancel the
+    // pending retries of the real trigger before it.
+    if (!isSweep) {
+        clearLateArrivalChecks();
+    }
     // A real trigger supersedes whatever we were waiting to retry.
     clearBlockedRetry();
     lastTriggerAt = Date.now();
@@ -399,7 +406,6 @@ function attachWatchers() {
     if (subscriptions.length > 0 || sweepTimer !== null) {
         return;
     }
-    subscriptions = [];
     for (const name of PER_PLAYER_TRIGGER_EVENTS) {
         const handle = onLocalPlayerEvent(name, () => scheduleCheck(name));
         if (handle) {

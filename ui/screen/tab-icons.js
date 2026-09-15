@@ -35,6 +35,12 @@ const INDICATOR_SELECTOR = '.img-tab-selection-indicator';
 const SELECTED_ITEM_SELECTOR = `${TAB_ITEM_SELECTOR}.text-secondary`;
 
 /**
+ * ⚠️ One pending realignment however many callers ask: each extra frame read two rects after the
+ * previous one's writes, in the same frame, for the same answer.
+ */
+let realignFrame = null;
+
+/**
  * Puts the underline back under the tab it belongs to, after the icons have changed the widths.
  *
  * ⚠️ On the NEXT FRAME: the icon has only just been appended, so the layout the widths come from
@@ -44,7 +50,11 @@ const SELECTED_ITEM_SELECTOR = `${TAB_ITEM_SELECTOR}.text-secondary`;
  * simply overwrites these with the same answer. Nothing is left fighting.
  */
 function realignIndicator() {
-    requestAnimationFrame(() => {
+    if (realignFrame !== null) {
+        return;
+    }
+    realignFrame = requestAnimationFrame(() => {
+        realignFrame = null;
         try {
             const list = document.querySelector(TAB_LIST_SELECTOR);
             const indicator = list?.querySelector(INDICATOR_SELECTOR);
@@ -152,7 +162,6 @@ let observer = null;
 /** Live only while waiting for the tab strip to be rendered; see startTabIcons. */
 let unwatchBootstrap = null;
 let observedList = null;
-let styleElement = null;
 let applying = false;
 
 const TEXT_NODE = 3;
@@ -179,6 +188,7 @@ function stripLabel(item) {
     return label.trim();
 }
 
+/** @returns whether an icon was put in - the only change that moves the tabs' widths. */
 function applyIcons() {
     const list = document.querySelector(TAB_LIST_SELECTOR);
     if (!list) {
@@ -189,8 +199,9 @@ function applyIcons() {
         return false;
     }
     const icons = tabIcons();
-    const tooltips = tabTooltips();
-    const descriptions = tabDescriptions();
+    let tooltips = null;
+    let descriptions = null;
+    let appended = false;
 
     items.forEach((item, index) => {
         const icon = icons[index];
@@ -200,19 +211,24 @@ function applyIcons() {
             return;
         }
 
-        // The label is taken out either way - the icon replaces it - but what the tooltip
-        // then says is ours, except where the tab's own name already says it best.
-        const label = softenCaps(stripLabel(item));
+        // The label is taken out either way - the icon replaces it.
+        const stripped = stripLabel(item);
+        if (item.querySelector(`.${ICON_CLASS}`)) {
+            // ⚠️ Already ours, so its aria-label was written when the icon went in and the label
+            // was a stray that came back. Nothing is composed: this runs on every strip mutation.
+            return;
+        }
+
+        // What the tooltip says is ours, except where the tab's own name already says it best.
+        tooltips ??= tabTooltips();
+        descriptions ??= tabDescriptions();
+        const label = softenCaps(stripped);
         const key = tooltips[index];
         const tooltip = key ? Locale.compose(key) : label;
         if (tooltip) {
             // ⚠️ No `data-tooltip-content` any more - the framed tooltip below replaces it, and
             // leaving this would draw a second, plain tooltip alongside the frame.
             item.setAttribute('aria-label', tooltip);
-        }
-        if (item.querySelector(`.${ICON_CLASS}`)) {
-            // Already ours; the label above was a stray that came back.
-            return;
         }
 
         const iconElement = makeElement('div', ICON_CLASS);
@@ -232,9 +248,10 @@ function applyIcons() {
         });
         item.appendChild(mount);
         item.classList.add(ICONIFIED_CLASS);
+        appended = true;
     });
 
-    return true;
+    return appended;
 }
 
 function run() {
@@ -255,10 +272,11 @@ function run() {
 
 /**
  * ⚠️ Deliberately has no counterpart in the tab's cleanup; see the header. The watcher is attached
- * to the strip itself, so closing the screen discards it and reopening re-attaches.
+ * to the strip itself, so reopening the screen re-attaches; the screen's own cleanup lets go of the
+ * closed one through `releaseTabIcons`.
  */
 export function startTabIcons() {
-    styleElement = ensureStyle(STYLE_ID, STYLE);
+    ensureStyle(STYLE_ID, STYLE);
 
     const list = document.querySelector(TAB_LIST_SELECTOR);
     if (!list) {
@@ -303,13 +321,36 @@ export function startTabIcons() {
     // ⚠️ Every time, not only on the first pass: switching tabs re-renders the items, and the
     // observer below re-applies the icons - which moves the widths again.
     realignIndicator();
-    // Switching tabs re-renders the items, which drops our icon - so keep watching.
+    // Switching tabs re-renders the items, which drops our icon - so keep watching. Realigned only
+    // when an icon went back in, the one change here that moves the widths.
     observer = new MutationObserver(() => {
         if (run()) {
             realignIndicator();
         }
     });
     observer.observe(list, { childList: true, subtree: true });
+}
+
+/**
+ * Lets go of the strip of a screen that has CLOSED: its watcher, and the tooltip roots built for its
+ * icons, which live outside Solid's tree and held the whole closed screen until the next opening.
+ *
+ * ⚠️ Only a strip already OUT OF THE DOCUMENT, and only from the SCREEN's cleanup (factory-tab.js),
+ * never a tab's - nothing live is stripped. A screen reopened first has made its own strip
+ * `observedList` and is left alone. `=== false` keeps everything on an engine without `isConnected`.
+ */
+export function releaseTabIcons() {
+    if (unwatchBootstrap && !document.querySelector(COMMERCE_SCREEN_SELECTOR)) {
+        unwatchBootstrap();
+        unwatchBootstrap = null;
+    }
+    if (!observedList || observedList.isConnected !== false) {
+        return;
+    }
+    observer?.disconnect();
+    observer = null;
+    observedList = null;
+    disposeFramedTooltips(TOOLTIP_SCOPE);
 }
 
 /** ⚠️ No stopTabIcons(): one existed, was never called, and would have stripped a live strip. */

@@ -12,7 +12,7 @@
  * for the single city name the game puts there, not for what these tabs know. Hence the extra
  * cards below it.
  */
-import { createComponent } from '/core/vendor/solid-js/dist/solid.js';
+import { createComponent, untrack } from '/core/vendor/solid-js/dist/solid.js';
 import { insert } from '/core/vendor/solid-js/web/dist/web.js';
 import { CardFrame } from '/core/ui-next/components/card-frame.js';
 import { Divider } from '/core/ui-next/components/divider.js';
@@ -133,7 +133,36 @@ function leaderCard(group) {
     });
 }
 
-/** Puts `trigger` inside the tooltip and appends the result to `parent`. */
+/**
+ * The leader cards, worked out on the first hover and kept.
+ * ⚠️ `Tooltip.Content` builds its children only while the tooltip is active, again on every hover,
+ * and most cards are never hovered. Untracked: that runs inside a render effect, and the Empire
+ * tab's origin data is a Solid store.
+ */
+function lazyGroups(groups) {
+    if (typeof groups !== 'function') {
+        return () => groups;
+    }
+    let resolved = null;
+    return () => {
+        if (resolved === null) {
+            try {
+                resolved = untrack(groups) ?? [];
+            } catch (error) {
+                warn(`could not list where a resource came from: ${error}`);
+                resolved = [];
+            }
+        }
+        return resolved;
+    };
+}
+
+/**
+ * Puts `trigger` inside the tooltip and appends the result to `parent`.
+ * @param fallbackText the plain text, or a function returning it - asked only if the component
+ *   will not mount.
+ * @param groups the leader cards, or a function returning them - asked on the first hover.
+ */
 export function appendWithResourceTooltip(parent, trigger, props, fallbackText, groups = []) {
     // ⚠️ The tile still goes in; only the tooltip is declined - and the plain fallback below is
     // declined with it, so this means "no tooltip", not "the worse of the two".
@@ -143,6 +172,7 @@ export function appendWithResourceTooltip(parent, trigger, props, fallbackText, 
     }
     if (props) {
         try {
+            const leaderGroups = lazyGroups(groups);
             /*
              * ⚠️ Every nested component is created INSIDE its parent's `children` getter, never
              * hoisted into a variable. That is what JSX nesting compiles to, and the difference is
@@ -171,7 +201,7 @@ export function appendWithResourceTooltip(parent, trigger, props, fallbackText, 
                                             // A group with no leaderId is one about us -
                                             // "in these settlements" - so it gets no
                                             // portrait.
-                                            ...groups.map(leaderCard),
+                                            ...leaderGroups().map(leaderCard),
                                         ];
                                     },
                                 });
@@ -189,6 +219,6 @@ export function appendWithResourceTooltip(parent, trigger, props, fallbackText, 
             warn(`the game's resource tooltip would not mount, using plain text: ${error}`);
         }
     }
-    setTooltip(trigger, fallbackText);
+    setTooltip(trigger, typeof fallbackText === 'function' ? fallbackText() : fallbackText);
     parent.appendChild(trigger);
 }

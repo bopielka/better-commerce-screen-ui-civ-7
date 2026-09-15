@@ -14,21 +14,30 @@
  * ⚠️ In engine/, not screen/, because engine/unassign.js must obey it. The padlock itself is
  * screen/resource-locks-ui.js.
  */
-import { onLocalPlayerEvent } from './events.js';
+import { onEngineEvent, onLocalPlayerEvent } from './events.js';
+import { currentGameKey } from './mod-storage.js';
+import { storedSwitch } from './stored-setting.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
 
-// ⚠️ Three states, not two - same zero trap as factory-first-setting.js. The default is on.
-const ALLOWED_OPTION = `${MOD_ID}.resourceLockingAllowed`;
-const STORED_OFF = 1;
-const STORED_ON = 2;
+/**
+ * Raised when a lock changes, so anything drawing one repaints without a DOM mutation.
+ * ⚠️ Declared above `allowedSetting`, which is handed it at module evaluation.
+ */
+export const ResourceLocksChangedEventName = 'najane-commerce-resource-locks-changed';
 
-// ⚠️ Offset the same way: an option never written reads back as 0.
+// ⚠️ The option name is the compatibility surface: players' stored choices live under it.
+const allowedSetting = storedSwitch({
+    option: `${MOD_ID}.resourceLockingAllowed`,
+    defaultValue: true,
+    label: 'resource locking allowed',
+    changedEventName: ResourceLocksChangedEventName,
+});
+
+// ⚠️ Offset the same way as engine/stored-setting.js: an option never written reads back as 0.
 const STORED_UNLOCKED = 1;
 const STORED_LOCKED = 2;
-
-let allowed = null;
 
 /**
  * Whether the padlocks exist at all.
@@ -36,32 +45,12 @@ let allowed = null;
  * either state.
  */
 export function isResourceLockingAllowed() {
-    if (allowed === null) {
-        try {
-            const stored = Number(UI.getOption('user', 'Mod', ALLOWED_OPTION));
-            allowed = stored === STORED_OFF ? false : true;
-        } catch (error) {
-            warn(`could not read the resource-locking option: ${error}`);
-            allowed = true;
-        }
-    }
-    return allowed;
+    return allowedSetting.isOn();
 }
 
 export function setResourceLockingAllowed(value) {
-    allowed = !!value;
-    try {
-        UI.setOption('user', 'Mod', ALLOWED_OPTION, allowed ? STORED_ON : STORED_OFF);
-        Configuration.getUser().saveCheckpoint();
-    } catch (error) {
-        warn(`could not save the resource-locking option: ${error}`);
-    }
-    log(`resource locking: ${allowed ? 'allowed' : 'off'}`);
-    announce();
+    allowedSetting.set(value);
 }
-
-/** Raised when a lock changes, so anything drawing one repaints without a DOM mutation. */
-export const ResourceLocksChangedEventName = 'najane-commerce-resource-locks-changed';
 
 /**
  * ⚠️ Keyed by SETTLEMENT AND RESOURCE together, not by either alone: locking a resource TYPE would
@@ -69,23 +58,12 @@ export const ResourceLocksChangedEventName = 'najane-commerce-resource-locks-cha
  */
 const locked = new Set();
 
-/** Keys already looked up in storage this session, so each is read from disk at most once. */
+/**
+ * Keys already looked up in storage this session, so each is read from disk at most once.
+ * ⚠️ Emptied with `locked` on `GameStarted` (see startResourceLockUpkeep): settlement ids and plot
+ * indices are recycled between games.
+ */
 const known = new Set();
-
-let gameKey = null;
-
-function currentGameKey() {
-    if (gameKey !== null) {
-        return gameKey;
-    }
-    try {
-        const seed = Configuration.getGame()?.gameSeed;
-        gameKey = seed === undefined || seed === null ? null : String(seed);
-    } catch (error) {
-        gameKey = null;
-    }
-    return gameKey;
-}
 
 function lockKey(cityID, resourceValue) {
     const city = cityID?.id ?? cityID;
@@ -100,15 +78,17 @@ function optionName(key) {
  * ⚠️ Read through to storage ONCE per key, then answered from memory. This is asked for every
  * padlock on every pass of the injector, and it is also what unassign.js asks about every assigned
  * resource in the empire.
+ *
+ * ⚠️ NOT remembered before the seed is readable: that "unlocked" would stand for the session.
  */
 function readLock(key) {
     if (known.has(key)) {
         return locked.has(key);
     }
-    known.add(key);
     if (currentGameKey() === null) {
         return false;
     }
+    known.add(key);
     try {
         if (Number(UI.getOption('user', 'Mod', optionName(key))) === STORED_LOCKED) {
             locked.add(key);
@@ -158,7 +138,7 @@ export function toggleResourceLock(cityID, resourceValue) {
 }
 
 /** Takes the lock off a placement that no longer exists. */
-export function clearResourceLock(cityID, resourceValue) {
+function clearResourceLock(cityID, resourceValue) {
     const key = lockKey(cityID, resourceValue);
     // ⚠️ Only when it was actually locked. This runs on every unassignment in the game,
     // including the hundreds a "Reassign all" fires, and each write is a saveCheckpoint.
@@ -200,5 +180,11 @@ export function startResourceLockUpkeep() {
             return;
         }
         clearResourceLock(city, GameplayMap.getIndexFromLocation(location));
+    });
+    // ⚠️ `GameStarted` only, not `GameAgeEnded`: a lock toggled while storage was unreadable
+    // lives in memory alone and would be lost to a re-read.
+    onEngineEvent('GameStarted', () => {
+        known.clear();
+        locked.clear();
     });
 }

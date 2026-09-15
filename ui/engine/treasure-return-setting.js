@@ -9,14 +9,11 @@ import { storedSwitch } from './stored-setting.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
 
-export const TreasureAutoReturnChangedEventName = 'najane-commerce-treasure-auto-return-changed';
-
 // Never touched: on. The switch is there to opt out, not in.
 const setting = storedSwitch({
     option: `${MOD_ID}.treasureAutoReturnChoice`,
     defaultValue: true,
     label: 'treasure convoys return by themselves',
-    changedEventName: TreasureAutoReturnChangedEventName,
 });
 
 export function isTreasureAutoReturnEnabled() {

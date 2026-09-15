@@ -15,7 +15,7 @@
 import { ConstructibleHasTagType } from '/base-standard/ui/utilities/utilities-tags.js';
 
 import { isImportedResource, resourceClassOf } from './facts.js';
-import { buildSettlements } from '../model/headless-model.js';
+import { heldResourceType } from '../engine/resource-types.js';
 import { onGameDataStale } from '../support/game-data.js';
 import { warn } from '../support/diagnostics.js';
 
@@ -56,6 +56,7 @@ let nodesByTracker = null;
 
 onGameDataStale(() => {
     nodesByTracker = null;
+    ageType = undefined;
 });
 
 /**
@@ -155,7 +156,11 @@ export function trackerRequirement(scoringId) {
     return nodes.map((node) => node.name).join(', ');
 }
 
-function rateFor(scoringId) {
+/**
+ * What one unit of a tracker is worth in the scoring table. ⚠️ The only reader of that table:
+ * `ScoringId` is its primary key, so one memoised map answers every tracker.
+ */
+export function scoringRate(scoringId) {
     if (!rates) {
         rates = new Map();
         try {
@@ -179,8 +184,8 @@ function mergeRequirements(first, second) {
 
 /**
  * The `AGE_*` type of the age being played, for comparing against a building's `Age`.
- * ⚠️ Memoised on the same reasoning as `isFactoryAge` in engine/age.js: the age cannot change
- * without the UI being reloaded, and `GameInfo.Ages.lookup` is a database call.
+ * ⚠️ Memoised because `GameInfo.Ages.lookup` is a database call, and cleared with the rest of the
+ * age's data above - as `isFactoryAge` in engine/age.js is.
  */
 let ageType;
 
@@ -264,12 +269,29 @@ export function gdpPerTurn() {
         goldBuildings: trackerRequirement(SCORING.goldBuildings),
     };
     // A locked tracker pays nothing, so it must not be counted as if it did.
-    const paying = (key) => (locked[key] ? 0 : rateFor(SCORING[key]));
+    const paying = (key) => (locked[key] ? 0 : scoringRate(SCORING[key]));
 
+    let cities = [];
     try {
-        for (const settlement of buildSettlements()) {
-            const isTown = !!settlement.settlementNameData?.isTown;
-            for (const resource of settlement.slottedResources ?? []) {
+        cities = Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? [];
+    } catch (error) {
+        warn(`could not read the settlements for the GDP total: ${error}`);
+    }
+
+    /*
+     * ⚠️ Read off the engine, NOT through `buildSettlements()`: only the town flag and the slotted
+     * types count here, and the planner's board also reads caps, yields and a building walk per
+     * settlement. Same settlements it would build - the ones with a `Resources` component.
+     */
+    try {
+        for (const city of cities) {
+            const assigned = city.Resources?.getAssignedResources();
+            if (!assigned) {
+                continue;
+            }
+            const isTown = !!city.isTown;
+            for (const held of assigned) {
+                const resource = { resourceValue: held.value, resourceType: heldResourceType(held) };
                 const className = resourceClassOf(resource);
                 if (className === FACTORY_CLASS) {
                     fromFactories += paying('factory');
@@ -296,13 +318,18 @@ export function gdpPerTurn() {
         warn(`could not total the GDP from assigned resources: ${error}`);
     }
 
-    try {
-        const ageType = currentAgeType();
-        for (const city of Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? []) {
-            fromBuildings += goldBuildings(city, ageType) * paying('goldBuildings');
+    // ⚠️ The walk is skipped while the tracker pays nothing - all of Antiquity before Currency -
+    // since every count would be multiplied by zero.
+    const goldRate = paying('goldBuildings');
+    if (goldRate !== 0) {
+        try {
+            const ageType = currentAgeType();
+            for (const city of cities) {
+                fromBuildings += goldBuildings(city, ageType) * goldRate;
+            }
+        } catch (error) {
+            warn(`could not total the GDP from gold buildings: ${error}`);
         }
-    } catch (error) {
-        warn(`could not total the GDP from gold buildings: ${error}`);
     }
 
     return {

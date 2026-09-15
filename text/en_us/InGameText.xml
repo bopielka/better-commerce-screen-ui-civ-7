@@ -505,9 +505,6 @@
             <Text>Improving trade relations costs {1_Cost} Influence and you have {2_Balance}.</Text>
         </Row>
 
-        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE">
-            <Text>Click to propose 'Improve Trade Relations' with {1_Leader} for {2_Cost} Influence, raising your Trade Route limit with them.</Text>
-        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN">
             <Text>Click to open diplomacy with {1_Leader} instead.</Text>
         </Row>
@@ -541,9 +538,6 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP">
             <Text>Queued for the start of the next turn: raise the limit and send a Merchant to {1_City}. Click to cancel.</Text>
-        </Row>
-        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY">
-            <Text>{1_Count} Trade Route limits raised automatically - the Merchants already sent can now open their routes.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE">
             <Text>Trade Route limit with {1_Leader} raised automatically - the Merchant sent to {2_City} can now open the route.</Text>

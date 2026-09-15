@@ -67,7 +67,7 @@ export const RELATIONSHIP_FOOTER_STYLE = `
 .${CLASS}__row {
     display: flex;
     flex-direction: row;
-    align-items: baseline;
+    /* No align-items: this renderer rejects "baseline" (UI.log: Unable to parse declaration). */
     justify-content: space-between;
     width: 100%;
 }
@@ -138,9 +138,17 @@ function decorateFrame(frame) {
 }
 
 let observer = null;
+let tooltipRoot = null;
 
+/**
+ * ⚠️ Every tooltip on this tab lands under the root, framed buttons included, so this wakes on each
+ * one shown or hidden: nothing to do without a hovered portrait, and the query stays in the root.
+ */
 function pass() {
-    for (const frame of document.querySelectorAll(FRAME_SELECTOR)) {
+    if (hoveredLeaderId === null || !tooltipRoot) {
+        return;
+    }
+    for (const frame of tooltipRoot.querySelectorAll(FRAME_SELECTOR)) {
         try {
             decorateFrame(frame);
         } catch (error) {
@@ -158,6 +166,7 @@ export function startRelationshipFooter() {
         // No tooltip layer means no tooltip to decorate; nothing to warn about.
         return;
     }
+    tooltipRoot = root;
     observer = new MutationObserver(pass);
     observer.observe(root, { childList: true, subtree: true });
     // The tooltip may already be open when the tab arrives.
@@ -169,6 +178,7 @@ export function startRelationshipFooter() {
 export function stopRelationshipFooter() {
     observer?.disconnect();
     observer = null;
+    tooltipRoot = null;
     hoveredLeaderId = null;
     document.querySelectorAll(`.${CLASS}`).forEach((block) => block.remove());
 }

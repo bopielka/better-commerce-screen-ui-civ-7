@@ -17,8 +17,6 @@ import { disposeFramedTooltips } from './framed-tooltip.js';
 import { appendAll, ensureStyle, makeElement } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
 
-/** The tab strip; its parent is the positioned row this tab hangs its "?" in. */
-
 const STYLE_ID = 'najane-treasure-tab-style';
 
 /** Holds the "?" and the auto-return switch together at the left end of the tab row. */

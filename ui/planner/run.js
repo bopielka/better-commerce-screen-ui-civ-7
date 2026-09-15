@@ -6,7 +6,7 @@
  */
 import { unassignEverySettlement } from '../engine/unassign.js';
 import { buildSettlements } from '../model/headless-model.js';
-import { forgetEligibility, settlementHappiness } from './scoring.js';
+import { settlementHappiness } from './scoring.js';
 import { placeResources } from './place.js';
 import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
 
@@ -14,14 +14,6 @@ let assignmentInProgress = false;
 
 export function isAssignmentInProgress() {
     return assignmentInProgress;
-}
-
-/** Empties everything, then forgets what was remembered about a board that has moved on. */
-async function clearEmpire() {
-    const cleared = await unassignEverySettlement();
-    // Every settlement has room again, so nothing remembered about them still holds.
-    forgetEligibility();
-    return cleared;
 }
 
 /**
@@ -131,7 +123,9 @@ export function reassignAll(model = null, { label = 'reassign all' } = {}) {
     return runExclusively(
         model,
         async () => {
-            const cleared = await clearEmpire();
+            // ⚠️ Nothing the planner remembers is dropped here: its caches are read only inside
+            // `placeResources`, which starts by dropping them all.
+            const cleared = await unassignEverySettlement();
             log(`${label}: ${cleared} unassigned, laying them out again`);
             logHappinessState();
             return placeResources({ label });
@@ -145,7 +139,7 @@ export function unassignAll(model = null) {
     return runExclusively(
         model,
         async () => {
-            const cleared = await clearEmpire();
+            const cleared = await unassignEverySettlement();
             log(`unassign all: ${cleared} released`);
             return cleared;
         },

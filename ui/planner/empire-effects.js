@@ -21,7 +21,6 @@
  * game's own description in its tooltip, so nothing goes missing - it just gets no number.
  */
 import { collectionOf, effectTypeOf, modifierApplies, modifierRequirements, resourceModifiers } from './effects.js';
-import { buildSettlements } from '../model/headless-model.js';
 import { warn } from '../support/diagnostics.js';
 import { onGameDataStale } from '../support/game-data.js';
 
@@ -61,7 +60,8 @@ const NAVAL_SUBDIVISIONS = ['UNIT_CLASS_LIGHT', 'UNIT_CLASS_HEAVY'];
 
 let unitsByClass = null;
 
-// The unit tables are the age's own; see support/game-data.js.
+// ⚠️ Static data, kept across tab visits: the unit tables are the age's own, and this is the only
+// reset they need; see support/game-data.js.
 onGameDataStale(() => {
     unitsByClass = null;
 });
@@ -236,9 +236,12 @@ function isCapital(settlement) {
     }
 }
 
-/** The totals for one resource type. */
-export function empireEffectTotals(resourceType, copies, settlements = null) {
-    const reachable = settlements ?? buildSettlements();
+/**
+ * The totals for one resource type.
+ * @param settlements required; only `cityID` and `settlementNameData.isTown` are read - see
+ *   `buildSettlementRefs` in model/headless-model.js.
+ */
+export function empireEffectTotals(resourceType, copies, settlements) {
     const totals = [];
 
     /** Two modifiers granting the same yield are one line, not two. */
@@ -269,7 +272,7 @@ export function empireEffectTotals(resourceType, copies, settlements = null) {
 
         if ((effect.includes(PER_TYPE_YIELD) || effect.includes(PER_TYPE_PLAYER_YIELD) || effect.includes(PER_COPY_YIELD)) && yieldType) {
         // All three count copies; see the suffix note at the top.
-            const each = amount * settlementsReached(modifierId, reachable);
+            const each = amount * settlementsReached(modifierId, settlements);
             add(`yield:${yieldType}:${active}`, {
                 kind: 'yield',
                 yieldType,
@@ -344,13 +347,4 @@ export function empireEffectTotals(resourceType, copies, settlements = null) {
     });
 
     return totals;
-}
-
-/**
- * Called when the tab is opened, so a fresh reading is taken each time.
- * ⚠️ THE ARMY, and nothing else. The modifier index this file reads through is static schema and
- * is built once for the session; see the note on it in effects.js.
- */
-export function forgetEmpireEffects() {
-    unitsByClass = null;
 }

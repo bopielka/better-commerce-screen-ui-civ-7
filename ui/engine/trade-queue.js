@@ -33,6 +33,7 @@
  */
 import { influenceBalance, proposeTradeRelations, tradeRelationsOffer } from './diplomacy.js';
 import {
+    forgetMerchantOffers,
     goldBalance,
     purchaseAndCollectMerchant,
     purchaseSite,
@@ -66,7 +67,7 @@ export const TradeQueueRanEventName = 'najane-trade-queue-ran';
 /** The merchant is under way; the limit is still waiting on Influence. */
 export const QUEUE_STEP_MERCHANT = 'merchant';
 /** The treaty has been proposed - the request is finished with. */
-export const QUEUE_STEP_TREATY = 'treaty';
+const QUEUE_STEP_TREATY = 'treaty';
 
 /**
  * ⚠️ KEYED BY THE TARGET SETTLEMENT, NOT BY THE LEADER. The request is "send a merchant to THAT
@@ -132,10 +133,21 @@ function write(plotIndex, code) {
     } catch (error) {
         warn(`could not save the queued trade action: ${error}`);
     }
+    // ⚠️ A finished entry is DELETED from the mirror, not written as 0 - same rule and reason as
+    // `writeFallback` in ./merchant-orders.js: every reader treats the two alike.
     writeSection(SECTION, (all) => {
         const game = currentGameKey();
-        all[game] ??= {};
-        all[game][String(plotIndex)] = code;
+        if (code > 0) {
+            all[game] ??= {};
+            all[game][String(plotIndex)] = code;
+            return;
+        }
+        if (all[game]) {
+            delete all[game][String(plotIndex)];
+            if (Object.keys(all[game]).length === 0) {
+                delete all[game];
+            }
+        }
     });
     announce();
 }
@@ -193,7 +205,7 @@ export function queueTradeAction(city) {
  * ⚠️ Synchronous, and that is what makes it safe to call from a click: nothing here awaits the
  * engine, so it cannot interleave with the turn pass.
  */
-export function dispatchSpareMerchantsToQueue() {
+function dispatchSpareMerchantsToQueue() {
     for (const plotIndex of queuedPlots()) {
         if (stepAtPlot(plotIndex) !== STEP_NEEDS_MERCHANT) {
             continue;
@@ -327,7 +339,7 @@ async function runOne(plotIndex) {
      * STEP ONE: get a merchant moving. Nothing about the treaty is asked here - the Influence may
      * be turns away, and every one of those turns is a turn the merchant could have been walking.
      *
-     * ⚠️ `merchantsOrderedTo`, not `merchantsBoundFor`: a merchant that has ARRIVED and is waiting
+     * ⚠️ The ORDER, not whether it is travelling: a merchant that has ARRIVED and is waiting
      * for a trade slot is not on the road any more but is very much already sent, and the
      * difference is a second merchant bought for the same errand.
      */
@@ -411,6 +423,12 @@ async function runQueue() {
         return;
     }
     running = true;
+    /*
+     * ⚠️ The merchant prices are cached for the Commerce screen, and only the screen clears them.
+     * With it closed, the previous pass's answer would stand: one `canBuy: false` (gold short that
+     * turn) kept the entry waiting every turn after, whatever the treasury held.
+     */
+    forgetMerchantOffers();
     try {
         for (const plotIndex of queuedPlots()) {
             try {

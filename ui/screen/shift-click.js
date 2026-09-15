@@ -8,12 +8,7 @@
  * The fix is to do what Activatable would have done, from the native DOM event, and only while
  * Shift is held. Each branch calls the same model method the corresponding Activatable calls.
  */
-import {
-    findAvailableResourceAtPoint,
-    findSettlementAtPoint,
-    findSlottedResourceAtPoint,
-    getCommerceModel,
-} from '../model/screen-model.js';
+import { findResourceAtPoint, findSettlementAtPoint, getCommerceModel } from '../model/screen-model.js';
 import { isShiftHeld } from '../engine/shift.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -52,7 +47,7 @@ function activateAt(x, y) {
 
     // Resources first: they sit inside the settlement card, so the card would swallow
     // a click meant for one of them.
-    const resource = findSlottedResourceAtPoint(x, y)?.resource ?? findAvailableResourceAtPoint(x, y)?.resource;
+    const resource = findResourceAtPoint(x, y)?.resource;
     if (resource) {
         if (!model.isSlottingAvailable) {
             return;

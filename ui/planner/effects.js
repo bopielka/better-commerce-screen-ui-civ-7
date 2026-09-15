@@ -340,7 +340,7 @@ export function collectionOf(modifierId) {
  * transition replaces the modifier tables under these maps - the old age's answers would be kept
  * and handed out, and its objects with them. See support/game-data.js for who calls this.
  */
-export function forgetModifierIndexes() {
+function forgetModifierIndexes() {
     argumentsByResource = null;
     argumentsByModifier = null;
     requirementsByModifier = null;

@@ -24,6 +24,7 @@
  * exists because `UI.getOption` came back null for every read in UI.log on 2026-08-27. Losing what
  * is here must always mean "back to the default", never a broken state.
  */
+import { onGameDataStale } from '../support/game-data.js';
 
 const SHARED_KEY = 'modSettings';
 
@@ -104,18 +105,29 @@ function migrate() {
  * and are recycled between them, so anything filed under one without the seed would be inherited
  * by whatever wore that id in the next game.
  *
- * ⚠️ Not cached here, deliberately: before the seed is readable the answer is null, and
- * remembering that would strand every store in a game loaded mid-session. The callers that want a
- * cache keep their own and clear it on `GameStarted` - engine/merchant-orders.js still has one of
- * its own, predating this.
+ * ⚠️ NULL IS NEVER CACHED: before the seed is readable the answer is null, and remembering that
+ * would strand every store in a game loaded mid-session. A real seed is cached until
+ * support/game-data.js raises (`GameStarted`, `GameAgeEnded`); trade cards and merchant passes ask
+ * per card and per merchant. The entry point subscribes that reset AFTER every other `GameStarted`
+ * listener, so a `GameStarted` handler reading the key synchronously gets the previous game's seed.
  */
+let cachedGameKey = null;
+
+onGameDataStale(() => {
+    cachedGameKey = null;
+});
+
 export function currentGameKey() {
+    if (cachedGameKey !== null) {
+        return cachedGameKey;
+    }
     try {
         const seed = Configuration.getGame()?.gameSeed;
-        return seed === undefined || seed === null ? null : String(seed);
+        cachedGameKey = seed === undefined || seed === null ? null : String(seed);
     } catch (error) {
-        return null;
+        cachedGameKey = null;
     }
+    return cachedGameKey;
 }
 
 /**

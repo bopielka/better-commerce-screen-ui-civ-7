@@ -462,9 +462,6 @@
             <Text>Die Verbesserung der Handelsbeziehungen kostet {1_Cost} Einfluss, und du hast {2_Balance}.</Text>
         </Row>
 
-        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="de_DE">
-            <Text>Klicke, um {1_Leader} die Aktion „Handelsbeziehungen verbessern“ für {2_Cost} Einfluss vorzuschlagen - das erhöht dein Handelsroutenlimit mit ihnen.</Text>
-        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="de_DE">
             <Text>Klicke, um stattdessen die Diplomatie mit {1_Leader} zu öffnen.</Text>
         </Row>
@@ -498,9 +495,6 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="de_DE">
             <Text>Für den Rundenbeginn vorgemerkt: Limit erhöhen und einen Händler nach {1_City} schicken. Klicke zum Abbrechen.</Text>
-        </Row>
-        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="de_DE">
-            <Text>{1_Count} Handelsroutenlimits automatisch erhöht - die bereits entsandten Händler können ihre Routen jetzt eröffnen.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="de_DE">
             <Text>Handelsroutenlimit mit {1_Leader} automatisch erhöht - der nach {2_City} entsandte Händler kann die Route jetzt eröffnen.</Text>

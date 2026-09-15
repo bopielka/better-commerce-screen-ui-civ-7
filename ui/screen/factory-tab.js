@@ -6,7 +6,7 @@
  * data is prepared on its way through. Registered at `existing + 100` so it wins over Resource+
  * whatever the load order, and the original factory is still called.
  */
-import { Show, createComponent, createMemo, mergeProps, onMount } from '/core/vendor/solid-js/dist/solid.js';
+import { Show, createComponent, createMemo, mergeProps, onCleanup, onMount } from '/core/vendor/solid-js/dist/solid.js';
 import { Tab } from '/core/ui-next/components/tab.js';
 import { useAudio } from '/core/ui-next/services/audio-support.js';
 import { ComponentRegistry } from '/core/ui-next/services/component-registry.js';
@@ -24,7 +24,7 @@ import { EmpireResourcesContainer } from './empire-tab.js';
 import { FactoryResourcesContainer } from './factory-resources.js';
 import { prepareTradeTabData } from './trade-routes.js';
 import { takeRequestedTab } from './open-on-tab.js';
-import { startTabIcons } from './tab-icons.js';
+import { releaseTabIcons, startTabIcons } from './tab-icons.js';
 import { TreasureConvoysContainer, withoutHomelandIdlers } from './treasure-tab.js';
 import { COMMERCE_PANEL_CONTEXT } from './close-screen.js';
 import { COMMERCE_SCREEN_SELECTOR } from './screen-parts.js';
@@ -64,6 +64,9 @@ const CommerceScreenWithFactoryTab = (_props) => {
          */
         startTabIcons();
     });
+    // ⚠️ A frame later: Solid's `render` empties the screen's root only after the cleanups have
+    // run, and `releaseTabIcons` lets go of nothing still in the document.
+    onCleanup(() => requestAnimationFrame(() => releaseTabIcons()));
     const handleOnClosing = () => audioTrigger('popup-close');
     const title = createMemo(() => Locale.compose('LOC_COMMERCE_SCREEN_TITLE', civName()));
 

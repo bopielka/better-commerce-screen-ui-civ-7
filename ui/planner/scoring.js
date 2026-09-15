@@ -45,10 +45,9 @@ import {
     resourceYieldEffects,
     resourceYieldTypes,
     scalesWithWarehouses,
-    yieldTypeFromIcon,
 } from './facts.js';
 import { onGameDataStale } from '../support/game-data.js';
-import { DIAGNOSTICS, log } from '../support/diagnostics.js';
+import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
 
 /** Above everything else, including camels: no settlement should sit on negative happiness. */
 const HAPPINESS_RESCUE_BASE = 10000000000;
@@ -66,6 +65,8 @@ const FACTORY_FIRST_SCORE_BASE = 5000000000;
 const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
 
 const CAMEL_SCORE_BASE = 1000000000;
+/** The one kind scored in a FULL settlement; place.js asks the same question before a run. */
+export const CAMEL_RESOURCE_TYPE = 'RESOURCE_CAMELS';
 
 /**
  * "Imports first", when asked for: everything that arrived over a trade route goes into CITIES
@@ -246,23 +247,14 @@ function factoryFirstScore(resource, settlement, factoryStock, scoreContext) {
 }
 
 //#region scoring
+/**
+ * What a settlement currently produces of one yield.
+ * ⚠️ `yieldTotals` is the Map model/headless-model.js builds; every settlement scored here comes
+ * from there. The screen's model carries no such field, which is one more reason placement must
+ * not go through it (place.js).
+ */
 function settlementYieldTotal(settlement, yieldType) {
-    return settlementYieldTotals(settlement).get(yieldType) ?? 0;
-}
-
-/** Every yield this settlement currently produces. */
-function settlementYieldTotals(settlement) {
-    if (settlement.yieldTotals instanceof Map) {
-        return settlement.yieldTotals;
-    }
-    const totals = new Map();
-    (settlement.yieldDeltas ?? []).forEach((delta) => {
-        const yieldType = yieldTypeFromIcon(delta.yieldIconSrc);
-        if (yieldType) {
-            totals.set(yieldType, Number(delta.yieldTotal) || 0);
-        }
-    });
-    return totals;
+    return settlement.yieldTotals.get(yieldType) ?? 0;
 }
 
 /**
@@ -440,31 +432,21 @@ function estimatedTotalBoost(resource, settlement) {
 }
 
 function buildScoreContext(settlements) {
-    const yieldTotalsByCity = new Map();
     const specializedLoadsByCityYield = new Map();
     settlements.forEach((settlement) => {
-        const key = settlementKey(settlement);
         const loads = new Map();
-        yieldTotalsByCity.set(key, settlementYieldTotals(settlement));
         for (const resource of settlement.slottedResources) {
             estimatedYieldBoosts(resource, settlement).forEach((value, yieldType) => {
                 loads.set(yieldType, (loads.get(yieldType) ?? 0) + Math.max(0, value));
             });
         }
-        specializedLoadsByCityYield.set(key, loads);
+        specializedLoadsByCityYield.set(settlementKey(settlement), loads);
     });
-    return { yieldTotalsByCity, specializedLoadsByCityYield };
+    return { specializedLoadsByCityYield };
 }
 
-function specializedYieldLoad(settlement, yieldType, scoreContext = null) {
-    if (scoreContext) {
-        return scoreContext.specializedLoadsByCityYield.get(settlementKey(settlement))?.get(yieldType) ?? 0;
-    }
-    let total = 0;
-    for (const resource of settlement.slottedResources) {
-        total += Math.max(0, estimatedYieldBoosts(resource, settlement).get(yieldType) ?? 0);
-    }
-    return total;
+function specializedYieldLoad(settlement, yieldType, scoreContext) {
+    return scoreContext.specializedLoadsByCityYield.get(settlementKey(settlement))?.get(yieldType) ?? 0;
 }
 
 function positiveYieldBoost(resource, settlement, yieldType) {
@@ -472,8 +454,12 @@ function positiveYieldBoost(resource, settlement, yieldType) {
 }
 
 function settlementResourceCapacity(settlement) {
-    const city = Cities.get(settlement.cityID);
-    const capacity = city?.Resources?.getAssignedResourcesCap();
+    let capacity;
+    try {
+        capacity = Cities.get(settlement.cityID)?.Resources?.getAssignedResourcesCap();
+    } catch (error) {
+        warn(`could not read a settlement's resource capacity: ${error}`);
+    }
     if (capacity !== undefined) {
         return capacity;
     }
@@ -484,7 +470,7 @@ export function assignmentPairKey(resourceValue, cityID) {
     return `${String(resourceValue)}:${cityKey(cityID)}`;
 }
 
-function scorePair(resource, settlement, scoreContext = null) {
+function scorePair(resource, settlement, scoreContext) {
     const bucket = bucketFor(scoresThisPass, settlement);
     const key = resourceKey(resource);
     const cached = bucket.get(key);
@@ -496,11 +482,10 @@ function scorePair(resource, settlement, scoreContext = null) {
     return score;
 }
 
-function computePairScore(resource, settlement, scoreContext = null) {
+function computePairScore(resource, settlement, scoreContext) {
     const affected = affectedYields(resource, settlement);
     const priority = effectivePriority(settlement.cityID, settlement.settlementNameData?.isTown);
-    const cityYieldTotals =
-        scoreContext?.yieldTotalsByCity.get(settlementKey(settlement)) ?? settlementYieldTotals(settlement);
+    const cityYieldTotals = settlement.yieldTotals;
     const yieldTotals = [];
     affected.forEach((yieldType) => {
         if (cityYieldTotals.has(yieldType)) {
@@ -616,8 +601,8 @@ export function startPlacementRun() {
     lastLoggedTargets = '';
     // The board this run scores is not the one the last run left behind.
     clearPlanningCaches();
-    // A captured city changes whose resources are imports, and that can only happen
-    // between runs.
+    // A captured city changes whose resources are imports. facts.js also drops these when a
+    // settlement changes hands; this keeps every run honest should that event list miss one.
     forgetImportOrigins();
 }
 
@@ -766,15 +751,24 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
     const factoryStock = factoryStockByType(groups);
     const { deficits, worstAnywhere, townsAreEligible } = happinessDeficits(settlements);
     const rescueNeeded = worstAnywhere > 0;
+    // ⚠️ The Set is asked first, and it is the same answer: a boost is only ever computed for a
+    // yield in it. Without it every kind was scored in every settlement - full ones included.
     const happinessResourceExists =
         rescueNeeded &&
         [...groups.values()].some((group) =>
-            settlements.some((settlement) => positiveYieldBoost(group[0], settlement, HAPPINESS_YIELD) > 0),
+            settlements.some(
+                (settlement) =>
+                    affectedYields(group[0], settlement).has(HAPPINESS_YIELD) &&
+                    positiveYieldBoost(group[0], settlement, HAPPINESS_YIELD) > 0,
+            ),
         );
 
     for (const group of groups.values()) {
         const representative = group[0];
-        const camel = resourceType(representative) === 'RESOURCE_CAMELS';
+        const camel = resourceType(representative) === CAMEL_RESOURCE_TYPE;
+        // ⚠️ Once per KIND, on its first pair: every copy in a group has the group's type, and each
+        // call reads `Game.age` from the engine - once per pair, for the hottest loop in the mod.
+        let unitProduction = null;
         const yieldCount = distinctYieldCount(representative);
         const yieldCountPriority =
             yieldCount === 1
@@ -848,17 +842,17 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
             // A military-production resource goes to the back of the queue whatever else fits.
             let ordinary = normalScore;
             let tier = normalTier;
-            if (givesUnitProductionBonus(resource)) {
+            if (unitProduction === null) {
+                unitProduction = givesUnitProductionBonus(resource);
+            }
+            if (unitProduction) {
                 ordinary = UNIT_PRODUCTION_SCORE_BASE + scorePair(resource, settlement, scoreContext);
                 tier = 'unit production';
             }
 
             // Production belongs in cities. Note this is a nudge, not a ban: a town can
             // still take the resource when no city wants it more.
-            if (
-                settlement.settlementNameData?.isTown &&
-                positiveYieldBoost(resource, settlement, PRODUCTION_YIELD) > 0
-            ) {
+            if (settlement.settlementNameData?.isTown && productionBoost > 0) {
                 ordinary -= TOWN_PRODUCTION_PENALTY;
                 tier += ' -town penalty';
             }
@@ -890,7 +884,7 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
             }
 
             if (!best || score > best.score) {
-                best = { resource, settlement, score, tier, rescue: rescue !== null };
+                best = { resource, settlement, score, tier };
             }
         }
     }

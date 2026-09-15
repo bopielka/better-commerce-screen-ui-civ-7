@@ -6,6 +6,8 @@
  * ITERATED rather than queried, so an uncached read is a full scan of GameInfo.
  */
 import { effectTypeOf, modifierApplies, modifierIsConditional, resourceModifiers } from './effects.js';
+import { onEngineEvent } from '../engine/events.js';
+import { isAssignableResourceType, resourceClassFromType } from '../engine/resource-types.js';
 import { onGameDataStale } from '../support/game-data.js';
 
 export const HAPPINESS_YIELD = 'YIELD_HAPPINESS';
@@ -15,26 +17,6 @@ const resourceYieldEffectCache = new Map();
 const resourceTypeCache = new Map();
 
 //#region resource introspection
-let yieldTypeByIcon = null;
-
-/**
- * Which yield a `yieldIconSrc` belongs to.
- * ⚠️ Built by indexing `UI.getIcon` for every yield. Pattern-matching the string with
- * /YIELD_[A-Z_]+/ never matches - `blp:Yield_Happiness` is mixed case - and read every total as 0.
- */
-export function yieldTypeFromIcon(iconSource) {
-    if (!yieldTypeByIcon) {
-        yieldTypeByIcon = new Map();
-        GameInfo.Yields.forEach((yieldDefinition) => {
-            yieldTypeByIcon.set(
-                `url(${UI.getIcon(yieldDefinition.YieldType, 'YIELD')})`,
-                yieldDefinition.YieldType,
-            );
-        });
-    }
-    return yieldTypeByIcon.get(String(iconSource)) ?? null;
-}
-
 export function resourceType(resource) {
     if (resource.resourceType) {
         return resource.resourceType;
@@ -169,38 +151,13 @@ export function givesUnitProductionBonus(resource) {
     return feedsUnits;
 }
 
-const resourceClassCache = new Map();
-
 export function resourceClassOf(resource) {
-    const type = resourceType(resource);
-    if (!type) {
-        return null;
-    }
-    if (!resourceClassCache.has(type)) {
-        resourceClassCache.set(type, GameInfo.Resources.lookup(type)?.ResourceClassType ?? null);
-    }
-    return resourceClassCache.get(type);
+    return resourceClassFromType(resourceType(resource));
 }
 
-/**
- * Classes that never go into a settlement slot at all.
- *
- * ⚠️ An empire resource pays for being HELD and a treasure resource becomes treasure fleets. The
- * game's own screen drops both before building the pool (`commerce-screen-model.ts`, same two
- * class names, no age logic).
- *
- * ⚠️ A CLASS check and not a list, because which resources those are changes with the age: Gold is
- * EMPIRE in Antiquity and TREASURE in Exploration, Ivory becomes BONUS, Marble becomes EMPIRE only
- * in Modern. Each age's resources.xml rewrites the column.
- *
- * ⚠️ An exclusion rather than an allow-list, matching the game: a class a patch adds is then
- * offered for assignment rather than silently vanishing from the pool.
- */
-const UNASSIGNABLE_CLASSES = new Set(['RESOURCECLASS_EMPIRE', 'RESOURCECLASS_TREASURE']);
-
-/** Can this resource go into a settlement at all? */
+/** Can this resource go into a settlement at all? The class rule is in engine/resource-types.js. */
 export function isAssignableToSettlement(resource) {
-    return !UNASSIGNABLE_CLASSES.has(resourceClassOf(resource));
+    return isAssignableResourceType(resourceType(resource));
 }
 
 /**
@@ -211,12 +168,18 @@ export function isAssignableToSettlement(resource) {
  * captured stops being an import.
  *
  * ⚠️ A property of the COPY, not of the type, which is why `groupByResourceType` keys on it.
- * Cached for one run: a city cannot change hands mid-assignment.
+ * Dropped at the start of every run AND whenever a settlement changes hands: gdp.js reads it
+ * outside any run, where a city captured since the last run would otherwise still count as one.
  */
 const importOriginCache = new Map();
 
 export function forgetImportOrigins() {
     importOriginCache.clear();
+}
+
+// Unfiltered on purpose: the owner on a hand-over's payload is the ambiguous part. Both are rare.
+for (const name of ['CityTransfered', 'ConqueredSettlementIntegrated']) {
+    onEngineEvent(name, forgetImportOrigins);
 }
 
 export function isImportedResource(resource) {
@@ -332,12 +295,10 @@ export function conditionalBoostStrength(resource, settlement) {
  * support/game-data.js.
  */
 onGameDataStale(() => {
-    yieldTypeByIcon = null;
     resourceYieldEffectCache.clear();
     resourceTypeCache.clear();
     resourceYieldTypeCache.clear();
     unitProductionCache.clear();
-    resourceClassCache.clear();
     importOriginCache.clear();
     warehouseScalingCache.clear();
     bestBoostCache.clear();

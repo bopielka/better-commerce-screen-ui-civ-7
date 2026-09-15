@@ -9,7 +9,7 @@
  * numeric part of its ComponentID, which is only unique within one game. Nothing is written into
  * the save - this mod declares AffectsSavedGames = 0.
  */
-import { readSection, writeSection } from '../engine/mod-storage.js';
+import { currentGameKey as readGameKey, readSection, writeSection } from '../engine/mod-storage.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const MOD_ID = 'better-commerce-screen-ui';
@@ -31,19 +31,10 @@ const CODES = [
     'YIELD_DIPLOMACY',
 ];
 
-let gameKey = null;
 let reportedKey = false;
 
 function currentGameKey() {
-    if (gameKey !== null) {
-        return gameKey;
-    }
-    try {
-        const seed = Configuration.getGame()?.gameSeed;
-        gameKey = seed === undefined || seed === null ? null : String(seed);
-    } catch (error) {
-        gameKey = null;
-    }
+    const gameKey = readGameKey();
     if (!reportedKey) {
         reportedKey = true;
         log(`priorities are filed under game seed ${gameKey ?? '(unavailable)'}`);
@@ -119,8 +110,10 @@ export function storePriority(cityKey, yieldType) {
     writeFallback(cityKey, code);
 }
 
-/** Called when a different game is loaded, so the next read uses that game's key. */
+/**
+ * Called when a different game is loaded. The key itself is cached and dropped by
+ * engine/mod-storage.js; this only re-arms the one-time report.
+ */
 export function forgetLoadedGame() {
-    gameKey = null;
     reportedKey = false;
 }

@@ -116,7 +116,11 @@ export function placesResourcesAutomatically(mode = CommerceOptions.autoAssignMo
     return mode !== AutoAssignMode.Off && mode !== AutoAssignMode.HandsOff;
 }
 
-/** Carries over the three checkboxes this dropdown replaced. Safe to delete after a release. */
+/**
+ * Carries over the three checkboxes this dropdown replaced.
+ * ⚠️ NOT dead: the result is never persisted, so a profile holding only the old keys runs this every
+ * session - deleting it switches that player's automatic assignment Off without a word.
+ */
 function migrateFromCheckboxes() {
     if (!Number(restore('autoAssignNewResources'))) {
         return AutoAssignMode.Off;

@@ -462,9 +462,6 @@
             <Text>交易関係の改善には{2_InfluenceCost}影響力が必要ですが、所持している影響力は{2_Balance}です。</Text>
         </Row>
 
-        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="ja_JP">
-            <Text>クリックすると{1_Leader}に「交易関係の改善」を{2_Cost}影響力で提案し、この相手との交易路の上限を上げます。</Text>
-        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="ja_JP">
             <Text>代わりにクリックして{1_Leader}との外交を開きます。</Text>
         </Row>
@@ -498,9 +495,6 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="ja_JP">
             <Text>次のターン開始時に実行予定：上限を引き上げ、{1_City} へ商人を送ります。クリックで取消します。</Text>
-        </Row>
-        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="ja_JP">
-            <Text>{1_Count} 件の交易路上限を自動で引き上げました - 送り出した商人が交易路を開設できます。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="ja_JP">
             <Text>{1_Leader} との交易路上限を自動で引き上げました - {2_City} へ送った商人が交易路を開設できます。</Text>

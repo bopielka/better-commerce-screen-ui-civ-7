@@ -462,9 +462,6 @@
             <Text>Migliorare le relazioni commerciali costa {1_Cost} influenza e tu ne hai {2_Balance}.</Text>
         </Row>
 
-        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="it_IT">
-            <Text>Fai clic per proporre «Migliora relazioni commerciali» con {1_Leader} per {2_Cost} influenza, aumentando il tuo limite di rotte commerciali con loro.</Text>
-        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="it_IT">
             <Text>Fai clic per aprire invece la diplomazia con {1_Leader}.</Text>
         </Row>
@@ -498,9 +495,6 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="it_IT">
             <Text>In coda per l’inizio del prossimo turno: alzare il limite e inviare un mercante a {1_City}. Clicca per annullare.</Text>
-        </Row>
-        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="it_IT">
-            <Text>{1_Count} limiti di rotte commerciali aumentati automaticamente: i mercanti già inviati possono aprire le loro rotte.</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="it_IT">
             <Text>Limite di rotte commerciali con {1_Leader} aumentato automaticamente: il mercante inviato a {2_City} può ora aprire la rotta.</Text>

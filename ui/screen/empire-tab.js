@@ -18,8 +18,8 @@ import { template } from '/core/vendor/solid-js/web/dist/web.js';
 import { CommerceScreenBaseTabContent } from '/base-standard/ui-next/screens/commerce/commerce-screen-base-tab-content.js';
 import { useCommerceScreenContext } from '/base-standard/ui-next/screens/commerce/commerce-screen-model.js';
 
-import { empireEffectTotals, forgetEmpireEffects } from '../planner/empire-effects.js';
-import { buildSettlements } from '../model/headless-model.js';
+import { empireEffectTotals } from '../planner/empire-effects.js';
+import { buildSettlementRefs } from '../model/headless-model.js';
 import { appendWithResourceTooltip, resourceTooltipProps } from './resource-tooltip.js';
 import { appendAll, clearChildren, ensureStyle, makeElement, setTooltip } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
@@ -333,6 +333,18 @@ const STYLE = `
 ${TOOLTIP_TEXT_SELECTOR} { white-space: pre-wrap; }
 `;
 
+/** Fixed labels every card repeats, composed once per render rather than once per card. */
+const fixedTexts = new Map();
+
+function fixedText(key) {
+    let text = fixedTexts.get(key);
+    if (text === undefined) {
+        text = Locale.compose(key);
+        fixedTexts.set(key, text);
+    }
+    return text;
+}
+
 /** The class badge for a resource, or null if the game has no icon for its class. */
 function classBadge(resource) {
     const background = resourceClassBackground(resource?.type);
@@ -397,8 +409,8 @@ function originGroups(resource) {
 }
 
 /** The plain-text tooltip, used only when the game's own component will not mount. */
-function tooltipFor(resource) {
-    const lines = descriptionFor(resource);
+function tooltipFor(resource, description) {
+    const lines = [...description];
     const origins = originLines(resource);
     if (origins.length) {
         lines.push('', `${Locale.compose('LOC_COMMERCE_EMPIRE_RESOURCES_ORIGIN_TITLE')}:`, '', ...origins);
@@ -432,13 +444,13 @@ function totalElement(total, useOneCopy) {
 
     if (total.active === false) {
         element.classList.add(`${CLASS}-total--inactive`);
-        setTooltip(element, Locale.compose(CELEBRATION_TOOLTIP));
+        setTooltip(element, fixedText(CELEBRATION_TOOLTIP));
     }
 
     if (total.capped && !useOneCopy) {
         element.classList.add(`${CLASS}-total--capped`);
         // The description says so too; this is the same fact where the number is.
-        setTooltip(element, Locale.compose(CAPPED_TOOLTIP));
+        setTooltip(element, fixedText(CAPPED_TOOLTIP));
     }
     return element;
 }
@@ -466,7 +478,7 @@ function figuresBlock(computed, scales) {
         const labels = makeElement('div', `${CLASS}-card__figures-col`);
         for (const line of lines) {
             const label = makeElement('div', `${CLASS}-card__label${emphasis(line)}`);
-            label.textContent = `${Locale.compose(line.labelKey)}:`;
+            label.textContent = `${fixedText(line.labelKey)}:`;
             labels.appendChild(label);
         }
         block.appendChild(labels);
@@ -513,7 +525,7 @@ function legendFor(computed) {
     return legend;
 }
 
-function cardFor(resource, settlements, computed) {
+function cardFor(resource, computed) {
     const card = makeElement('div', `${CLASS}-card`);
     // The game's own card background, so these read as the same object as the trade cards.
     const inner = makeElement('div', `${CLASS}-card__inner card-frame-bg`);
@@ -533,13 +545,16 @@ function cardFor(resource, settlements, computed) {
     // whatever a second element happened to inherit.
     const title = makeElement('div', `${CLASS}-card__title font-title`);
     title.textContent = `${Locale.compose(resource.title)} [${resource.amount}]`;
+    // Composed once: the tooltip, its plain-text fallback and the fallback card all say it.
+    const description = descriptionFor(resource);
 /** The game's own framed tooltip, so a resource is the same object here as in the pool. */
     appendWithResourceTooltip(
         head,
         icon,
-        resourceTooltipProps(resource.type, { description: descriptionFor(resource).join('[N]') }),
-        tooltipFor(resource),
-        originGroups(resource),
+        resourceTooltipProps(resource.type, { description: description.join('[N]') }),
+        // ⚠️ Functions, not text: both are asked for only on mount failure or first hover.
+        () => tooltipFor(resource, description),
+        () => originGroups(resource),
     );
     head.appendChild(title);
 
@@ -554,7 +569,7 @@ function cardFor(resource, settlements, computed) {
             // Why this card has one line where its neighbours have two. Worth saying: it
             // is the difference between a resource worth stockpiling and one that is not.
             const note = makeElement('div', `${CLASS}-card__note`);
-            note.textContent = Locale.compose('LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING');
+            note.textContent = fixedText('LOC_NAJANE_COMMERCE_EMPIRE_NO_SCALING');
             inner.appendChild(note);
         }
     }
@@ -568,7 +583,7 @@ function cardFor(resource, settlements, computed) {
  * ⚠️ Left out rather than guessed at; the tooltip still carries the full description.
  */
         const fallback = makeElement('div', `${CLASS}-card__fallback`);
-        fallback.innerHTML = Locale.stylize(descriptionFor(resource).join('[N]'));
+        fallback.innerHTML = Locale.stylize(description.join('[N]'));
         inner.appendChild(fallback);
     }
     card.appendChild(inner);
@@ -623,17 +638,18 @@ function showSummary(byYield) {
     showTabSummary(SUMMARY_CLASS, () => buildSummary(byYield));
 }
 
-export function hideSummary() {
+function hideSummary() {
     hideTabSummary(SUMMARY_CLASS);
 }
 
 function render(host, model) {
     clearChildren(host);
-    forgetEmpireEffects();
+    fixedTexts.clear();
 
     const resources = model?.data?.empireTabData?.empireResourceData ?? [];
     // Read once for the whole tab: the totals all measure against the same empire.
-    const settlements = buildSettlements();
+    // ⚠️ Refs, not the planner's board: the totals read only the settlement id and the town flag.
+    const settlements = buildSettlementRefs();
 
     // Two containers, not one flowing list: everything with a combat bonus goes below, since
     // those cards are the tall ones.
@@ -648,7 +664,7 @@ function render(host, model) {
             perResource.push(computed);
             const isCombat = computed.some((total) => total.kind === 'combat');
             const column = isCombat ? combatColumn : restColumns;
-            column.appendChild(cardFor(resource, settlements, computed));
+            column.appendChild(cardFor(resource, computed));
         } catch (error) {
             warn(`could not build a card for ${resource?.type}: ${error}`);
         }

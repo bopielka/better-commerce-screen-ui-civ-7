@@ -2,7 +2,7 @@
  * The padlock in the corner of a slotted resource. The lock itself is engine/resource-locks.js.
  * ⚠️ Re-injected from the shared screen watcher rather than placed once: the tiles are Solid's.
  */
-import { getCommerceModel, settlementCards } from '../model/screen-model.js';
+import { getCommerceModel } from '../model/screen-model.js';
 import {
     ResourceLocksChangedEventName,
     isResourceLocked,
@@ -10,7 +10,7 @@ import {
     toggleResourceLock,
 } from '../engine/resource-locks.js';
 import { bindActivatable, ensureStyle, makeElement, setTooltip } from '../support/dom.js';
-import { watchCommerceScreen } from './screen-observer.js';
+import { settlementCardsOnScreen, watchCommerceScreen } from './screen-observer.js';
 import { warn } from '../support/diagnostics.js';
 
 const LOCK_CLASS = 'najane-resource-lock';
@@ -64,9 +64,11 @@ const STYLE = `
 }
 `;
 
+let started = false;
 let unwatch = null;
 let injecting = false;
 let styleElement = null;
+let changeFrame = null;
 
 /**
  * The four strings a padlock can carry, composed once.
@@ -119,7 +121,7 @@ function removeAllLocks() {
 }
 
 function injectOnce() {
-    for (const { settlement, cardElement } of settlementCards()) {
+    for (const { settlement, cardElement } of settlementCardsOnScreen()) {
         const slots = cardElement.querySelectorAll(SLOT_SELECTOR);
         const resources = settlement.slottedResources ?? [];
 
@@ -180,25 +182,60 @@ function inject() {
     }
 }
 
-export function startResourceLocks() {
-    if (unwatch) {
+/**
+ * On the shared screen watcher only while padlocks are allowed.
+ * ⚠️ Switched off must cost nothing: subscribed, every pass ran two document-wide queries to find
+ * no padlocks. The setting only changes through `set()`, which always announces.
+ */
+function watchWhileAllowed() {
+    if (!isResourceLockingAllowed()) {
+        unwatch?.();
+        unwatch = null;
         return;
     }
+    // One observer for the whole screen, batched to a frame; see screen-observer.js.
+    unwatch ??= watchCommerceScreen(inject);
+}
+
+/**
+ * ⚠️ On the next frame, like every other DOM writer here: this is announced from a click, from the
+ * options menu, and from inside the `ResourceUnassigned` engine handler.
+ */
+function onLocksChanged() {
+    if (changeFrame !== null) {
+        return;
+    }
+    changeFrame = requestAnimationFrame(() => {
+        changeFrame = null;
+        watchWhileAllowed();
+        inject();
+    });
+}
+
+export function startResourceLocks() {
+    if (started) {
+        return;
+    }
+    started = true;
     styleElement = ensureStyle(STYLE_ID, STYLE);
     // ⚠️ The options menu opens OVER this screen, so turning the option off has to take the
     // padlocks away there and then - no DOM mutation of the game's own would announce it.
-    window.addEventListener(ResourceLocksChangedEventName, inject);
+    window.addEventListener(ResourceLocksChangedEventName, onLocksChanged);
     inject();
-    // One observer for the whole screen, batched to a frame; see screen-observer.js.
-    unwatch = watchCommerceScreen(inject);
+    watchWhileAllowed();
 }
 
     // ⚠️ The padlocks go, the LOCKS STAY: the player's choices belong to the session, not to the
     // screen being open.
 export function stopResourceLocks() {
+    started = false;
     unwatch?.();
     unwatch = null;
-    window.removeEventListener(ResourceLocksChangedEventName, inject);
+    window.removeEventListener(ResourceLocksChangedEventName, onLocksChanged);
+    if (changeFrame !== null) {
+        cancelAnimationFrame(changeFrame);
+        changeFrame = null;
+    }
     removeAllLocks();
     styleElement?.remove();
     styleElement = null;

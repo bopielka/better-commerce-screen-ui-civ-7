@@ -11,6 +11,7 @@
  * at a time.
  */
 import { assignRefusalReasons, canAssign, requestAssign } from '../engine/operations.js';
+import { heldResourceType } from '../engine/resource-types.js';
 import {
     buildAvailableResources,
     buildHeadlessModel,
@@ -19,6 +20,7 @@ import {
     rebuildSettlement,
 } from '../model/headless-model.js';
 import {
+    CAMEL_RESOURCE_TYPE,
     assignmentPairKey,
     bestAssignment,
     forgetEligibility,
@@ -43,6 +45,9 @@ import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
  * each poll is a call into the engine plus the settlement's whole resource list. Inside the window
  * an assignment normally lands in, the timing is exactly what it was; past it, an assignment the
  * engine is slow with is asked about a dozen times rather than five hundred.
+ *
+ * ⚠️ The first look is a poll interval away, never in the same tick: `sendRequest` only queues
+ * (engine/operations.js), so a look straight after it cannot see the assignment.
  */
 const CONFIRM_POLL_MS = 4;
 const CONFIRM_FAST_WINDOW_MS = 50;
@@ -76,7 +81,7 @@ function awaitAssignment(cityID, resourceValue) {
                 wait = Math.min(wait * 2, CONFIRM_POLL_CEILING_MS);
             }
         };
-        check();
+        setTimeout(check, wait);
     });
 }
 
@@ -134,6 +139,57 @@ const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
 const CITY_RESOURCE_CLASS = 'RESOURCECLASS_CITY';
 
 /**
+ * Whether a run could place anything at all, asked before the board is read.
+ *
+ * ⚠️ NEVER STRICTER THAN `bestAssignment`: "no" only when no settlement has a free slot and no
+ * camel is in the pool - the one board it cannot score a pair on. Looser is safe (a throw, an
+ * unreadable type, a slot no copy may take all answer yes); the full run decides. Automatic
+ * assignment re-runs every 15 s while an arrival waits, and on a full empire each run was a cold
+ * read and score of every settlement to place nothing.
+ */
+function anythingCouldFit(scope, targetCityID) {
+    try {
+        const player = Players.get(GameContext.localPlayerID);
+        const cities = (player?.Cities?.getCities() ?? []).filter((city) => city.Resources);
+        const targetKey = targetCityID ? String(targetCityID.id) : null;
+        for (const city of cities) {
+            if (targetKey !== null && String(city.id.id) !== targetKey) {
+                continue;
+            }
+            const assigned = city.Resources.getAssignedResources() ?? [];
+            const capacity = city.Resources.getAssignedResourcesCap() ?? assigned.length;
+            if (capacity - assigned.length > 0) {
+                return true;
+            }
+        }
+        const camels = [];
+        for (const held of player?.Resources?.getResources() ?? []) {
+            if (scope !== null && !scope.has(held.value)) {
+                continue;
+            }
+            const type = heldResourceType(held);
+            if (type === null || type === CAMEL_RESOURCE_TYPE) {
+                camels.push(held.value);
+            }
+        }
+        if (camels.length === 0) {
+            return false;
+        }
+        // Only a camel still in the pool counts - slotted anywhere, target or not, it does not.
+        const slotted = new Set();
+        for (const city of cities) {
+            for (const resource of city.Resources.getAssignedResources() ?? []) {
+                slotted.add(resource.value);
+            }
+        }
+        return camels.some((value) => !slotted.has(value));
+    } catch (error) {
+        warn(`could not tell whether anything fits, reading the whole board: ${error}`);
+        return true;
+    }
+}
+
+/**
  * Places as much as it can, best first.
  * @returns how many resources were placed.
  */
@@ -144,6 +200,14 @@ export async function placeResources({ scope = null, targetCityID = null, label 
     // The culture and gold settlements are chosen once here and held for the whole run;
     // see the note on hoardTargets for why they must not be re-picked every pass.
     startPlacementRun();
+
+    logFactoryState();
+
+    if (!anythingCouldFit(scope, targetCityID)) {
+        log(`${label}: every settlement is full and no camel is waiting - nothing can be placed`);
+        await verifyScreenMatchesEngine();
+        return 0;
+    }
 
     /*
      * ⚠️ A REFUSAL SETS ASIDE THE PAIR, NOT THE RESOURCE, and that was the bug: the engine turning
@@ -166,8 +230,6 @@ export async function placeResources({ scope = null, targetCityID = null, label 
             refused.add(resourceValue);
         }
     };
-
-    logFactoryState();
 
     const startedAt = Date.now();
     let boardMs = 0;
@@ -245,8 +307,8 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         // Only this settlement's answers changed: it has one fewer free slot, or two more
         // if that was a camel. Every other settlement's remain valid and are kept.
         forgetEligibility(plan.settlement.cityID);
-        forgetSettlementFacts(plan.settlement.cityID);
-        // The same rule for the scores, and for the same reason.
+        // The same rule for the scores, and for the same reason. Its yields and factory state
+        // are dropped by `rebuildSettlement` below, immediately before it reads them.
         forgetSettlementScores(plan.settlement.cityID);
         // ⚠️ One line per placement, naming the TIER that won it: "why did Tin end up in my
         // culture capital instead of Silk" has at least four possible answers and the board looks

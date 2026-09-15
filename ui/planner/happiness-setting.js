@@ -13,13 +13,11 @@ const MOD_ID = 'better-commerce-screen-ui';
  * ⚠️ Append only, and NOT what gets stored - a choice is stored one higher; see
  * engine/stored-setting.js. "Never" is 0, which is what `UI.getOption` answers for unset.
  */
-export const HappinessPriorityMode = {
+const HappinessPriorityMode = {
     Never: 0,
     CitiesOnly: 1,
     AllSettlements: 2,
 };
-
-export const HappinessPriorityChangedEventName = 'najane-commerce-happiness-priority-changed';
 
 const MODES = [HappinessPriorityMode.Never, HappinessPriorityMode.CitiesOnly, HappinessPriorityMode.AllSettlements];
 const MODE_NAMES = ['never', 'cities only', 'all settlements'];
@@ -30,7 +28,6 @@ const setting = storedChoice({
     values: MODES,
     defaultValue: HappinessPriorityMode.AllSettlements,
     label: 'happiness priority',
-    changedEventName: HappinessPriorityChangedEventName,
     describe: (mode) => MODE_NAMES[mode] ?? String(mode),
 });
 

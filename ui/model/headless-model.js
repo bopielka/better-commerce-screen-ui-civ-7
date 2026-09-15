@@ -3,16 +3,15 @@
  * straight from the engine, in the shape the screen's model would have handed over.
  *
  * ⚠️ This is what lets automatic assignment run with the screen shut, and what keeps the planner
- * from importing anything under ui/screen/.
+ * from importing anything under ui/screen/. It imports nothing above engine/ itself.
  */
 import { ConstructibleHasTagType } from '/base-standard/ui/utilities/utilities-tags.js';
 
 import { isFactoryAge } from '../engine/age.js';
-import { heldResourceType, resourceTypeFromHash } from '../engine/resource-types.js';
-import { isAssignableToSettlement } from '../planner/facts.js';
+import { heldResourceType, isAssignableResourceType, resourceTypeFromHash } from '../engine/resource-types.js';
 
 import { onGameDataStale } from '../support/game-data.js';
-import { warn } from '../support/diagnostics.js';
+import { DIAGNOSTICS, warn } from '../support/diagnostics.js';
 
 /**
  * Which yields a resource counts as affecting, exactly as the screen's model works it out - from
@@ -70,7 +69,7 @@ function resourceTypeOf(resourceValue) {
  * What every yield of a settlement currently stands at.
  *
  * ⚠️ Cached per settlement per RUN, and dropped for the one settlement a placement lands in -
- * the same rule and the same lifetime as `buildingsByCity` beside it. `buildSettlements()` runs
+ * the same rule and the same lifetime as `factoryByCity` below. `buildSettlements()` runs
  * once per placement, so this was `getYields()` plus one `GameInfo.Yields[index]` per yield per
  * settlement, multiplied by the size of the empire twice over.
  */
@@ -78,8 +77,8 @@ const yieldsByCity = new Map();
 
 /**
  * ⚠️ THE BACKSTOP, not the invalidation. What actually drops an entry is a placement landing in
- * that settlement. But `buildSettlements()` is also called from outside a run - the Empire tab,
- * the Factory tab, the GDP total - and nothing tells this cache that a turn has passed since.
+ * that settlement. But `buildSettlements()` is also called from outside a run - the screen's bulk
+ * actions end in `verifyScreenMatchesEngine` - and nothing tells this cache that a turn has passed.
  * A placement loop is microseconds between iterations, so a second still collapses a whole run.
  */
 const YIELD_CACHE_MS = 1000;
@@ -112,12 +111,26 @@ function cityYieldTotals(city) {
     return totals;
 }
 
-/** What a settlement has built, and whether it can run a factory. Cached per run. */
-const buildingsByCity = new Map();
+/**
+ * How many warehouses a settlement has. Cached per RUN, and kept when a placement lands: assigning
+ * a resource cannot build one, and re-counting walked every constructible of that settlement.
+ */
+const warehousesByCity = new Map();
 
 /**
- * ⚠️ Composed once per settlement per RUN, not per placement. Every reader is behind DIAGNOSTICS,
- * and a full empire rebuild composed several hundred strings for a log that ships switched off.
+ * Whether a constructible type is a warehouse, keyed by the type the engine hands over.
+ * ⚠️ `GameInfo.Constructibles.lookup` used to be asked once per constructible per settlement; the
+ * answer belongs to the type and the age, so it is reset with the age's data below.
+ */
+const warehouseByConstructibleType = new Map();
+
+/** Whether a settlement can run a factory. Cached per run, and re-read where a placement lands. */
+const factoryByCity = new Map();
+
+/**
+ * ⚠️ Composed only with DIAGNOSTICS on, and then once per settlement per RUN. Every reader is a
+ * diagnostics log, and a full empire rebuild composed several hundred strings for a log that
+ * ships switched off. A placement cannot rename a settlement, so it keeps its entry.
  */
 const nameByCity = new Map();
 
@@ -138,31 +151,33 @@ function settlementNameOf(city) {
 }
 
 /**
- * Everything remembered about a settlement between placements: its buildings, its name and its
- * yields.
- * @param cityID the settlement to re-read next time, or nothing to re-read them all.
+ * Everything remembered about a settlement between placements.
+ * @param cityID the settlement a placement landed in - only what a placement can change is
+ *   re-read: its yields and its factory state - or nothing to re-read everything, warehouses and
+ *   names included.
  */
 export function forgetSettlementFacts(cityID = null) {
     if (!cityID) {
-        buildingsByCity.clear();
+        warehousesByCity.clear();
+        factoryByCity.clear();
         nameByCity.clear();
         yieldsByCity.clear();
         return;
     }
     const key = String(cityID.id);
-    buildingsByCity.delete(key);
-    nameByCity.delete(key);
+    factoryByCity.delete(key);
     yieldsByCity.delete(key);
 }
 
 /**
  * Whether the screen would draw a factory cog on this settlement.
- * ⚠️ The same two questions the screen asks, in the same order: two definitions of "has a factory"
- * is how the screen and the planner come to disagree.
+ * ⚠️ The same two questions the screen asks: two definitions of "has a factory" is how the screen
+ * and the planner come to disagree. The age goes first because it is cached, and outside the
+ * Modern Age it is the whole answer.
  */
 export function settlementHasFactory(cityResources) {
     try {
-        if (!cityResources.isTreasureConstructiblePrereqMet?.() || !isFactoryAge()) {
+        if (!isFactoryAge() || !cityResources.isTreasureConstructiblePrereqMet?.()) {
             return false;
         }
         return (
@@ -175,36 +190,46 @@ export function settlementHasFactory(cityResources) {
     }
 }
 
-function countBuildings(city) {
+function countWarehouses(city) {
     const key = String(city.id.id);
-    const cached = buildingsByCity.get(key);
-    if (cached) {
+    const cached = warehousesByCity.get(key);
+    if (cached !== undefined) {
         return cached;
     }
 
     let warehouseCount = 0;
-    let hasRail = false;
     try {
         city.Constructibles?.getIds().forEach((constructibleId) => {
             const constructible = Constructibles.getByComponentID(constructibleId);
-            const definition = constructible && GameInfo.Constructibles.lookup(constructible.type);
-            if (!definition) {
+            if (!constructible) {
                 return;
             }
-            if (ConstructibleHasTagType(definition.ConstructibleType, 'WAREHOUSE')) {
-                warehouseCount++;
+            let isWarehouse = warehouseByConstructibleType.get(constructible.type);
+            if (isWarehouse === undefined) {
+                const definition = GameInfo.Constructibles.lookup(constructible.type);
+                isWarehouse = !!definition && ConstructibleHasTagType(definition.ConstructibleType, 'WAREHOUSE');
+                warehouseByConstructibleType.set(constructible.type, isWarehouse);
             }
-            if (definition.ConstructibleType === 'BUILDING_RAIL_STATION') {
-                hasRail = true;
+            if (isWarehouse) {
+                warehouseCount++;
             }
         });
     } catch (error) {
         warn(`could not read buildings for a settlement: ${error}`);
     }
 
-    const counts = { warehouseCount, hasRail, hasFactory: settlementHasFactory(city.Resources) };
-    buildingsByCity.set(key, counts);
-    return counts;
+    warehousesByCity.set(key, warehouseCount);
+    return warehouseCount;
+}
+
+function hasFactoryCached(city) {
+    const key = String(city.id.id);
+    let hasFactory = factoryByCity.get(key);
+    if (hasFactory === undefined) {
+        hasFactory = settlementHasFactory(city.Resources);
+        factoryByCity.set(key, hasFactory);
+    }
+    return hasFactory;
 }
 
 /** Shared rather than allocated per resource; nothing may mutate it. */
@@ -214,18 +239,15 @@ const EMPTY_YIELD_TYPES = Object.freeze([]);
 function settlementFrom(city) {
     const assigned = city.Resources.getAssignedResources() ?? [];
     const capacity = city.Resources.getAssignedResourcesCap() ?? assigned.length;
-    const buildings = countBuildings(city);
 
     return {
         cityID: city.id,
-        isDistantLands: city.isDistantLands,
         settlementNameData: {
-            settlementName: settlementNameOf(city),
+            settlementName: DIAGNOSTICS ? settlementNameOf(city) : undefined,
             isTown: city.isTown,
-            warehouseCount: buildings.warehouseCount,
-            hasRail: buildings.hasRail,
+            warehouseCount: countWarehouses(city),
         },
-        factoryResourceData: { hasFactory: buildings.hasFactory },
+        factoryResourceData: { hasFactory: hasFactoryCached(city) },
         yieldTotals: cityYieldTotals(city),
         slottedResources: assigned.map((resource) => {
             const type = heldResourceType(resource);
@@ -263,6 +285,26 @@ export function buildSettlements() {
 }
 
 /**
+ * The same settlements as `buildSettlements()`, carrying only `cityID` and
+ * `settlementNameData.isTown` - what planner/effects.js `modifierApplies` and the Empire tab's
+ * totals read. ⚠️ Any other field is undefined here: a reader of one needs the full board.
+ */
+export function buildSettlementRefs() {
+    const player = Players.get(GameContext.localPlayerID);
+    const cities = player?.Cities?.getCities() ?? [];
+    const refs = [];
+
+    for (const city of cities) {
+        if (!city.Resources) {
+            continue;
+        }
+        refs.push({ cityID: city.id, settlementNameData: { isTown: city.isTown } });
+    }
+
+    return refs;
+}
+
+/**
  * The same board with ONE settlement re-read from the engine.
  *
  * ⚠️ WHAT THIS SAVES: `buildSettlements` is two calls into the engine per settlement plus a fresh
@@ -270,12 +312,17 @@ export function buildSettlements() {
  * to reflect a change in one settlement. Everything else is handed back BY REFERENCE, which also
  * keeps the planner's per-settlement caches warm.
  *
- * ⚠️ The caller drops that settlement's cached facts first (`forgetSettlementFacts`); this reads
- * the engine, so it must run after the assignment has actually landed.
+ * ⚠️ This reads the engine, so it must run after the assignment has actually landed - and it drops
+ * that settlement's per-placement facts itself, immediately before reading. The caller's wait
+ * yields to timers, and a `buildSettlements()` from outside the run in that window caches the
+ * yields from before the assignment landed.
  */
 export function rebuildSettlement(settlements, cityID) {
     const key = String(cityID?.id);
     let replacement = null;
+    if (cityID) {
+        forgetSettlementFacts(cityID);
+    }
     try {
         const city = Cities.get(cityID);
         if (city?.Resources) {
@@ -295,7 +342,7 @@ export function rebuildSettlement(settlements, cityID) {
 /**
  * The local player's resources that are not assigned anywhere and COULD be.
  * ⚠️ Empire and treasure classes are dropped exactly as the game's own pool drops them; see
- * planner/facts.js.
+ * engine/resource-types.js.
  */
 export function buildAvailableResources(settlements) {
     const player = Players.get(GameContext.localPlayerID);
@@ -321,7 +368,7 @@ export function buildAvailableResources(settlements) {
             cityID: undefined,
             yieldTypes: type ? yieldTypesFor(type) : EMPTY_YIELD_TYPES,
         };
-        if (!isAssignableToSettlement(entry)) {
+        if (!isAssignableResourceType(type)) {
             continue;
         }
         available.push(entry);
@@ -329,27 +376,22 @@ export function buildAvailableResources(settlements) {
     return available;
 }
 
-/** A stand-in for the screen's model, carrying only what the planner reads. */
+/**
+ * A stand-in for the screen's model, carrying only what the planner reads: the two sections
+ * `allSettlements` and `pooledResources` walk. The placement loop sends the player operations
+ * itself, so none of the model's selection methods is ever asked of this.
+ */
 export function buildHeadlessModel(prebuiltSettlements, prebuiltAvailable) {
     const settlements = prebuiltSettlements ?? buildSettlements();
     const available = prebuiltAvailable ?? buildAvailableResources(settlements);
 
     return {
-        isSlottingAvailable: true,
         data: {
             resourceTabData: {
                 slottedResourceSectionData: [{ cityResources: settlements }],
                 availableResourceSectionData: [{ subSections: [{ resourceSlotData: available }] }],
-                unslottedBonuses: [],
             },
         },
-        // The planner drives assignment through these; here they only need to not throw,
-        // because auto-assign sends the player operations itself.
-        selectedResource: () => ({ resourceValue: -1, cityID: undefined }),
-        clickAvailableResource: () => {},
-        slotSelectedResource: () => {},
-        deselectSelectedResource: () => {},
-        setLastSlottedResourceValues: () => {},
     };
 }
 
@@ -360,5 +402,6 @@ export function buildHeadlessModel(prebuiltSettlements, prebuiltAvailable) {
 onGameDataStale(() => {
     yieldTypesByResource = null;
     yieldTypeListByResource.clear();
+    warehouseByConstructibleType.clear();
     forgetSettlementFacts();
 });

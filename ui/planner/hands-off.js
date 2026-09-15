@@ -41,20 +41,21 @@ const UNASSIGNED_EVENT = 'ResourceUnassigned';
  * Cues to look at the board - the same list auto-assign.js watches, and for the same reason: a
  * resource arrives by improving a tile, by trade route, or with a settlement.
  * ⚠️ `ResourceAssigned` is in here as a CUE, not as the mechanism; see the header.
+ * ⚠️ Filtered and unfiltered exactly as in auto-assign.js, which records why each is which.
  */
 const PER_PLAYER_TRIGGER_EVENTS = [
     'ConstructibleBuildCompleted',
     'ConstructibleAddedToMap',
     'ConstructibleChanged',
     'ResourceAssigned',
+    'ResourceCapChanged',
+    'CityAddedToMap',
 ];
 
 const TRIGGER_EVENTS = [
     'TradeRouteAddedToMap',
     'TradeRouteChanged',
-    'ResourceCapChanged',
     'WonderCompleted',
-    'CityAddedToMap',
     'LocalPlayerTurnBegin',
 ];
 
@@ -94,6 +95,7 @@ let sweepTimer = null;
 let scheduled = null;
 let lateArrivalTimers = [];
 let pendingTrigger = '';
+let pendingSweep = false;
 let attachedAt = 0;
 let bulkArrivalAt = 0;
 let started = false;
@@ -193,7 +195,7 @@ async function drain() {
     }
 }
 
-function check(trigger, { isRetry = false } = {}) {
+function check(trigger, { isRetry = false, isSweep = false } = {}) {
     if (!handsOff() || checking) {
         return;
     }
@@ -228,8 +230,9 @@ function check(trigger, { isRetry = false } = {}) {
 
         if (doomed.length === 0) {
             // ⚠️ The improvement finishes before the resource lands; look again shortly. A retry
-            // never arms retries, or they never stop.
-            if (!isRetry) {
+            // never arms retries, or they never stop - and nor does the sweep, which is not an
+            // improvement finishing.
+            if (!isRetry && !isSweep) {
                 scheduleLateArrivalChecks(trigger);
             }
             return;
@@ -258,18 +261,24 @@ function clearLateArrivalChecks() {
     lateArrivalTimers = [];
 }
 
-function scheduleCheck(trigger) {
+function scheduleCheck(trigger, isSweep = false) {
     if (!handsOff()) {
         return;
     }
-    clearLateArrivalChecks();
+    // ⚠️ Not for a sweep: it arms no retries, so clearing would cancel a real trigger's.
+    if (!isSweep) {
+        clearLateArrivalChecks();
+    }
     pendingTrigger = trigger;
     if (scheduled !== null) {
+        // ⚠️ A real trigger merged with a sweep keeps its late-arrival retries.
+        pendingSweep = pendingSweep && isSweep;
         return;
     }
+    pendingSweep = isSweep;
     scheduled = setTimeout(() => {
         scheduled = null;
-        check(pendingTrigger);
+        check(pendingTrigger, { isSweep: pendingSweep });
     }, DEBOUNCE_MS);
 }
 
@@ -331,7 +340,7 @@ function attachWatchers() {
         handles.push(turnHandle);
     }
     subscriptions = handles;
-    sweepTimer = setInterval(() => scheduleCheck('periodic check'), SWEEP_MS);
+    sweepTimer = setInterval(() => scheduleCheck('periodic check', true), SWEEP_MS);
     // The first look adopts the board rather than treating it as the engine's work.
     check('watcher started');
     warn('hands off: resources the game slots by itself will be returned to the pool');
@@ -342,7 +351,6 @@ function detachWatchers() {
         return;
     }
     stopEngineEvents(subscriptions);
-    subscriptions = [];
     if (sweepTimer !== null) {
         clearInterval(sweepTimer);
         sweepTimer = null;

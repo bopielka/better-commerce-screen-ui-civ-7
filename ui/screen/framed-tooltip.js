@@ -20,33 +20,69 @@ import { warn } from '../support/diagnostics.js';
 const TOOLTIP_OFFSET = 12;
 
 /**
+ * Every live root's dispose function, in a Set per scope.
  * ⚠️ Per SCOPE, not one list: a tab tearing its own tooltips down used to dispose every tooltip on
  * the screen, so a visit to Trade Routes left the Resources tab's buttons with dead ones.
  */
-const disposers = new Map();
+const disposersByScope = new Map();
+
+/**
+ * Every scope another has been filed under ("trade-routes" for "trade-routes:12"). Only these need
+ * the prefix scan; disposing a leaf - one buy stack's serial scope - is a single Map lookup.
+ * ⚠️ Never pruned: a scope nested UNDER a serial one ("x:12:y") would grow it without bound.
+ */
+const parentScopes = new Set();
 
 const DEFAULT_SCOPE = 'screen';
+
+function fileDisposer(scope, dispose) {
+    let disposers = disposersByScope.get(scope);
+    if (!disposers) {
+        disposers = new Set();
+        disposersByScope.set(scope, disposers);
+        for (let at = scope.indexOf(':'); at !== -1; at = scope.indexOf(':', at + 1)) {
+            parentScopes.add(scope.slice(0, at));
+        }
+    }
+    disposers.add(dispose);
+}
+
+function disposeScope(scope) {
+    const disposers = disposersByScope.get(scope);
+    if (!disposers) {
+        return;
+    }
+    disposersByScope.delete(scope);
+    for (const dispose of disposers) {
+        try {
+            dispose();
+        } catch (error) {
+            warn(`disposing a tooltip failed: ${error}`);
+        }
+    }
+}
 
 /**
  * Disposes a scope and everything filed under it - "trade-routes" takes "trade-routes:1234" too.
  * ⚠️ NOT optional before discarding a trigger: the frame is anchored to that element, and losing
  * it leaves the frame on screen with nothing to measure against, in the top-left corner.
+ *
+ * ⚠️ Nothing here disposes a root whose trigger merely LEFT THE DOCUMENT. The tabs' content sits in
+ * a `ThrobberSuspense` (commerce-screen-base-tab-content.js) that detaches the same nodes while
+ * images load and puts them back after, so a detached trigger is not proof of a dead one. A caller
+ * may release its own detached roots only at a moment it has just found its container IN the
+ * document - see `releaseDiscardedStrips` in trade-sort-tabs.js.
  */
 export function disposeFramedTooltips(scope = DEFAULT_SCOPE) {
+    disposeScope(scope);
+    if (!parentScopes.has(scope)) {
+        return;
+    }
     const prefix = `${scope}:`;
-    for (const key of Array.from(disposers.keys())) {
-        if (key !== scope && !key.startsWith(prefix)) {
-            continue;
+    for (const key of Array.from(disposersByScope.keys())) {
+        if (key.startsWith(prefix)) {
+            disposeScope(key);
         }
-        const list = disposers.get(key);
-        while (list?.length) {
-            try {
-                list.pop()();
-            } catch (error) {
-                warn(`disposing a tooltip failed: ${error}`);
-            }
-        }
-        disposers.delete(key);
     }
 }
 
@@ -95,13 +131,13 @@ export function appendWithFramedTooltip(
     }
     const paragraphs = paragraphsOf(text);
     if (paragraphs.length) {
+        let dispose;
         try {
-            let dispose;
             const rendered = createRoot((disposeRoot) => {
                 dispose = disposeRoot;
                 // ⚠️ Nested components are built inside the parent's `children` getter, the
                 // way JSX does it - hoisting one into a variable mounts it twice.
-                return createComponent(Tooltip, {
+                const tooltip = createComponent(Tooltip, {
                     showFiligrees: false,
                     // The component default is 0, which puts the frame flush against the control.
                     offset: TOOLTIP_OFFSET,
@@ -145,19 +181,26 @@ export function appendWithFramedTooltip(
                         ];
                     },
                 });
+                // ⚠️ Inside the root, as Solid's own `render` does: `tooltip` is a memo accessor, so
+                // `insert` makes a render effect, and only one made here is released by `dispose`.
+                if (tooltip) {
+                    insert(parent, tooltip);
+                }
+                return tooltip;
             });
 
             if (rendered) {
-                if (!disposers.has(scope)) {
-                    disposers.set(scope, []);
-                }
-                disposers.get(scope).push(dispose);
-                insert(parent, rendered);
+                fileDisposer(scope, dispose);
                 return;
             }
             dispose?.();
         } catch (error) {
             warn(`the framed tooltip would not mount, using plain text: ${error}`);
+            try {
+                dispose?.();
+            } catch (disposeError) {
+                warn(`disposing a tooltip that would not mount failed: ${disposeError}`);
+            }
         }
     }
     setTooltip(trigger, text);

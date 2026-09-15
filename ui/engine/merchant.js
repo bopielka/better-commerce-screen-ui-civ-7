@@ -17,6 +17,7 @@
 import { isFactoryAge } from './age.js';
 import { waitForEngineEvent } from './wait.js';
 import { log, warn } from '../support/diagnostics.js';
+import { onGameDataStale } from '../support/game-data.js';
 
 /** A unit is identified the way settlements are elsewhere in this mod: by the id alone. */
 export function unitKey(unitID) {
@@ -25,7 +26,7 @@ export function unitKey(unitID) {
 
 let merchantTypes = null;
 
-/** Every unit type that can open a trade route. Built once; `GameInfo.Units` is static. */
+/** Every unit type that can open a trade route. Built once per age; see `onGameDataStale` below. */
 function merchantTypeNames() {
     if (merchantTypes) {
         return merchantTypes;
@@ -114,36 +115,59 @@ export function forgetMerchantOffers() {
     offerCache.clear();
 }
 
-export function merchantOffer(cityID) {
-    let city = null;
-    try {
-        city = Cities.get(cityID);
-    } catch (error) {
-        return null;
-    }
-    if (!city?.Gold) {
-        return null;
-    }
+/**
+ * Unit row index -> its definition when that unit opens trade routes, else null.
+ * ⚠️ The purchase query hands back EVERY unit row for every settlement asked, and `lookup` is a
+ * database call; answered through it once per index. Indexes belong to the age's table.
+ */
+const merchantRowByIndex = new Map();
 
+function merchantDefinition(index) {
+    const cached = merchantRowByIndex.get(index);
+    if (cached !== undefined) {
+        return cached;
+    }
+    // Throws into the caller's try, exactly as the uncached lookup did.
+    const row = GameInfo.Units.lookup(index);
+    const definition = row && merchantTypeNames().has(row.UnitType) ? row : null;
+    merchantRowByIndex.set(index, definition);
+    return definition;
+}
+
+// ⚠️ Rows, types and indexes are the age's; settlement ids in the offers repeat in another game.
+onGameDataStale(() => {
+    merchantTypes = null;
+    makesTradeRouteByType.clear();
+    merchantRowByIndex.clear();
+    offerCache.clear();
+});
+
+/** @param city the engine's own settlement object, which every caller already holds. */
+function merchantOffer(city) {
+    if (!city?.id) {
+        return null;
+    }
     // ⚠️ Cached per settlement: asking the engine what a merchant costs runs once per settlement
     // per card per observer pass otherwise.
     const cacheKey = String(city.id.id);
     if (offerCache.has(cacheKey)) {
         return offerCache.get(cacheKey);
     }
+    if (!city.Gold) {
+        return null;
+    }
 
-    const names = merchantTypeNames();
     let best = null;
     try {
         const results = Game.CityCommands.canStartQuery(city.id, CityCommandTypes.PURCHASE, CityQueryType.Unit);
         for (const { index, result } of results) {
-            const definition = GameInfo.Units.lookup(index);
-            if (!definition || !names.has(definition.UnitType)) {
-                continue;
-            }
             // An obsolete merchant is still in the table and still answers the query; it is
             // simply not one this age can field.
             if (result?.Requirements?.FullFailure || result?.Requirements?.Obsolete) {
+                continue;
+            }
+            const definition = merchantDefinition(index);
+            if (!definition) {
                 continue;
             }
             const cost = result?.Cost
@@ -178,7 +202,7 @@ export function purchaseSite(preferredCityID, targetCity) {
     } catch (error) {
         preferred = null;
     }
-    const preferredOffer = preferred ? merchantOffer(preferred.id) : null;
+    const preferredOffer = preferred ? merchantOffer(preferred) : null;
     if (preferredOffer?.canBuy) {
         return { city: preferred, offer: preferredOffer };
     }
@@ -186,16 +210,18 @@ export function purchaseSite(preferredCityID, targetCity) {
     const preferredKey = preferred ? String(preferred.id.id) : '';
     let others = [];
     try {
+        // One distance per settlement, not two per comparison: each is a call into the game.
         others = (Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? [])
             .filter((city) => String(city.id.id) !== preferredKey && city.location)
-            .sort((first, second) => plotDistance(first.location, targetCity.location)
-                - plotDistance(second.location, targetCity.location));
+            .map((city) => ({ city, distance: plotDistance(city.location, targetCity.location) }))
+            .sort((first, second) => first.distance - second.distance)
+            .map((entry) => entry.city);
     } catch (error) {
         warn(`could not list your settlements: ${error}`);
     }
 
     for (const city of others) {
-        const offer = merchantOffer(city.id);
+        const offer = merchantOffer(city);
         if (offer?.canBuy) {
             return { city, offer };
         }
@@ -204,7 +230,7 @@ export function purchaseSite(preferredCityID, targetCity) {
 }
 
 /** Sends the purchase. The unit appears in the settlement a moment later, not at once. */
-export function purchaseMerchant(cityID, definition) {
+function purchaseMerchant(cityID, definition) {
     const args = purchaseArgs(definition);
     if (!args) {
         return false;
@@ -221,11 +247,17 @@ export function purchaseMerchant(cityID, definition) {
     }
 }
 
-/** How long the new merchant is waited for, in frames. Half a second at 60fps. */
-const NEW_MERCHANT_FRAMES = 30;
+/**
+ * How long the new merchant is looked for, and how often.
+ * ⚠️ WALL-CLOCK, not frames - see engine/wait.js. A frame count never ends if the frame loop is not
+ * running, and the turn pass awaits this inside its one-at-a-time guard, which would then stay shut
+ * for the session. At least the half second that 30 frames was at 60fps.
+ */
+const NEW_MERCHANT_MS = 1000;
+const NEW_MERCHANT_POLL_MS = 50;
 
-function nextFrame() {
-    return new Promise((resolve) => requestAnimationFrame(resolve));
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Buys a merchant and hands back the unit that appeared. */
@@ -236,14 +268,14 @@ export async function purchaseAndCollectMerchant(cityID, definition) {
     }
     // `sendRequest` only queues; nothing exists until the engine has processed it.
     await waitForEngineEvent('CityMadePurchase');
-    for (let frame = 0; frame < NEW_MERCHANT_FRAMES; frame++) {
-        const fresh = localMerchants().find((unit) => !before.has(unitKey(unit.id)));
-        if (fresh) {
-            return fresh;
-        }
-        await nextFrame();
+    const appeared = () => localMerchants().find((unit) => !before.has(unitKey(unit.id)));
+    const deadline = Date.now() + NEW_MERCHANT_MS;
+    let fresh = appeared();
+    while (!fresh && Date.now() < deadline) {
+        await delay(NEW_MERCHANT_POLL_MS);
+        fresh = appeared();
     }
-    return null;
+    return fresh ?? null;
 }
 
 /** How many trade routes this empire may hold with another leader, and how many it holds. */
@@ -328,11 +360,16 @@ export function approachLocations(unit, city) {
         warn(`could not read the plots of the target settlement: ${error}`);
     }
 
-    locations.sort((first, second) => plotDistance(unit.location, first) - plotDistance(unit.location, second));
+    // One distance per plot, not two per comparison - thirty to fifty plots, each a call into the game.
+    const from = unit.location;
+    const nearestFirst = locations
+        .map((location) => ({ location, distance: plotDistance(from, location) }))
+        .sort((first, second) => first.distance - second.distance)
+        .map((entry) => entry.location);
 
     const reachable = [];
     let probes = 0;
-    for (const location of locations) {
+    for (const location of nearestFirst) {
         if (reachable.length >= ENOUGH_REACHABLE || probes >= MAX_PATH_PROBES) {
             break;
         }
@@ -348,13 +385,13 @@ export function approachLocations(unit, city) {
     if (reachable.length > 0) {
         return reachable;
     }
-    if (locations.length > probes) {
+    if (nearestFirst.length > probes) {
         log(
-            `no reachable plot among the ${probes} nearest of ${locations.length}; ` +
+            `no reachable plot among the ${probes} nearest of ${nearestFirst.length}; ` +
                 'aiming at the settlement centre',
         );
     }
-    return city?.location ? [{ x: city.location.x, y: city.location.y }] : locations.slice(0, ENOUGH_REACHABLE);
+    return city?.location ? [{ x: city.location.x, y: city.location.y }] : nearestFirst.slice(0, ENOUGH_REACHABLE);
 }
 
 function moveArgs(location) {

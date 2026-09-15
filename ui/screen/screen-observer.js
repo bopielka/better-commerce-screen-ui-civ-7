@@ -12,7 +12,10 @@
  *
  * ⚠️ `takeRecords()` after the pass is what stops the loop: every subscriber writes to the DOM
  * being watched, so each pass would queue the next.
+ *
+ * Also hands the pass's subscribers ONE settlement card list; see `settlementCardsOnScreen`.
  */
+import { settlementCards } from '../model/screen-model.js';
 import { isAssignmentInProgress } from '../planner/run.js';
 import { warn } from '../support/diagnostics.js';
 import { COMMERCE_SCREEN_SELECTOR } from './screen-parts.js';
@@ -23,17 +26,45 @@ let observer = null;
 let observedTarget = null;
 let frame = null;
 
+/**
+ * The card list of the pass in progress, or null outside one.
+ * ⚠️ Lives only while `runPass` runs, and is safe only because no subscriber adds or removes a
+ * card or writes to the model. One that does must not use it.
+ */
+let passCards = null;
+let inPass = false;
+
 function screenRoot() {
     return document.querySelector(COMMERCE_SCREEN_SELECTOR);
 }
 
+/**
+ * `settlementCards()`, looked for inside the screen, and taken once per pass.
+ * ⚠️ Two subscribers (settlement controls, padlocks) each ran a document-wide attribute-suffix
+ * query for the same list on every pass.
+ */
+export function settlementCardsOnScreen() {
+    if (!inPass) {
+        return settlementCards(screenRoot() ?? document);
+    }
+    // `retarget` has just resolved the screen for this pass.
+    passCards ??= settlementCards(observedTarget ?? document);
+    return passCards;
+}
+
 function runPass() {
-    for (const subscriber of Array.from(subscribers)) {
-        try {
-            subscriber();
-        } catch (error) {
-            warn(`a Commerce screen pass failed: ${error}`);
+    inPass = true;
+    try {
+        for (const subscriber of Array.from(subscribers)) {
+            try {
+                subscriber();
+            } catch (error) {
+                warn(`a Commerce screen pass failed: ${error}`);
+            }
         }
+    } finally {
+        inPass = false;
+        passCards = null;
     }
     // Whatever the pass itself disturbed is state the pass has already read; see the header.
     observer?.takeRecords();
@@ -94,6 +125,17 @@ export function watchCommerceScreen(callback) {
         observer = new MutationObserver(schedulePass);
         observedTarget = screenRoot() ?? document.body;
         observer.observe(observedTarget, { childList: true, subtree: true });
+    } else if ((screenRoot() ?? document.body) !== observedTarget) {
+        /*
+         * ⚠️ Joining an observer still pointed at an OLD screen: a detached tree never mutates, so
+         * no pass would ever retarget it and every feature on the new screen went quiet. Records
+         * the move would drop become a pass instead.
+         */
+        const pending = observer.takeRecords();
+        retarget();
+        if (pending.length > 0) {
+            schedulePass();
+        }
     }
     return () => unwatchCommerceScreen(callback);
 }

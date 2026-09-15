@@ -13,6 +13,7 @@
  */
 import { onEngineEvent } from './events.js';
 import { warn } from '../support/diagnostics.js';
+import { onGameDataStale } from '../support/game-data.js';
 
 const IMPROVE_TRADE_RELATIONS = 'DIPLOMACY_ACTION_IMPROVE_TRADE_RELATIONS';
 
@@ -33,9 +34,14 @@ const proposedThisTurn = new Set();
 // Through the shared dispatcher, so this is not a fifth separate `engine.on` for a name
 // five modules here already listen for; see engine/events.js.
 onEngineEvent('LocalPlayerTurnBegin', () => proposedThisTurn.clear());
+// Leader ids repeat in another game loaded into the same session.
+onEngineEvent('GameStarted', () => proposedThisTurn.clear());
 
-// ⚠️ `GameInfo` holds the age being played; the bands are read from it and belong to that age.
-onEngineEvent('GameAgeEnded', () => { hostileCeiling = undefined; });
+// ⚠️ `GameInfo` holds the age being played; the bands are read from it and belong to that age -
+// or to another game's setup, which `onGameDataStale` also covers.
+onGameDataStale(() => {
+    hostileCeiling = undefined;
+});
 
 /**
  * The relationship band below which this mod stops offering to raise the trade limit.

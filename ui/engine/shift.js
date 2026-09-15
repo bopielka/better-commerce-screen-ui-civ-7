@@ -3,12 +3,16 @@
  *
  * ⚠️ `Input.isShiftDown()` asks the engine, as the game's own tooltip-manager does. Tracking
  * DOM keydown/keyup instead NEVER reported Shift as held - this UI does not deliver modifier
- * state through DOM keyboard events. The DOM listeners survive only as a fallback.
+ * state through DOM keyboard events.
+ *
+ * ⚠️ No DOM fallback: core's tooltip-manager calls `Input.isShiftDown()` unguarded, so a build
+ * without it has no working tooltips either, and a fallback costs window capture listeners on
+ * every key and click of the session.
  */
 import { log, warn } from '../support/diagnostics.js';
 
-let domHeld = false;
 let reportedSource = false;
+let reportedFailure = false;
 
 export function isShiftHeld() {
     try {
@@ -21,26 +25,16 @@ export function isShiftHeld() {
             return held;
         }
     } catch (error) {
-        warn(`Input.isShiftDown() failed, falling back to DOM key events: ${error}`);
+        // ⚠️ Once: `hover-highlight.js` asks on every frame of mouse movement.
+        if (!reportedFailure) {
+            reportedFailure = true;
+            warn(`Input.isShiftDown() failed; Shift reads as not held: ${error}`);
+        }
+        return false;
     }
-    if (!reportedSource) {
-        reportedSource = true;
-        log('shift state falls back to DOM key events - Input.isShiftDown() unavailable');
+    if (!reportedFailure) {
+        reportedFailure = true;
+        warn('Input.isShiftDown() is unavailable; Shift reads as not held');
     }
-    return domHeld;
+    return false;
 }
-
-function noteModifiersFrom(event) {
-    if (event && typeof event.shiftKey === 'boolean') {
-        domHeld = event.shiftKey;
-    }
-}
-
-window.addEventListener('keydown', noteModifiersFrom, true);
-window.addEventListener('keyup', noteModifiersFrom, true);
-window.addEventListener('mousedown', noteModifiersFrom, true);
-
-// A key released while the window is unfocused never delivers its keyup.
-window.addEventListener('blur', () => {
-    domHeld = false;
-});

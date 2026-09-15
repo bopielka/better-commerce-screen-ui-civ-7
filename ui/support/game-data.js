@@ -17,15 +17,14 @@ import { warn } from './diagnostics.js';
 
 const resets = new Set();
 
-/** @returns a function that unregisters, for a cache that does not live for the session. */
+/** Registers a reset for the rest of the session. */
 export function onGameDataStale(reset) {
     resets.add(reset);
-    return () => resets.delete(reset);
 }
 
 /** Drops everything read out of `GameInfo`. Safe to call when nothing has changed. */
 export function forgetGameData() {
-    for (const reset of Array.from(resets)) {
+    for (const reset of resets) {
         try {
             reset();
         } catch (error) {

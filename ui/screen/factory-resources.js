@@ -555,8 +555,9 @@ function cardFor(holding, isIdle) {
         head,
         icon,
         resourceTooltipProps(holding.type),
-        tooltipFor(holding),
-        originGroups(holding),
+        // ⚠️ Functions, not text: both are asked for only on mount failure or first hover.
+        () => tooltipFor(holding),
+        () => originGroups(holding),
     );
     head.appendChild(title);
     inner.appendChild(head);

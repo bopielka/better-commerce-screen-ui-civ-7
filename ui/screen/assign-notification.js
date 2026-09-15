@@ -28,7 +28,7 @@ import CommerceOptions, {
 } from '../options/najane-commerce-options.js';
 import { onLocalPlayerEvent } from '../engine/events.js';
 import { heldResourceType } from '../engine/resource-types.js';
-import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
+import { log, warn } from '../support/diagnostics.js';
 
 const NOTIFICATION_TYPE = 'NOTIFICATION_ASSIGN_NEW_RESOURCES';
 
@@ -122,7 +122,7 @@ let cachedAt = 0;
  */
 const ANSWER_CACHE_MS = 3000;
 
-export function forgetPlaceability() {
+function forgetPlaceability() {
     cachedAnswer = null;
 }
 
@@ -158,11 +158,13 @@ function computeAnythingCanBePlaced() {
                 assigned.add(resource.value);
             }
             if ((resources.getAssignedResourcesCap() ?? 0) - slotted.length > 0) {
-                // The factory and town answers are carried along; see the notes where they
-                // are used. Both are read here so the pair loop below asks nothing twice.
+                // The factory and town answers are carried along so the pair loop below asks
+                // nothing twice. ⚠️ `hasFactory` is read on first use, not here: it is up to three
+                // engine calls per settlement, and only a factory resource ever needs it.
                 withRoom.push({
                     cityID: city.id,
-                    hasFactory: settlementHasFactory(resources),
+                    resources,
+                    hasFactory: undefined,
                     isTown: !!city.isTown,
                 });
             }
@@ -216,8 +218,13 @@ function computeAnythingCanBePlaced() {
             const needsCity = resourceClass === CITY_RESOURCE_CLASS;
 
             for (const settlement of withRoom) {
-                if (needsFactory && !settlement.hasFactory) {
-                    continue;
+                if (needsFactory) {
+                    if (settlement.hasFactory === undefined) {
+                        settlement.hasFactory = settlementHasFactory(settlement.resources);
+                    }
+                    if (!settlement.hasFactory) {
+                        continue;
+                    }
                 }
                 if (needsCity && settlement.isTown) {
                     continue;
@@ -397,28 +404,10 @@ export function startAssignNotification() {
                 log('an assignment pass is running or due; holding the assign icon back');
                 return null;
             }
-            const placeable = anythingCanBePlaced();
-            /*
-             * ⚠️ Probe, not logic, and gated on DIAGNOSTICS because the three engine calls are the
-             * expensive part. `panel-action` draws this twice over - as a slot icon (this filter)
-             * and, when it blocks the turn, on the main button, fetched from `findEndTurnBlocking`
-             * and never through here.
-             */
-            if (DIAGNOSTICS) {
-                let blocking = 'unknown';
-                try {
-                    const playerID = GameContext.localPlayerID;
-                    const type = Game.Notifications.getEndTurnBlockingType(playerID);
-                    const blockerId = Game.Notifications.findEndTurnBlocking(playerID, type);
-                    blocking = `endTurnBlockingType=${type} blockerIsThisOne=${
-                        blockerId ? Game.Notifications.getType(blockerId) === hiddenType : false
-                    }`;
-                } catch (error) {
-                    blocking = `could not read: ${error}`;
-                }
-                log(`assign icon offered: anything placeable = ${placeable}; ${blocking}`);
-            }
-            return placeable ? info : null;
+            // ⚠️ This is only the SLOT icon. When the notification blocks the turn, `panel-action`
+            // also draws it on the main button, fetched from `findEndTurnBlocking` and never through
+            // here - which is why `wrapActionButton` exists.
+            return anythingCanBePlaced() ? info : null;
         };
         for (const name of BOARD_EVENTS) {
             onLocalPlayerEvent(name, () => {

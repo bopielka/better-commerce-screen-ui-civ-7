@@ -462,9 +462,6 @@
             <Text>改善貿易關係需要{1_Cost}點影響力，你目前擁有{2_Balance}點。</Text>
         </Row>
 
-        <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_PROPOSE" Language="zh_Hant_HK">
-            <Text>點擊向{1_Leader}提議「改善貿易關係」，花費{2_Cost}影響力，以提高與其的貿易路線上限。</Text>
-        </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_TRADE_FULL_OPEN" Language="zh_Hant_HK">
             <Text>點擊改為開啟與{1_Leader}的外交。</Text>
         </Row>
@@ -498,9 +495,6 @@
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_CANCEL_TOOLTIP" Language="zh_Hant_HK">
             <Text>已排入下回合開始：提高上限並向 {1_City} 派遣商人。點擊取消。</Text>
-        </Row>
-        <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_MANY" Language="zh_Hant_HK">
-            <Text>已自動提高 {1_Count} 項貿易路線上限 — 先前派出的商人現在可以開通路線。</Text>
         </Row>
         <Row Tag="LOC_NAJANE_COMMERCE_QUEUE_TOAST_ONE" Language="zh_Hant_HK">
             <Text>已自動提高與 {1_Leader} 的貿易路線上限 — 派往 {2_City} 的商人現在可以開通路線。</Text>

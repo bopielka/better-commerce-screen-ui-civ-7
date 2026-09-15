@@ -126,8 +126,6 @@ class DockTradeButton {
         this.button?.remove();
         this.button = null;
     }
-
-    onAttributeChanged(_name, _prev, _next) { }
 }
 
 let started = false;
