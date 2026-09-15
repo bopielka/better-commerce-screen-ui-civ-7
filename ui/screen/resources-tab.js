@@ -46,7 +46,12 @@ const SAME_CLICK_WINDOW_MS = 400;
 
 // Whatever is registered when this module is imported: the game's container, or
 // another mod's wrapper around it.
-const originalFactory = CommerceResourcesContainer.factory;
+/*
+ * ⚠️ Engine 1.5.0: `.factory` is a Solid accessor, not the component. Capture `.factory()`
+ * at import, before register. Capturing the accessor itself and calling it later returns
+ * THIS wrapper, and opening the screen recurses until the game process dies.
+ */
+const originalFactory = CommerceResourcesContainer.factory();
 const overridePriority = (CommerceResourcesContainer.overridePriority ?? 0) + 100;
 
 function CommerceResourcesContainerWithRightClickUnassign(props) {

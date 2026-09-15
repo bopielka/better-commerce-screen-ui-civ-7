@@ -32,7 +32,9 @@ import { ComponentRegistry } from '/core/ui-next/services/component-registry.js'
 import { CommerceResourcesContainer } from '/base-standard/ui-next/screens/commerce/commerce-screen-resources-tab.js';
 
 // Capture whatever is registered at IMPORT time: the game's, or another mod's wrapper.
-const originalFactory  = CommerceResourcesContainer.factory;
+// ⚠️ Engine 1.5.0: `.factory` is a Solid accessor. Call it here. Capturing the accessor
+// and invoking it after register returns THIS wrapper and the screen recurses to death.
+const originalFactory  = CommerceResourcesContainer.factory();
 const overridePriority = (CommerceResourcesContainer.overridePriority ?? 0) + 100;
 
 ComponentRegistry.register({

@@ -11,6 +11,7 @@ import { Tab } from '/core/ui-next/components/tab.js';
 import { useAudio } from '/core/ui-next/services/audio-support.js';
 import { ComponentRegistry } from '/core/ui-next/services/component-registry.js';
 import { useLocalPlayerId } from '/core/ui-next/utilities/game-core-utilities.js';
+import { isMobile } from '/core/ui-next/services/view-experience.js';
 import { ScreenFrame } from '/base-standard/ui-next/components/screen-frame.js';
 import { CommerceScreen } from '/base-standard/ui-next/screens/commerce/commerce-screen.js';
 import {
@@ -92,6 +93,10 @@ const CommerceScreenWithFactoryTab = (_props) => {
                     return title();
                 },
                 onClosing: handleOnClosing,
+                // ⚠️ 1.5.0: ScreenFrame sizes from this; omitting it was the old desktop layout.
+                get isFullscreen() {
+                    return isMobile();
+                },
                 onContextChanged,
                 get children() {
                     return createComponent(Tab, {
@@ -103,7 +108,9 @@ const CommerceScreenWithFactoryTab = (_props) => {
                         get children() {
                             return [
                                 createComponent(Tab.TabList, {
-                                    class: 'w-187 self-center text-base font-base',
+                                    get class() {
+                                        return `${isMobile() ? (Game.age == Database.makeHash('AGE_EXPLORATION') ? 'w-3/4' : 'w-2/3') : 'w-187'} self-center text-base font-base`;
+                                    },
                                     nextHotkey: 'nav-next',
                                     previousHotkey: 'nav-previous',
                                 }),

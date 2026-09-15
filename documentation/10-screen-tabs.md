@@ -23,7 +23,9 @@ The tabs this mod replaces, adds or decorates. The interaction layer is in
 ## `factory-tab.js` — replacing the screen
 
 ⚠️ **This is the one place in the mod that will break on a game patch that touches the Commerce
-screen's own layout.** Everything else wraps or decorates; this replaces.
+screen's own layout.** Everything else wraps or decorates; this replaces. Diff it against
+`base-standard/ui-next/screens/commerce/commerce-screen.js` after a patch; 1.5.0 added
+`isMobile` / `isFullscreen` and a width class on `Tab.TabList`.
 
 ### Why the whole screen has to be replaced
 

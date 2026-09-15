@@ -1494,7 +1494,12 @@ const ROUTE_EVENTS = [
     'DiplomacyQueueChanged',
 ];
 
-const originalFactory = TradeRouteCard.factory;
+/*
+ * ⚠️ Engine 1.5.0: `.factory` is a Solid accessor, not the component. Capture `.factory()`
+ * at import, before register. Capturing the accessor itself and calling it later returns
+ * THIS wrapper, and opening the Trade tab recurses until the game process dies.
+ */
+const originalFactory = TradeRouteCard.factory();
 const overridePriority = (TradeRouteCard.overridePriority ?? 0) + 100;
 
 let liveCards = 0;
