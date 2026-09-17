@@ -13,7 +13,7 @@ The tabs this mod replaces, adds or decorates. The interaction layer is in
 | `trade-buy-merchant.js` | the button stack on a route card: buy, send, locate, call back |
 | `trade-sort-tabs.js` | the sort strip above the route cards |
 | `icon-button.js` | the shared icon-only button: one fixed height, one fixed icon box |
-| `dock-resource-button.js` | the HUD dock's Resource Allocation button: colour and pulse |
+| `dock-resource-button.js` | the HUD dock's Resource Allocation button: colour and pulse; ⚠️ held while an assignment pass runs and polled every 400 ms, since a refresh per placement rebuilt `anythingCanBePlaced` once per resource |
 | `treasure-tab.js` | the Treasure tab, wrapped, filtered, and its two controls |
 | `screen-parts.js` | the selectors more than one module needs, and the shared tab-row summary |
 | `icons.js` | `UI.getIcon` / `UI.getIconBLP` without the try/catch in every caller |
@@ -226,12 +226,19 @@ The trade tab's **container is not registered**, so the only mount signal availa
 
 ```js
 onMount:   liveCards++; listenForRouteChanges(); startTradeRoutes();
-onCleanup: liveCards--; requestAnimationFrame(() => { if (liveCards <= 0) stopTradeRoutes(); });
+onCleanup: liveCards--; one shared teardownFrame → if (liveCards <= 0) stopTradeRoutes();
 ```
 
 ⚠️ The count is checked **a frame later** because a rebuild unmounts the old cards around the same
 time it mounts the new ones, and the order between the two is not ours to rely on — deciding at
 the moment the count hits zero would tear the decoration down mid-redraw.
+
+⚠️ **One teardown frame for the whole tab, not one per card.** Every card's cleanup queued its own
+frame, and all of them saw `liveCards <= 0`, so leaving the tab ran the teardown — about eight
+document-wide queries — once per card. Likewise `startTradeRoutes()` returns at once when the tab
+is already decorated, so its setup (styles, tab icons, sort strips) runs once per visit, not once
+per card mount. `stopTradeRoutes()` also cancels a pending remeasure, and a decorate pass does
+nothing once stopped: a queued pass used to put the routes summary back over the next tab.
 
 ### The title line
 
@@ -259,8 +266,12 @@ stays wherever the game drew it: `commerce-screen-model.js` builds `tradeRouteTa
 again for the life of that one screen-open — not on any event, not on a timer. Moving the card
 to reflect new capacity would mean moving it between two different `<For>`s over two different
 arrays, which `reconcileArrays` cannot survive being done to from outside Solid; see the ⚠️ on
-`reorderCards`. The only way the card's own section updates is closing the screen and opening
-it again — true in vanilla play as well, with or without this mod.
+`reorderCards`. For the game's own events, the only way the card's own section updates is closing
+the screen and opening it again — true in vanilla play as well, with or without this mod.
+
+⚠️ **This mod's own orders and queue changes are the exception**: `onOrdersChanged` re-sections
+routes into and out of "being established" (`refreshUnderwaySection`), because that section is
+this mod's own and its data is rewritten in place before Solid renders it.
 
 ⚠️ The tooltip goes on the **text**, not the row. On the row it also answered for the icons, so
 hovering the domain icon showed the route name instead of what that icon means.
@@ -435,6 +446,13 @@ range. Taken at face value the first would have been sorted as a diplomacy probl
 A route both over the limit and at war is **not** "just one more slot away", which is the whole
 point of the `limit` group, so `AT_WAR` disqualifies it.
 
+⚠️ **Routes lifted out of the limit group are remembered**, in a `WeakSet` of the model's route
+objects (`liftedRoutes`), and `limitBlockedTargets` is rebuilt from it on every sync. A lift moves
+the route into "available", where the next lift never sees it again, so rebuilding from that
+call's lifts alone dropped the "one trade slot away" header after any errand or on returning to
+the tab. `createMutable` hands out one proxy per raw object, so identity holds for one
+screen-open, and the next opening brings new objects.
+
 ⚠️ Which cards are unavailable is decided **from the route status, not from the "disabled" class**
 on the card. That class is set on the `CardFrame` through Solid's `classList` prop, and looking for
 it on the card's first child found nothing — which is why no groups appeared at all.
@@ -452,12 +470,12 @@ reaches the leader's portrait.
 wrapped in an `Activatable`, so its parent holds nothing but the row itself — searching there
 found nothing and **no width was ever written.**
 
-⚠️ The card measured is one that **carries the buy buttons**, when there is one. The width is a
-single rule for every card, and the corner it is measured against is not the same width on all
-of them: the first card in the document is often in the "already running" section, which has no
-buttons, and the title line was then given room that ran straight underneath the gold button on
-the cards that do have it. Found with a loop, not `:has()` — this renderer is not a browser, and
-a selector it does not implement matches nothing silently.
+⚠️ The card measured is **the first one this mod has not hidden** (`firstMeasurableCard`). Any
+drawn card gives the same room: the buy buttons sit at the end of the title row and the corner
+holds only the portrait. A card hidden by a collapsed "one trade slot away" group or a sort filter
+measures 0, which used to leave no title width written and loop the remeasure 40 times, each a
+full decorate pass. Found with a loop, not `:has()` — this renderer is not a browser, and a
+selector it does not implement matches nothing silently.
 
 ⚠️ It writes to a stylesheet in `<head>`, **never to the cards**, so it cannot feed the
 `MutationObserver` watching them — and only when a figure actually changes, so a resize settles
@@ -551,9 +569,10 @@ relationship tooltip behind the portrait is untouched; only the click is added.
 The buttons are centred on the portrait's middle and on each other: the price is wider than the
 pin, and a ragged left edge showed it.
 
-⚠️ **One state, one tooltip.** While a merchant is on its way the button does nothing, so the
-tooltip says only that — printing the sentence describing the purchase underneath it describes
-an action that is not on offer.
+⚠️ **One state, one tooltip.** While a merchant is on its way the gold button is not drawn at all —
+the pin and the X take its place — and the propose-and-buy button's tooltip says only that it is
+on its way: printing the sentence describing the purchase underneath it describes an action that
+is not on offer.
 
 ⚠️ The stack is **rebuilt, not patched**, whenever the generation changes. A framed tooltip is
 a Solid component built around its trigger; there is no "set the text" on one.
@@ -566,33 +585,33 @@ a click on the buy button did before the render functions (`renderAvailableStack
 takes every card's with it; `disposeFramedTooltips` matches by prefix. The sort strip does the
 same, one scope per section.
 
-⚠️ **That covers this mod discarding a tooltip on purpose. It does not cover Solid discarding
-one without asking** — which happens whenever the game's own trade route list rebuilds a card,
-and left unhandled once stopped every tooltip on the whole tab, not only the one on the card
-that vanished. A framed tooltip's `createRoot` lives outside Solid's own tree by design (see
-the file note in `framed-tooltip.js`), so Solid removing an ancestor never calls its
-`onCleanup` — the tooltip stays registered in the game's own tooltip stack
-(`TooltipModel` in `core/ui-next/components/tooltip.js`, which tracks *active* tooltips by
-name) with no trigger left to hover away from, and a name that can never come off that stack
-blocks whatever was meant to follow it. `appendWithFramedTooltip` now marks every mount it
-builds with the scope it belongs to; the tab's own `MutationObserver` calls
-`disposeOrphanedTooltips` on every node in `removedNodes` **before** scheduling anything
-else, so a card Solid tears down takes its tooltip's registration with it the same turn.
+⚠️ **That covers this mod discarding a tooltip on purpose. Solid discarding one without asking is
+handled separately** — it happens whenever the game's own list rebuilds a card: an errand moves a
+route to another section, or a section is closed and opened. A framed tooltip's `createRoot` lives
+outside Solid's own tree by design (see the file note in `framed-tooltip.js`), so Solid removing an
+ancestor never disposes it: the root stays registered with the game's `TooltipModel`, holding the
+discarded card.
+
+Each stack files its tooltips under a serial scope and is kept in a set;
+`releaseDiscardedStacks()` runs at the start of every decorate pass and disposes the scope of every
+stack with `isConnected === false`, and `forgetBuyStacks()` empties the set at teardown.
+
+⚠️ **Only while the tab's cards are in the document.** The content sits in one `ThrobberSuspense`
+that detaches and re-inserts **the same nodes** while images load, so a detached trigger is not
+proof of a dead one — which is also why `framed-tooltip.js` itself has no generic "trigger left
+the document" sweep. `=== false`, so an engine without `isConnected` keeps every root.
 
 ⚠️ The in-flight flag lives in a module-level set keyed by TARGET SETTLEMENT, not on the
 button — the stack is rebuilt from scratch on every change, and a flag on the element would be
 thrown away mid-purchase and let a second click through. The click also redraws its own stack,
 because a click is not a DOM mutation and nothing else would wake the observer up.
 
-⚠️ **That redraw is deferred one frame (`deferRedraw`), never done inside the click handler
-itself.** A redraw disposes the framed tooltip mounted on the very element the click came
-from, and disposing it BEFORE `bindActivatable`'s own handling of that click has finished —
-it calls `element.blur()` right after the callback returns — tore the trigger out of the
-document mid-handling. Nothing here threw; `UI.log` stayed clean, because the breakage was in
-the game's own tooltip stack (`TooltipModel`), not this mod's code: a registration left with
-no live trigger to answer for it blocked every tooltip queued up behind it on the whole tab,
-not only the one on the button that was clicked. `requestAnimationFrame` runs once the current
-script has fully yielded, giving the click's own handling an uninterrupted turn first.
+⚠️ **That redraw skips a stack that has left the document** (`redrawAfterAction`). The order just
+given usually moves the route to another section, so Solid has already dropped the card: drawing
+into it spent a pathfinder query and purchase queries on DOM nobody sees, and — with the screen
+closed mid-purchase — registered tooltips after the tab's teardown. A stack only held off screen
+by the Suspense is behind the generation `forgetMerchantOffers` just bumped, so the pass that
+follows its return redraws it.
 
 ⚠️ The map pin uses `ContextManager.pop("screen-resource-allocation")` — the same call the
 screen's own close button makes (`ScreenFrame`, the ContextManager close handler). Moving the
@@ -633,15 +652,8 @@ render pass ago priced it with — Influence spent on something else since would
 Buying still goes ahead even if the proposal is refused at that final check: the merchant does
 not need it to have succeeded, only to eventually be accepted by *someone*.
 
-⚠️ Measuring the corner's width (`widestCornerCard` above) prefers a card carrying **this**
-button over one carrying the plain gold button, because it is wider — two prices, not one.
-Picking whichever stack came first in the DOM would under-measure a row holding both kinds and
-put the title back under the wider button on the limit-blocked cards, the exact overlap that
-measurement exists to prevent.
-
-⚠️ The button lives **inside the leader's corner**, which this mod flips to `row-reverse` so
-that an appended child lands to the *left* of the portrait. That is why it is appended rather
-than inserted first.
+⚠️ The button hangs at the **end of the title row**, like the gold button; the leader's corner
+holds only the portrait. See `BUY_STYLE` in `trade-buy-merchant.js`.
 
 ⚠️ It is decorated **before** the "already decorated" check on the title row. The corner and
 the row are rebuilt independently by Solid, and a card whose row survived a redraw would
@@ -668,7 +680,7 @@ Balanced filters nothing and orders by total. The camel tab counts resources tha
 own slots; the empire tab counts resources of the `RESOURCECLASS_EMPIRE` **or**
 `RESOURCECLASS_TREASURE` class, and the factory tab (Modern only) counts `RESOURCECLASS_FACTORY`.
 
-⚠️ **Empire and Treasure are one tab, not two.** `ui/planner/facts.js`'s
+⚠️ **Empire and Treasure are one tab, not two.** `ui/engine/resource-types.js`'s
 `UNASSIGNABLE_CLASSES` already treats them as the same kind of thing — both are held rather
 than slotted — and a resource is TREASURE instead of EMPIRE in some ages purely because a
 patch rewrote its `ResourceClassType` (Gold is EMPIRE in Antiquity, TREASURE in Exploration).
@@ -686,8 +698,10 @@ screen to explain why.
 `unavailable`) and **not** by the element it is drawn in — the rows are Solid's and are thrown
 away on every redraw, so a choice remembered against one would not survive the next.
 
-⚠️ The camel tab is found by the **`BonusResourceSlots` column**, never by resource name — the
-same rule as `ui/engine/resource-slots.js`, so anything a patch gives the property is counted.
+⚠️ The camel tab is found by the **`BonusResourceSlots` column**, never by resource name —
+`firstSlotGrantingType()` from `ui/engine/resource-slots.js`, the same age-reset index the planner
+uses, so anything a patch gives the property is counted. The tab list itself is built once per age
+and reset through `support/game-data.js`, together with the offered-tab cache.
 It is hidden in the Modern age, which has no such resource: a tab that scores every route zero
 falls back to the default order, which reads as the tab being broken.
 
@@ -706,7 +720,9 @@ Three modules find the screen's real strip by exactly those attributes (`tab-ico
 in the document — a faithful copy would quietly become "the tab strip" for all three.
 
 ⚠️ The selection indicator is **measured**, because that is how the game does it:
-`TabListComponent` writes `left` and `width` onto it from two bounding rectangles. It is
+`TabListComponent` writes `left` and `width` onto it from two bounding rectangles. It is measured
+on every pass, but written only when the figure changed, and the items' classes are repainted
+only when the tab in force changed. It is
 retried on the next frame while the strip has no width — it is built inside a section that may
 still be collapsed, and a measurement taken then pins the marker to the left edge forever.
 
@@ -727,13 +743,22 @@ this asks about every resource on every card on every pass.
 Sorting runs **after** the grouping, so a card that has just been moved into a group is sorted
 inside that group rather than in the row it came from.
 
+⚠️ **Each route is scored once per pass.** `routeScorer(section)` resolves the tab in force once
+and memoises every route's `{ counted, total }` for that pass; the comparator used to find the
+active tab and recount both routes on every comparison.
+
+⚠️ Each strip's tooltips have their own serial scope (`trade-routes:strip:N`, stamped on the bar
+as `data-najane-tooltip-scope`). Strips whose row Solid discarded — a section ribbon collapsed and
+expanded renders a new row — are released the next time a strip is built on a **connected** row;
+`removeSortTabs` releases every strip before removing it.
+
 ### The unavailable section opens by default
 
 `commerce-screen-model.js` gives that section `initiallyCollapsed: true`. That made sense for a
 list nobody could act on; this mod splits it into "one trade slot away" and "out of range" and
 puts a sort strip on it, none of which is visible behind a closed ribbon.
 
-⚠️ The **data** is changed, not the DOM — `expandTradeSections()` in `trade-routes.js`, called
+⚠️ The **data** is changed, not the DOM — `prepareTradeTabData()` in `trade-routes.js`, called
 from the screen's own transcription in `factory-tab.js`, which is where the tab's data passes
 through this mod. `CollapsibleContainer` reads the flag once into a signal when it is created;
 by the time there is an element to click, the flag has been read, and clicking it from script
@@ -747,6 +772,10 @@ every card in the tab.
 
 - The relationship badge under the portrait is hidden — the number is already in the tooltip
   behind the portrait, in words, with every term that adds up to it.
+- The relationship tooltip's trade footer (`relationship-trade-footer.js`) watches the tooltip
+  layer, `#uinext-tooltips`. ⚠️ Every tooltip on the tab lands there, framed buttons included, so
+  a pass returns at once unless a trade portrait is hovered, and queries only that root. Its rows
+  set no `align-items`: this renderer rejects `baseline` and logs it on every visit.
 - ⚠️ The relationship tooltip opened barely wider than one word per line. Nothing caps it: every
   row inside is `w-full`, and **a child sized in percent contributes nothing to its parent's
   natural width** — so the frame fell back to the `min-w-72` on its content. Raising the floor to

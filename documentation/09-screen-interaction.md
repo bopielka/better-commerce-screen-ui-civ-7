@@ -19,7 +19,7 @@ DOM facts recorded there.
 | `shift-click.js` | left-clicking at all while Shift is held |
 | `assign-switches.js` | the "imports first" and "factories first" checkboxes |
 | `resource-tooltip.js` | the game's own framed resource tooltip, for imperative cards |
-| `resource-locks-ui.js` | the padlock on a slotted resource |
+| `resource-locks-ui.js` | the padlock on a slotted resource; watches the screen only while padlocks are allowed |
 | `screen-observer.js` | **one** `MutationObserver` for the whole screen, batched to a frame |
 | `framed-tooltip.js` | the game's framed tooltip on an injected element |
 | `switch-control.js` | the shared on/off switch |
@@ -132,9 +132,10 @@ group**. Both sides mean something different:
   release;
 - in the unassigned pool → its kin in the pool, which Shift-assigning would send in together.
 
-The marks are **not stored anywhere**: the screen rebuilds its DOM whenever the model changes, so
-every recompute clears whatever carries the class and marks the current set again. That makes a
-stale mark impossible, at the price of one `querySelectorAll` per recompute.
+The module keeps the list of elements it marked. Each recompute re-derives the set of kin, takes
+the class off elements no longer in it, and adds it only where `classList.contains` says it is
+missing — so a redraw that reset the class is repaired, while unchanged marks are not written and
+no document-wide query runs. One hit test per recompute, through `findResourceAtPoint`.
 
 `transform: scale(1.25)` on `.framed-resource` — ⚠️ **not a taste decision**: the screen's own
 markup carries `hover:scale-125` on the draggable, so matching it makes the preview read as
@@ -161,7 +162,17 @@ game's own per-settlement "return all resources", hidden where it was and reissu
 three actions are in one place.
 
 The card is Solid-rendered and rebuilt whenever the model changes, so the controls are
-re-injected from a `MutationObserver` rather than placed once.
+re-injected from the shared screen watcher rather than placed once. The card list comes from
+`settlementCardsOnScreen()`, shared by every subscriber of a pass.
+
+⚠️ **Built lazily and released when discarded.** A priority menu is built the first time its
+picker opens, not with every card; the open menu is tracked in `openControl` rather than searched
+for on each document click. Each control and factory mount files its framed tooltips under a
+serial scope (`settlement-controls:N`, stamped as `data-najane-tooltip-scope`), and the controls of
+cards Solid threw away — collapsing and reopening a section renders new cards — are released on the
+next pass, **only while a card is connected**: the tab's content sits in one `ThrobberSuspense`
+that detaches and re-inserts the same nodes while images load, so a detached control is known dead
+only while the content is on screen.
 
 ### The header layout — two failed attempts worth not repeating
 
@@ -171,18 +182,14 @@ pills were, so the controls either sat far from the cog or overlapped the pills.
 ⚠️ Placing them in the flow with `margin-left: auto` and trusting the header's own
 `justify-between` to pull the cog along did not work either — the cog stayed at the far edge.
 
-**So the adjacency is no longer left to the header**: our controls **and** the cog go into a
-container of ours (`najane-card-actions`), which cannot lay them out any other way. The name
-block (`najane-card-name`) gives way first, so pills wrap in the vertical instead of pushing the
-controls off the right-hand edge.
+**So the adjacency is no longer left to the header**: our three controls and the factory clear
+button go into a container of ours (`najane-card-actions`), which cannot lay them out any other
+way; the game's factory display is hidden where it is. The name block (`najane-card-name`) gives
+way first, so pills wrap in the vertical instead of pushing the controls off the right-hand edge.
 
 ⚠️ The name block is marked **from JS**, not matched with `:first-child`: the name is wrapped in
 an `Activatable` while no resource is selected, so which element is first — and what classes it
 carries — depends on what the player is doing.
-
-⚠️ Moving the cog moves a node Solid rendered. That is only safe because `hasFactory` cannot
-change while the screen is open, and because a rebuilt card is a fresh one that comes back
-through the injector anyway.
 
 ⚠️ `hideSettlementReturnButton` is **not** simply the first `.fxs-image-button` in the card. On a
 settlement with a factory the `FactoryTypeDisplay` in the header contains one too, and being in
@@ -198,8 +205,8 @@ screen. Anything inside the header is the factory's.
 - `control.addEventListener('engine-input', e => e.stopPropagation())` — the card beneath treats
   a press as "assign the selected resource here"; these controls are not that.
 - **Balanced** has no single icon, so it is drawn as a cluster of all seven yield icons.
-- `stopSettlementControls` **empties** the actions container into the header rather than removing
-  it, because the game's cog is inside it.
+- `stopSettlementControls` disposes the tooltips **first** and then removes the actions
+  container — a framed tooltip outliving its anchor draws in the top-left corner of the screen.
 
 ---
 
@@ -229,9 +236,14 @@ matched by `.self-end` inside `[data-name="slotted-resource-container"]`.
 ⚠️ The confirmation prompt is lost along the way. That matches its new neighbours — "Reassign
 All" already clears everything without asking.
 
-The `MutationObserver` here **disconnects itself** once both injections succeed, and needs no
-re-entrancy guard: `inject()` appends only when the bar is missing, and the observer is
-disconnected in the same breath.
+The bar is injected from the shared screen watcher, which **unsubscribes itself** through its own
+handle once both injections succeed, and a re-run start drops a previous watcher first. No
+re-entrancy guard is needed: `inject()` appends only when the bar is missing.
+
+⚠️ **The GDP readout has its own tooltip scope, `screen:gdp`.** It is replaced while the bar stays,
+so its old root is disposed before each replacement — filed under the bar's scope, every refresh
+left one registered, holding the detached readout, until the tab unmounted. The readout is not
+rebuilt at all when the figure and its breakdown are unchanged.
 
 ---
 
@@ -263,8 +275,13 @@ survives. The rule is kept anyway, as cover for a label that reappears before th
 to it.
 
 ⚠️ **There is deliberately no `stopTabIcons()`.** One existed, was never called, and would have
-removed the icons from a strip that was still on screen. The strip outlives any single tab; the
-observer is attached to the strip itself and simply stops receiving events when the screen closes.
+removed the icons from a strip that was still on screen. The strip outlives any single tab. The
+**screen's** cleanup in `factory-tab.js` calls `releaseTabIcons()` a frame later, which disconnects
+the strip's observer and disposes the `tab-icons` tooltip roots — and does nothing while the strip
+is still in the document.
+
+`startTabIcons()` is idempotent and cheap to call again: an icon already present is not composed
+again, and the indicator keeps a single pending realign frame.
 
 More tabs than icons → that tab is left as text rather than guessed at, so a future tab is merely
 unstyled and not blank.
@@ -307,8 +324,9 @@ Dropdown height comes from **three** places at once — the class the screen pas
 
 `checkDescription()` warns if the description selector matches anything other than exactly one
 element. Not fatal — the worst case is the line staying visible — but it means the selector needs
-revisiting. It runs from an observer because `CommerceScreenBaseTabContent` renders inside a
-`ThrobberSuspense`, so at mount time the content is still a placeholder.
+revisiting. It runs from the shared screen watcher, which stops itself once the filter bar exists,
+because `CommerceScreenBaseTabContent` renders inside a `ThrobberSuspense`, so at mount time the
+content is still a placeholder.
 
 ⚠️ Removed feature, recorded so it is not re-added: the unassigned-resource yield totals used to be
 restyled as badges here. The row is built from `getUnassignedResourceYieldBonus`, which is **zero

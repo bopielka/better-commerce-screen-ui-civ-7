@@ -61,13 +61,20 @@ point → settlement card → index of the slot within that card → same index 
 ```js
 findSlottedResourceAtPoint(x, y)
     // → { entries, resource, settlement, slotIndex, cardElement, slotElements } | null
-findAvailableResourceAtPoint(x, y)
-    // → { entries, resource, slotIndex, cardElement, slotElements } | null
+findResourceAtPoint(x, y)
+    // → the slotted hit, else the unassigned-pool hit — from ONE elementsFromPoint
 findSettlementAtPoint(x, y)
     // → { settlement, cardElement } | null — anywhere on the card, not just a slot
-settlementCards()
-    // → [{ settlement, cardElement }] for every card currently on screen
+settlementCards(root = document)
+    // → [{ settlement, cardElement }] for every card under root
 ```
+
+⚠️ `settlementCards` runs on every pass over the DOM, so the screen layer hands in the screen's
+own element (`settlementCardsOnScreen()` in `ui/screen/screen-observer.js`, one list per pass);
+the default searches the whole document, HUD included. `findResourceAtPoint` answers Shift-hover
+and Shift-click with one hit test where asking the two halves separately made two per frame. A
+card's name is matched against `settlementNameData.settlementName` through a per-visit memo of
+composed names, cleared with the model.
 
 Facts these depend on:
 
@@ -99,7 +106,7 @@ resource at that index means the DOM and the model disagree; it is logged.
 
 ---
 
-## `headless-model.js` (275 lines)
+## `headless-model.js`
 
 Everything the scoring reads normally comes from `CommerceScreenModel`, which only exists
 while that screen is open. Auto-assignment has to work with the screen closed, so the same
@@ -117,8 +124,8 @@ back `undefined` rather than wrong, which is the failure mode to want.
 
 ```js
 {
-    cityID, isDistantLands,
-    settlementNameData: { settlementName, isTown, warehouseCount, hasRail },
+    cityID,
+    settlementNameData: { settlementName, isTown, warehouseCount },  // settlementName: diagnostics only
     factoryResourceData: { hasFactory },
     yieldTotals: Map<yieldType, number>,          // NOT in the screen's shape — see below
     slottedResources: [{ resourceValue, resourceType, cityID, yieldTypes }],
@@ -148,9 +155,12 @@ of a 13 second run.**
 `city.Yields.getYields()` is the array that utility reads before it decorates it, indexed to
 match `GameInfo.Yields`.
 
-The scoring handles both shapes: a `Map` here, and the screen's list of icon URLs plus numbers
-there (mapped back through `yieldTypeFromIcon`). See `settlementYieldTotals` in
-`ui/planner/scoring.js`.
+⚠️ **The planner reads yields from this `Map` only**, through `settlement.yieldTotals`. A
+settlement from the screen's Solid model does not carry it and is not supported by the scoring;
+the planner always plans on the headless board.
+
+`settlementName` is composed only with `DIAGNOSTICS` on, and is otherwise `undefined`: every
+reader is a log line, and composing it cost a `Locale.compose` per settlement per placement.
 
 #### `hasFactory`
 
@@ -160,24 +170,41 @@ the screen. The two paths have to answer identically or "factories first" means 
 with the screen open and another with it shut.
 
 ```js
-cityResources.isTreasureConstructiblePrereqMet() && isFactoryAge() &&
+isFactoryAge() && cityResources.isTreasureConstructiblePrereqMet() &&
     (cityResources.getNumFactoryResources() === 0 ||
      GameInfo.Resources.lookup(cityResources.getFactoryResource()) != null)
 ```
 
-#### Building cache
+The same definition, with the cached age asked first: outside the Modern Age it is the whole
+answer.
 
-`countBuildings` walks every constructible in every settlement, and a run re-reads all of them
-before every single resource. Buildings do not go up while resources are being assigned, so it
-is cached for the length of a run:
+#### Settlement fact cache
+
+A run re-reads the board before every single resource, so what a placement cannot change is
+cached for the length of the run:
 
 ```js
-forgetSettlementBuildings()        // all
-forgetSettlementBuildings(cityID)  // just the one that changed
+forgetSettlementFacts()        // all — at the start of a run
+forgetSettlementFacts(cityID)  // what a placement there can change: its yields and factory state
 ```
 
-`ui/planner/place.js` calls the second form after each placement — only that settlement's
-factory state can have changed.
+| Cache | Lifetime |
+|---|---|
+| warehouse count, settlement name | the run — assigning a resource cannot build a warehouse |
+| yields, factory state | the run, dropped for the settlement a placement lands in |
+| "is this constructible type a warehouse" | the age — reset through `support/game-data.js` |
+
+⚠️ `rebuildSettlement` drops that settlement's facts **itself, immediately before reading**. The
+caller's wait yields to timers, and a `buildSettlements()` from outside the run in that window
+would otherwise cache the yields from before the assignment landed.
+
+### `buildSettlementRefs()`
+
+The same settlements as `buildSettlements()`, carrying only `cityID` and
+`settlementNameData.isTown` — what `planner/effects.js` `modifierApplies` and the Empire tab's
+totals read. ⚠️ **Any other field is `undefined`**: a reader of one needs the full board. It
+exists because the Empire tab used to read the whole board (assigned resources, capacity, yields,
+a building walk) for two fields.
 
 ### `buildAvailableResources(settlements)`
 
@@ -185,7 +212,9 @@ factory state can have changed.
 report as assigned. **There is no "unassigned" accessor to ask.** The same subtraction appears
 in `ui/screen/assign-notification.js`.
 
-⚠️ **Empire and treasure resources are then dropped**, because the game's own pool drops them —
+⚠️ **Empire and treasure resources are then dropped** (`isAssignableResourceType` in
+`engine/resource-types.js`, the same rule `planner/facts.js` uses), because the game's own pool
+drops them —
 `commerce-screen-model.ts` returns early on `RESOURCECLASS_EMPIRE` and `RESOURCECLASS_TREASURE`
 before building a slot for them. An empire resource pays for being **held** and a treasure
 resource turns into treasure fleets; neither is ever assigned anywhere.
@@ -210,16 +239,10 @@ A stand-in carrying only what the planner reads, in the same nesting the real mo
 
 ```js
 {
-    isSlottingAvailable: true,     // the planner waits on it; nothing to wait for here
-    data: { resourceTabData: { slottedResourceSectionData, availableResourceSectionData, unslottedBonuses } },
-    selectedResource: () => ({ resourceValue: -1, cityID: undefined }),
-    clickAvailableResource: () => {},
-    slotSelectedResource: () => {},
-    deselectSelectedResource: () => {},
-    setLastSlottedResourceValues: () => {},
+    data: { resourceTabData: { slottedResourceSectionData, availableResourceSectionData } },
 }
 ```
 
-The no-op methods only need to *not throw*: `ui/planner/auto-assign.js` sends the player
-operations itself. Passing prebuilt arrays lets `place.js` read the board once per pass rather
+Nothing calls a method on a headless model — the planner sends the player operations itself —
+so it carries none. Passing prebuilt arrays lets `place.js` read the board once per pass rather
 than twice.

@@ -174,9 +174,10 @@ mouseup that did the work.
 ### Reading Shift
 
 `Input.isShiftDown()` asks the engine and works in every input context. The game's own
-tooltip manager uses it the same way. DOM `keydown`/`keyup` listeners are kept in
-`ui/engine/shift.js` **only** as a fallback for a hypothetical build without it — tracking
-Shift that way never once reported it as held.
+tooltip manager calls it the same way, unguarded — so a build without it would have no working
+tooltips either, and `ui/engine/shift.js` keeps **no** DOM fallback. Tracking `keydown`/`keyup`
+never once reported Shift as held, and its window capture listeners ran on every key and click
+of the session.
 
 ### Injected elements are not `Activatable`
 
@@ -204,13 +205,14 @@ Two waiting strategies, and they are not interchangeable:
 
 | | `ui/engine/wait.js` `waitForEngineEvent` | `ui/planner/place.js` `awaitAssignment` |
 |---|---|---|
-| Waits for | a named engine event, or 30 frames | this settlement actually holding the resource |
+| Waits for | a named engine event, or 500 ms of wall-clock time | this settlement actually holding the resource |
 | Used by | unassign sequences, bulk assign | the placement loop |
 | Why | releases are confirmed by `ResourceUnassigned` | ⚠️ `ResourceAssigned` fires **for every player**, so an AI assigning something across the map would release the loop early |
 
-`awaitAssignment` polls every 4 ms rather than once a frame: the operation is processed on
-the engine's own tick and a frame-aligned check can miss it by most of a frame — 16 ms wasted
-per resource.
+`awaitAssignment` polls from 4 ms, doubling to at most 32 ms, rather than once a frame: the
+operation is processed on the engine's own tick and a frame-aligned check can miss it by most of
+a frame — 16 ms wasted per resource. Its first look is one poll interval after the request, never
+synchronous: the request is only queued, so an immediate check can only answer "not yet".
 
 ## Reading the game's data
 
@@ -263,9 +265,9 @@ UI.getIcon('TRADE_ROUTE_LAND')        // no category
 
 ⚠️ Resource+ pattern-matched icon strings with `/YIELD_[A-Z_]+/`, which **never matches** —
 `YIELD_HAPPINESS`'s icon is `blp:Yield_Happiness`, in mixed case. Every yield total read that
-way came back as 0, which is why its happiness rescue did nothing at all. Build the map by
-asking `UI.getIcon` for every yield and indexing the answers — `yieldTypeFromIcon` in
-`ui/planner/facts.js`.
+way came back as 0, which is why its happiness rescue did nothing at all. This mod never parses
+icons for yields: the planner reads them from `city.Yields.getYields()` in
+`ui/model/headless-model.js`.
 
 Font icons used by name in this mod: `blp:fi_nar_rew_combat_64`,
 `blp:fi_victorypoint_economic_64`, `blp:fi_growth_rate_64`, `blp:fi_action_heal_64`.

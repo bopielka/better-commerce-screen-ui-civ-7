@@ -10,15 +10,18 @@ through here — and everything the game raises comes back through here too.
 | `operations.js` | **every** `ASSIGN_RESOURCE` request |
 | `unassign.js` | releasing, and who has to leave with what |
 | `resource-slots.js` | `BonusResourceSlots` (camels) |
+| `resource-types.js` | a held resource's type and class, and whether it can be assigned at all |
+| `mod-storage.js` | this mod's `localStorage` namespace, and the game-seed key every store files under |
 | `merchant.js` | buying a merchant, walking it, signing the route |
 | `merchant-orders.js` | the standing order a bought merchant carries, turn after turn |
+| `trade-queue.js` | trade actions planned for when the turn turns |
 | `resource-locks.js` | resources pinned in place; obeyed by `unassign.js`, cleared when one leaves |
 | `treasure-convoys.js` | sends loaded Treasure Convoys home, unloads them, and announces it |
 | `treasure-return-setting.js` | the switch that turns that off; **on** by default |
 | `tooltip-setting.js` | the switch that hides every tooltip this mod draws; **off** by default |
 | `diplomacy.js` | proposing "Improve Trade Relations" |
 | `wait.js` | waiting for a queued operation to land |
-| `age.js` | which age this is, worked out once |
+| `age.js` | which age this is, worked out once per age |
 | `shift.js` | is Shift held? |
 
 ---
@@ -46,9 +49,18 @@ onEngineEvent(name, handler)              // → a handle, or null
 onLocalPlayerEvent(name, handler)         // the same, everybody else's dropped first
 onEngineEvents(names, handler, { localPlayerOnly = true })
 stopEngineEvents(handles)                 // takes a whole list off again
-isSomeoneElses(data)                      // for the one place that has to ask directly
 logEventStats()                           // diagnostics only; see below
 ```
+
+The owner comes from the payload's own fields, in the game's own names: `unit`, `constructible`,
+`cityID`, `city`, `targetCity` (⚠️ `ResourceUnassigned` names only the settlement the resource
+LEFT), `player`, `owner`, and failing those a `location` asked of the map. An unknown owner always
+counts as ours.
+
+⚠️ **`NotificationAdded` carries its owner only on `id`** — what `panel-action` and the
+notification-train model read — so without it every AI notification passed as the local
+player's. `id` is read only for the names in `OWNER_ON_ID`: in other payloads it need not be about
+a player.
 
 ### One `engine.on` per event name, however many listeners
 
@@ -67,6 +79,10 @@ because for a payload carrying only a `location` that question is a map query.
 ⚠️ **The handle is the identity now, not the function.** `engine.off` never sees a listener's own
 function at all, only the shared dispatcher, so a handle must be kept if the listener is ever to be
 removed. A listener that throws is caught and logged; it cannot stop the ones behind it.
+
+⚠️ **A name's listener list is replaced, never changed in place** (copy-on-write). A handler may
+unsubscribe or subscribe from inside its own dispatch and the walk still sees the list it started
+with, without copying it for every event — thousands of them per AI turn.
 
 ### Measuring it
 
@@ -104,15 +120,19 @@ Where the payload names an owner, by observation of the game's own sources:
 
 ## `stored-setting.js` — the single door to a remembered setting
 
-Five modules had their own copy of "read an option, write an option, checkpoint it, raise a
-change event": factories-first, imports-first, the two gathering switches, the happiness
-dropdown and treasure auto-return. What each of them keeps is the part that is theirs — the
+Every remembered switch and choice — factories-first, imports-first, the gathering switches,
+the happiness dropdown, treasure auto-return, hidden tooltips, resource locks allowed — reads,
+writes and checkpoints through here. What each module keeps is the part that is theirs — the
 option name, the default, and what the value means. The plumbing is here.
 
 ```js
 storedSwitch({ option, defaultValue, label, changedEventName })   // → { isOn(), set(value) }
 storedChoice({ option, values, defaultValue, label, changedEventName, describe })  // → { get(), set(value) }
 ```
+
+`changedEventName` is optional, and only a setting something actually listens for passes one:
+hidden tooltips (`TooltipSettingChangedEventName`) and resource locks
+(`ResourceLocksChangedEventName`). A switch nobody listens to raises nothing.
 
 ⚠️ **`UI.getOption` answers 0 for an option nobody has ever set**, which is indistinguishable
 from an option deliberately set to 0. So nothing is stored raw: a switch stores 1 for off and
@@ -225,8 +245,8 @@ that ever gains the property — including ones added by DLC or another mod. **N
 mentions camels by name, on purpose.**
 
 ```js
-bonusSlotsFor(resourceType)     // → number, 0 for most
 grantsBonusSlots(resourceType)  // → boolean
+firstSlotGrantingType()         // → the first slot-granting type in table order (camels), or null
 companionCandidates(settlement, doomed)  // → array, best candidate first
 ```
 
@@ -243,6 +263,10 @@ Order and safety:
 - the queue is **capped at the number of slots actually going away**, so a misjudgement
   cannot strip the settlement.
 
+⚠️ The index behind these is built from the age's `GameInfo.Resources` and reset through
+`support/game-data.js`. The Trade Routes camel sort tab reads `firstSlotGrantingType()` rather
+than scanning the table again, so there is one answer per age.
+
 ---
 
 ## `merchant.js` — buying a merchant and sending it
@@ -251,15 +275,21 @@ Order and safety:
 isMerchant(unit)                              // → boolean
 tradeCapacityWith(leaderId)                   // → { capacity, used }
 localMerchants()                              // → every merchant this player owns
-merchantOffer(cityID)                         // → { definition, cost, canBuy, insufficientFunds }
 purchaseSite(preferredCityID, targetCity)     // → { city, offer } — who actually buys
-purchaseMerchant(cityID, definition)          // sends the purchase
 purchaseAndCollectMerchant(cityID, definition)// → Promise<unit|null>
+forgetMerchantOffers()                        // drops the cached prices and purchase answers
 approachLocations(unit, city)                 // → plots to walk to, best first (probe-capped)
 moveMerchant(unit, location)                  // MOVE_TO
 canSignRoute(unit, location) / signRoute(…)   // MAKE_TRADE_ROUTE
 goldBalance() / unitKey(unitID)
+turnsUntilRouteOpens(unit, location)          // pathfinds; see below
 ```
+
+⚠️ **Offers are cached, and the cache has two owners.** The Commerce screen clears it when prices
+may have moved, and the trade queue clears it at the start of every `LocalPlayerTurnBegin` pass —
+without that, a queue running with the screen closed bought against the prices and `canBuy` from
+whenever the tab was last open. The merchant-type indexes and the offer cache are also reset
+through `support/game-data.js`.
 
 ### ⚠️ `approachLocations` is probe-capped, and that cap is a turn-time fix
 
@@ -285,9 +315,9 @@ for (a ship approaching an inland capital) are exactly the coastal ones. When th
 the settlement centre is still handed back, the engine still refuses, and the attempt is still
 counted — the behaviour is unchanged, only the bill is.
 
-⚠️ Note that **`turnsUntilRouteOpens` is currently unused** and pathfinds too; if anything ever
-calls it again, it needs the same treatment (or a per-card cache) before it goes on a tab that
-draws twenty of them.
+⚠️ **`turnsUntilRouteOpens` pathfinds too.** Its one caller, the errand row in
+`trade-buy-merchant.js`, caches the answer per merchant and destination; anything else that calls
+it on a tab drawing twenty cards needs the same.
 
 The three engine calls are the game's own, taken from where the game makes them:
 
@@ -312,8 +342,9 @@ the merchant stands on. The command asks "open a route with the settlement at X,
 ⚠️ **The new unit is found by diffing the merchant list, not by listening for
 `UnitAddedToMap`.** The game's own unit-flag manager documents why it avoids that event:
 "event race condition in looking up a valid Unit" — it can arrive before the unit can be read
-back. `purchaseAndCollectMerchant` waits for `CityMadePurchase` and then polls for up to 30
-frames.
+back. `purchaseAndCollectMerchant` waits for `CityMadePurchase` and then polls every 50 ms for
+up to 1000 ms of **wall-clock** time. ⚠️ A frame count never ends when the frame loop stalls, and
+that would leave the trade queue's one-at-a-time guard shut for the session.
 
 What a merchant costs is asked through `canStartQuery` — the same call the production chooser
 makes — because it answers for every unit type at once and its `result` carries the reason for
@@ -326,8 +357,9 @@ a refusal, which is what the tooltip needs when the button is dark.
 ```js
 orderMerchantTo(unit, city)      // file the order and act on it now
 clearMerchantOrder(unitID)
-merchantsBoundFor(city)          // the live merchants walking there
-merchantsBoundForPlayer(leader)  // …and to any settlement of one leader
+merchantsOrderedTo(city)         // every merchant carrying an order for that settlement
+merchantsBoundForPlayer(leader)  // …for any settlement of one leader
+idleMerchants() / nearestIdleMerchant(city)   // merchants no order has spoken for
 startMerchantOrders()            // installs the listeners; called from the entry point
 MerchantOrdersChangedEventName   // window event: an order was given, finished or dropped
 ```
@@ -370,6 +402,17 @@ one, so that zero can mean "no order" — keyed per game seed, exactly as
 [`ui/planner/priority-store.js`](07-planner-assignment.md) does it. Nothing is written into
 the save; the mod still declares `AffectsSavedGames = 0`.
 
+The game-seed key comes from `mod-storage.js` `currentGameKey()`, shared by every store (orders,
+the trade queue, settlement priorities, resource locks). ⚠️ It caches a **non-null** seed only —
+remembering the null answered before the seed is readable would strand every store — and is
+reset through `support/game-data.js`. A cleared order or finished queue entry is **deleted** from
+the `localStorage` mirror, and a game's object with it once empty; writing 0 instead grew the
+shared `modSettings` with every merchant of every game ever played.
+
+⚠️ The merchant list and what each merchant is doing are read once per **snapshot** and shared by
+every card that asks during it (`idleMerchants`, `nearestIdleMerchant`, `merchantsOrderedTo`,
+`merchantsBoundForPlayer`). Per-unit bookkeeping is dropped together with the order.
+
 ### Merchants that never arrive
 
 A merchant lost at sea, killed by a raider or disbanded takes **nothing** with it: the order is
@@ -387,8 +430,11 @@ means "they are all gone"; a failed call means nothing at all. `readMerchants()`
 `null` for the second case precisely so the two cannot be confused — treating them the same
 wipes the orders of merchants that are alive and walking.
 
-⚠️ `merchantsBoundFor` counts **live merchants**, not stored orders, so a card is right about
-who is on the road even in the window before the next pruning pass.
+⚠️ `merchantsOrderedTo` answers from **the order alone**, never "is it still travelling": a
+merchant that has arrived and waits for a trade slot is off the road but already sent. That is
+safe only because the order is kept honest at both ends — a merchant the player calls back has
+its order dropped (`forgetOrderIfAbandoned`), and one that has merely arrived keeps it
+(`standsOnLandOf`).
 
 ⚠️ `merchantsBoundForPlayer` is what stops the mod selling the same trade slot twice. Capacity
 is counted **per leader**, not per settlement: with one slot free and a merchant already on its
@@ -448,8 +494,9 @@ sentences for one situation). This is **not** second-guessing the rules — `Bas
 means the action resolves at the end of the turn it was proposed in, so "proposed this turn"
 *is* the engine's own answer, said a few frames earlier. Without it, the redraw a click
 triggers faithfully restored the button bright and priced on an action that could no longer be
-taken. Cleared on `LocalPlayerTurnBegin`: a refusal frees the action again, and the turn
-boundary is where that happens whichever way it went. The engine's real answers arrive with
+taken. Cleared on `LocalPlayerTurnBegin` (a refusal frees the action again, and the turn
+boundary is where that happens whichever way it went) and on `GameStarted`. The hostile-band
+ceiling read from `GameInfo` is reset through `support/game-data.js`. The engine's real answers arrive with
 `GameCoreEventPlaybackComplete`; see [screen: tabs](10-screen-tabs.md).
 
 ⚠️ Influence cost is read from `project.targetList1.find(entry => entry.targetID === leaderId)`
@@ -463,10 +510,10 @@ not have — it is never called from the hub.
 ## `wait.js` — waiting for a queued operation
 
 ```js
-waitForEngineEvent(eventName, timeoutFrames = 30)   // → Promise<void>
+waitForEngineEvent(eventName, timeoutMs = 500)   // → Promise<void>
 ```
 
-Listens with `engine.on`, and races it against a `requestAnimationFrame` counter.
+Listens through `events.js` (local player only), and races it against a wall-clock timer.
 
 ⚠️ **The timeout matters as much as the event.** An operation the engine drops would otherwise
 leave the sequence hanging forever.
@@ -481,13 +528,15 @@ which for that reason polls the settlement directly instead.
 
 ```js
 isFactoryAge()       // AGE_MODERN — cached
-isExplorationAge()   // AGE_EXPLORATION — not cached, called rarely
+isExplorationAge()   // AGE_EXPLORATION — cached
 ```
+
+Both answers are dropped through `support/game-data.js` when the age's data is replaced.
 
 ⚠️ `Database.makeHash` is a **lookup, not a constant**, so `isFactoryAge` works the answer out
 once and keeps it: the planner asks this for every resource–settlement pair it scores, which
-is hundreds of thousands of hashes over one "Assign All". The age cannot change while the
-game is running, so caching is safe by construction.
+is hundreds of thousands of hashes over one "Assign All". The age changes only together with the
+data behind it, and that is exactly when the cache is reset.
 
 It lives in `engine/` rather than beside the Factory tab that first needed it because three
 modules across two layers ask the question, and the planner asking a *screen* module meant the
@@ -505,13 +554,14 @@ isShiftHeld()   // → boolean
 own tooltip manager uses it the same way to shorten the tooltip delay.
 
 ⚠️ The first attempt tracked DOM `keydown`/`keyup` instead and **never once reported Shift as
-held**: this UI does not deliver the engine's modifier state through DOM keyboard events. The
-DOM listeners survive only as a fallback in case `Input.isShiftDown` is missing from some
-build; they cost nothing when unused. A `blur` listener clears the fallback state, because a
-key released while the window is unfocused never delivers its `keyup`.
+held**: this UI does not deliver the engine's modifier state through DOM keyboard events.
 
-The source actually in use is logged once, the first time it is asked.
+⚠️ **There is no DOM fallback.** Core's own tooltip manager calls `Input.isShiftDown()`
+unguarded, so a build without it has no working tooltips either — while the fallback cost window
+capture listeners on every key and click of the session. If the call is missing or throws,
+`isShiftHeld` answers false and warns **once** (`hover-highlight.js` asks on every frame of mouse
+movement).
 
-Note that `event.shiftKey` on a **native DOM mouse event** is reliable and is used directly in
-`ui/screen/shift-click.js` and `ui/screen/resources-tab.js` (`event.shiftKey || isShiftHeld()`).
-It is only *keyboard* events that carry nothing.
+`ui/screen/shift-click.js` and `ui/screen/resources-tab.js` still try `event.shiftKey` first
+(`event.shiftKey || isShiftHeld()`). Do not rely on it alone: one build reported `shiftKey: false`
+on mouse events with Shift held — see [Platform notes](03-platform-notes.md).

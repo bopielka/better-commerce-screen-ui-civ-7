@@ -15,6 +15,11 @@ the options screen writes to a setting, a setting never reads the options screen
 also loads in **shell** scope, where there is no game, so nothing it pulls in may touch the
 game at import time.
 
+The one setting with more behind it is `engine/resource-locks.js`, which also imports
+`engine/events.js` and `engine/mod-storage.js` (and through it `support/game-data.js`). At import
+those only declare themselves and register a reset in a `Set`; every engine subscription is made
+from `startResourceLockUpkeep()`, which only the game-scope entry point calls.
+
 | Layer | Folder | Knows about | Must not know about |
 |---|---|---|---|
 | `support` | `ui/support/` | nothing — plain JS and the DOM | the game, this mod |
@@ -39,19 +44,21 @@ and the whole UI came with it. The split is now:
 The same reasoning put `ui/engine/age.js` in `engine/` rather than beside the Factory tab
 that first needed it.
 
-### The one exception, and why it is tolerated
+### "Can this resource be assigned at all" lives in `engine/`
 
-`ui/model/headless-model.js` imports `isAssignableToSettlement` from `ui/planner/facts.js`,
-which is a step to the **right**. It is recorded here rather than quietly left, because the
-next person to notice it should not "fix" it by writing a second copy of that function - two
-definitions of "can this resource go in a settlement at all" is exactly the class of bug the
-headless model exists to prevent.
+`ui/model/headless-model.js` and `ui/planner/facts.js` both need the resource-class rule (empire
+and treasure resources are never assigned). It lives **once**, in
+`ui/engine/resource-types.js` (`resourceClassFromType`, `isAssignableResourceType`), and
+`facts.js` wraps it. It used to live in `facts.js`, which made the model import a step to the
+**right**.
 
-It is tolerated because the harm the rule prevents is specifically **`planner` reaching into
-`screen`**: that is what would drag the whole button bar into the automatic path. `facts.js`
-reaches no further than `effects.js` and `support/`, so nothing comes with it. The real repair
-is to move the resource-class facts down into `engine/`, beside `resource-types.js`; it has not
-been done because it touches the planner's hottest code for no behavioural gain.
+⚠️ Do not "fix" a future need for it by writing a second copy: two definitions of "can this
+resource go in a settlement at all" is exactly the class of bug the headless model exists to
+prevent.
+
+One upward import remains and is small: `ui/support/dom.js` reads `areModTooltipsHidden` from
+`ui/engine/tooltip-setting.js`, so that `setTooltip` obeys the "hide tooltips" option at every
+call site. That setting reaches no further than `stored-setting.js`.
 
 ### Which way `options/` points
 
@@ -145,7 +152,8 @@ had **already drifted** — which is the argument for them, not the tidiness.
 |---|---|---|
 | every `engine.on` | `ui/engine/events.js` | filter by whose event it is; keep the handle so it can come off again |
 | every remembered setting | `ui/engine/stored-setting.js` | never store a raw value — 0 means "never touched" |
-| every DOM watch on this screen | `ui/screen/screen-observer.js` | one observer, scoped to `screen-resource-allocation`, one pass per frame |
+| every DOM watch on this screen | `ui/screen/screen-observer.js` | one observer, scoped to `screen-resource-allocation`, one pass per frame; `settlementCardsOnScreen()` is the one card list a pass shares |
+| every "the age's data was replaced" | `ui/support/game-data.js` | a cache built from `GameInfo` registers its own reset beside itself |
 | every selector more than one module needs | `ui/screen/screen-parts.js` | plus the tab-row summary the three rebuilt tabs share |
 | every `UI.getIcon` / `UI.getIconBLP` | `ui/screen/icons.js` | a missing icon is a gap on a card, never a thrown tab |
 
@@ -158,7 +166,16 @@ notification train, every tooltip that opens — so each callback woke on change
 nothing to do with the Commerce screen, and then searched the screen for something to fix.
 `watchCommerceScreen(callback)` is the replacement; it hands back an unsubscribe, tears the
 observer down when the last subscriber leaves, and discards the mutations a pass produces
-itself so a pass cannot retrigger itself.
+itself so a pass cannot retrigger itself. `ui/screen/layout.js` subscribes too; it has no
+observer of its own any more.
+
+⚠️ **A subscriber joining an observer still pointed at a closed screen retargets it.** A detached
+tree never mutates, so no pass would ever move it, and every feature on the reopened screen went
+quiet.
+
+⚠️ `settlementCardsOnScreen()` hands every subscriber of one pass the **same** card list, scoped
+to the screen. It is safe only for subscribers that neither add nor remove cards nor write to the
+model.
 
 ⚠️ **Its subscribers run from `requestAnimationFrame`, and that is load-bearing.** A
 `MutationObserver` callback is a microtask and so is Solid's effect queue; touching the DOM
@@ -193,8 +210,10 @@ Exceptions worth knowing:
 
 - **`startTabIcons()` has no `stopTabIcons()` on purpose.** The tab strip belongs to the
   whole screen, not to the Resources tab; tearing icons down when that tab unmounts would
-  put the words back the moment the player switched to Trade Routes. Its observer is attached
-  to the strip itself, so it stops receiving events when the screen closes.
+  put the words back the moment the player switched to Trade Routes. What lets go of it is the
+  **screen's** cleanup in `factory-tab.js`, a frame later: `releaseTabIcons()` disconnects the
+  strip's observer and disposes the `tab-icons` tooltip roots, and only when the strip is
+  already out of the document.
 - **`ui/screen/trade-routes.js` has its own lifecycle**, driven by counting live
   `TradeRouteCard` mounts, because the trade tab's *container* is not registered and the card
   is the only mount signal available.

@@ -1,12 +1,13 @@
 # 04 — `ui/support/` — no knowledge of the game or of this mod
 
-The leftmost layer. Three files, all pure utility. Anything here must be usable without the
+The leftmost layer. Four files, all pure utility. Anything here must be usable without the
 game running and without knowing what the mod is for.
 
 | File | Purpose |
 |---|---|
 | `diagnostics.js` | `log` / `warn`, and the switch between them |
 | `dom.js` | the DOM helpers this renderer's gaps make necessary |
+| `game-data.js` | "the game's data has been replaced": one place to say it, one place to hear it |
 | `build-stamp.js` | written by the deploy script, never by hand — see [workflow](14-development-workflow.md) |
 
 ## `diagnostics.js`
@@ -33,6 +34,22 @@ Guidance for new code:
   the hardest bug to notice is a wrapper that quietly stopped wrapping. See the
   `panel-action exposes no getNotificationInfo` warning in
   `ui/screen/assign-notification.js` for the tone.
+
+## `game-data.js`
+
+```js
+onGameDataStale(reset)   // registers a reset for the rest of the session
+forgetGameData()         // runs every reset; the entry point calls it
+```
+
+⚠️ `GameInfo` holds `core` + `base-standard` + **the age being played**, so an age transition
+replaces the tables under every index built from them. Each cache registers its own reset beside
+itself; the entry point raises it on `GameAgeEnded` and `GameStarted`, and subscribes **after**
+every other `GameStarted` listener — so a `GameStarted` handler that reads a cached value
+synchronously (the game-seed key in `engine/mod-storage.js`) still sees the previous game's.
+
+It is a plain callback list that knows nothing about the game, which is why it lives here: any
+layer may register.
 
 ## `dom.js` (103 lines)
 

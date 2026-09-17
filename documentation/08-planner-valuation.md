@@ -29,6 +29,12 @@ portrait, their total, and their settlements. Nothing is lost and it still looks
 `resourceType` there is a **localisation key**, not the resource's type, and both icons are
 `url(blp:…)` strings.
 
+⚠️ **Nothing a tooltip shows is worked out up front.** `appendWithResourceTooltip(parent,
+trigger, props, fallbackText, groups)` takes the fallback text and the leader cards either as
+values or as functions: the cards are resolved once, untracked, on the first hover, and the
+fallback text only if the component fails to mount. Composing both for every card on every visit
+was most of what opening the Empire and Factory tabs cost.
+
 ⚠️ It **falls back to the plain-text tooltip** if the component will not mount, and warns. This
 reaches into a component the game did not write for outside use; without the fallback a game patch
 that moves it would leave the cards with no tooltip at all, which is worse than the bare box this
@@ -44,10 +50,15 @@ and — separately — what the idle ones would add. Neither aggregation rule is
 ## `empire-effects.js`
 
 ```js
-empireEffectTotals(resourceType, copies, settlements = null)
+empireEffectTotals(resourceType, copies, settlements)
     // → [{ kind: 'yield'|'combat'|'percent', ... }]
-forgetEmpireEffects()   // called when the tab is opened
 ```
+
+`settlements` is required, and only `cityID` and `settlementNameData.isTown` are read from it —
+the Empire tab passes `buildSettlementRefs()` from `headless-model.js`, not the whole planner
+board. ⚠️ The unit-class index behind the combat lines is static data for the age and is reset
+**only** through `support/game-data.js`; dropping it every time the tab opened re-scanned
+`GameInfo.Units` and `GameInfo.TypeTags` on every visit.
 
 Returned entries:
 
@@ -181,16 +192,15 @@ does not get a number of its own.
 ## `factory-effects.js`
 
 ```js
-factoryEffectTotals(resourceType, count)   // → [{ kind, amount, perCopy, yieldType?, towards? }]
 sumFactoryTotals(perResource)              // adds across resources, keeping incompatibles apart
 absoluteWorth(yieldType, percent)          // → { worth, net }
 forgetYieldPools()                         // drop the cached pools before a render
-gdpPerSlottedResource()                    // from VictoryScorings
-slottedFactoryResources()                  // → Map<type, { count, cities[] }>
-heldFactoryResources()                     // → Map<type, { total, definition, origins }>
+factoryGdpRequirement()                    // what the factory tracker still waits for, or null
+gdpPerSlottedResource()                    // from VictoryScorings, through gdp.js
 factoryHoldings()                          // → { working[], idle[] }  ← what the tab renders
-FACTORY_CLASS = 'RESOURCECLASS_FACTORY'
 ```
+
+The per-resource totals and the slotted/held readers behind `factoryHoldings` are module-private.
 
 ### The five effect shapes
 
@@ -296,9 +306,21 @@ every player past Antiquity.
 ⚠️ **Unknown counts as unlocked** in `nodeUnlocked` too. Claiming a tracker is locked hides points
 the player may well be earning, which is the worse of the two errors.
 
+### Reading the GDP total — `gdpPerTurn()`
+
+⚠️ **Read off the engine, not through `buildSettlements()`.** Only the town flag and the slotted
+types count, and the planner's board also reads capacities, yields and a building walk per
+settlement; the settlements are the same ones it would build (those with a `Resources`
+component). The gold-building walk is skipped while that tracker pays 0, and the memoised age
+type is cleared through `support/game-data.js`.
+
+⚠️ `scoringRate(scoringId)` is **the only reader of `GameInfo.VictoryScorings`**: `ScoringId` is
+its primary key, so one memoised map answers every tracker, the factory rate included.
+
 ### GDP per slotted resource
 
-⚠️ **Read from `GameInfo.VictoryScorings`** (`VICTORY_TRACKER_SLOTTED_FACTORY`), not written as a
+⚠️ **Read from `GameInfo.VictoryScorings`** (`VICTORY_TRACKER_SLOTTED_FACTORY`, through
+`scoringRate`), not written as a
 3. It is exactly the kind of number a balance patch moves, and a hardcoded one would go on
 looking right while being wrong.
 

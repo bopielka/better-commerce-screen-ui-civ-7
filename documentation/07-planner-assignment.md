@@ -102,22 +102,25 @@ resourceYieldTypes(resource)
 effectiveResourceYieldTypes(resource, settlement)
 resourceYieldEffects(resource)               // [{ modifierId, yieldType, amount, percent, effectType }]
 givesUnitProductionBonus(resource)
-resourceClassOf(resource)
-isAssignableToSettlement(resource)           // false for empire and treasure resources
+resourceClassOf(resource)                    // through engine/resource-types.js
+isAssignableToSettlement(resource)           // false for empire and treasure resources; same
 isImportedResource(resource)                 // came over a trade route from another leader
-forgetImportOrigins()                        // called at the start of a placement run
+forgetImportOrigins()                        // at the start of a run, and when a settlement changes hands
 scalesWithWarehouses(resource)
 conditionalBoostStrength(resource, settlement)
-yieldTypeFromIcon(iconSource)
 HAPPINESS_YIELD, PRODUCTION_YIELD            // string constants
 ```
 
-### `yieldTypeFromIcon`
+⚠️ **Yields are never read from icons.** Resource+ pattern-matched icon strings with
+`/YIELD_[A-Z_]+/`, and **that never matches** — the icon for `YIELD_HAPPINESS` is
+`blp:Yield_Happiness`, in mixed case. Every yield total read that way came back as 0, **which is
+why its happiness rescue did nothing at all.** The planner reads yields only from
+`headless-model.js` (`city.Yields.getYields()`).
 
-⚠️ Built by asking `UI.getIcon` for every yield and indexing the answers. Resource+
-pattern-matched the string with `/YIELD_[A-Z_]+/`, and **that never matches** — the icon for
-`YIELD_HAPPINESS` is `blp:Yield_Happiness`, in mixed case. Every yield total read that way came
-back as 0, **which is why the happiness rescue did nothing at all.**
+⚠️ `isImportedResource` is a property of the **copy**, cached per resource value. The cache is
+dropped at the start of every run **and** on `CityTransfered` / `ConqueredSettlementIntegrated`:
+`gdp.js` reads it outside any run, where a city captured since the last run would otherwise
+still count as an import.
 
 ### `effectiveResourceYieldTypes`
 
@@ -205,7 +208,14 @@ direction flips between ages — Antiquity pearls are better *outside* the capit
 ## `scoring.js` — the tiers
 
 `bestAssignment(model, targetCityID = null, blockedPairs = new Set())` returns
-`{ resource, settlement, score, rescue }` or `null`.
+`{ resource, settlement, score, tier }` or `null` — `tier` names the tier that won, for the log.
+`CAMEL_RESOURCE_TYPE` is exported so `place.js` tests the same name.
+
+⚠️ `givesUnitProductionBonus` is asked **once per kind** per call, not per pair: its cache key
+reads `Game.age`, a native call, and every copy in a group shares the group's type. The
+happiness-resource test checks `affectedYields(...).has(HAPPINESS)` before computing a boost — the
+answer is identical, and it skips cold boost computations for every other kind while a settlement
+is unhappy.
 
 ### The tiers, highest first
 
@@ -468,18 +478,25 @@ only: production in a town turns into gold rather than buildings.
 
 ### Caches, and when they are cleared
 
-| Cache | Scope | Cleared by |
+| Cache | Keyed | Cleared by |
 |---|---|---|
-| `eligibilityCache` (`canAssign` answers) | across passes | `forgetEligibility()` / `forgetEligibility(cityID)` |
-| `boostsThisPass` | **one planning pass** | `startPlanningPass()`, first line of `bestAssignment` |
-| `scoresThisPass` | **one planning pass** | same |
+| `eligibilityByCity` (`canAssign` answers) | settlement → resource value | `forgetEligibility()` at the start of a run; `forgetEligibility(cityID)` after a placement there, or when the engine contradicts a cached yes |
+| `boostsThisPass`, `scoresThisPass`, `conditionalsThisPass` | settlement → resource kind | `forgetSettlementScores(cityID)` after a placement there; all of them in `startPlacementRun()` and on the placement loop's full re-read |
+| hoard ranking | the run | `startPlacementRun()` |
 
-⚠️ `startPlanningPass()` **must come first** in `bestAssignment`: what those hold describes the
-board as it was *before* the last assignment landed.
+⚠️ **One settlement, not the board.** A placement changes the settlement it landed in; the other
+settlements' scores are computed from yields `headless-model.js` holds frozen until the loop's
+full re-read — so keeping them returns the same numbers. That pairing is load-bearing: the full
+re-read (`FULL_READ_EVERY_MS`) drops the scores on the same clock as the yields.
 
 Within a pass the same figures are asked for again and again — `estimatedYieldBoosts` for the
 priority yield, then production, then happiness; `scorePair` from as many as four branches of
-the same decision. Keyed by resource **type**, since two copies score identically.
+the same decision. Keyed by resource **kind**, since two copies score identically.
+
+⚠️ A `canAssign` **refusal** is dropped together with the acceptances when a placement lands in
+that settlement, so refused copies are asked again. Keeping refusals would be cheaper, but it is
+safe only if no placement can turn an engine refusal into an acceptance — which the engine's
+reasons do not let the code prove.
 
 ### `groupByResourceType`
 
@@ -574,24 +591,36 @@ happiness rescue level out and the factories fill one kind at a time.
 ### The loop
 
 ```
-forgetEligibility(); forgetSettlementBuildings();      once, at the start
+forgetEligibility(); forgetSettlementFacts(); startPlacementRun()      once, at the start
+if !anythingCouldFit(scope, targetCityID): return 0                     ← no board read at all
 while (placed < MAX_PLACEMENTS = 300):
-    settlements = buildSettlements()                    ← read the board
-    available   = buildAvailableResources(...) filtered by scope and `refused`
-    plan        = bestAssignment(buildHeadlessModel(settlements, available), targetCityID)
+    every FULL_READ_EVERY_MS (and first):                               ← the backstop
+        settlements = buildSettlements(); available = buildAvailableResources(...) in scope
+        forgetSettlementScores()
+    plan = bestAssignment(buildHeadlessModel(settlements, available), targetCityID, blockedPairs)
     if !plan: break
-    if !canAssign(...): refused.add(value); continue
-    if !requestAssign(...): break
-    forgetEligibility(plan.settlement.cityID)            ← only this settlement changed
-    forgetSettlementBuildings(plan.settlement.cityID)
-    await awaitAssignment(...)  — if it never arrives, refuse it and stop asking
+    if !canAssign(...): set the pair aside; forgetEligibility(cityID); continue
+    if !requestAssign(...): set the pair aside; continue
+    forgetEligibility(cityID); forgetSettlementScores(cityID)           ← only this settlement changed
+    await awaitAssignment(...)  — if it never arrives, refuse the resource
+    settlements = rebuildSettlement(settlements, cityID)                ← re-read that one settlement
+    available  -= the copy that landed
 ```
 
-`refused` exists because a pair the engine rejects would otherwise be chosen again every pass
-and the loop would never finish.
+A refusal sets aside the **pair**, not the resource (`blockedPairs`); a resource turned down by
+`MAX_PAIR_REFUSALS` settlements, or accepted and never taken, goes into `refused`. Without them a
+rejected pair would be chosen again every pass and the loop would never finish.
 
-`awaitAssignment` asks **the settlement itself** whether the resource has arrived, polling every
-4 ms up to 2 s. ⚠️ **Not the `ResourceAssigned` event**: that fires for every player, so an AI
+⚠️ **`anythingCouldFit` is never stricter than `bestAssignment`.** It answers "no" only when no
+settlement (or the target) has a free slot and no camel in scope is still in the pool — the one
+board on which `bestAssignment` cannot score a pair. Anything it cannot tell answers "yes" and
+the full run decides; `verifyScreenMatchesEngine` still runs. It exists because automatic
+assignment re-runs every 15 s while an arrival waits, and on a full empire each of those runs was
+a cold read and score of every settlement to place nothing.
+
+`awaitAssignment` asks **the settlement itself** whether the resource has arrived, polling from
+4 ms (doubling to 32 ms) up to 2 s. Its first look is one poll interval after the request —
+`sendRequest` only queues, so a synchronous look can only answer "not yet". ⚠️ **Not the `ResourceAssigned` event**: that fires for every player, so an AI
 assigning something across the map would release the loop early and the next plan would be made
 against a board that had not changed.
 
@@ -697,19 +726,25 @@ hands) and `ResourceAssigned`. So a spread of cheap events is watched and **two*
 asked on each: has the set of resources grown, and has the empire's **room** for them?
 
 ```
-ConstructibleBuildCompleted    something the production queue finished
-ConstructibleAddedToMap        an improvement that appeared without being built
-ConstructibleChanged
-TradeRouteAddedToMap           a new route brings its payload
-TradeRouteChanged
-ResourceCapChanged
-WonderCompleted                the Colossus and friends carry resource slots
-CityTransfered                 a settlement changing hands brings its resources with it
-ConqueredSettlementIntegrated
-CityAddedToMap
-PlayerSettlementCapChanged
-LocalPlayerTurnBegin           catch-all / safety net
+local player only (PER_PLAYER_TRIGGER_EVENTS):
+  ConstructibleBuildCompleted    something the production queue finished
+  ConstructibleAddedToMap        an improvement that appeared without being built
+  ConstructibleChanged
+  ResourceCapChanged             owner from cityID, as commerce-screen-model filters it
+  CityAddedToMap                 owner from player, as panel-yield-banner filters it
+  PlayerSettlementCapChanged     same
+
+unfiltered (TRIGGER_EVENTS):
+  TradeRouteAddedToMap           a new route brings its payload — another leader's route can deliver imports
+  TradeRouteChanged
+  WonderCompleted                the Colossus and friends carry resource slots
+  CityTransfered                 a settlement changing hands — the owner on the payload is the ambiguous part
+  ConqueredSettlementIntegrated
+  LocalPlayerTurnBegin           catch-all / safety net
 ```
+
+⚠️ The local-only ones are raised for **every player**, several times a turn each; unfiltered,
+each AI settlement change cost a debounce and four board walks.
 
 …plus a **periodic sweep every 15 seconds** (`SWEEP_MS`), and one quiet look once the game is
 readable — which finds nothing, because seeding has just recorded everything the player owns.
@@ -793,7 +828,9 @@ Hence `LATE_ARRIVAL_DELAYS_MS = [600, 1500, 3000]`: a fixed handful of follow-up
 moment anything is found and cancelled again by the next real trigger.
 
 ⚠️ **Only a real trigger arms these.** A retry that armed more retries would never stop — three
-become nine become twenty-seven, all turn long (`isRetry`).
+become nine become twenty-seven, all turn long (`isRetry`). ⚠️ **A sweep neither arms nor cancels
+them** (`isSweep`): a sweep landing within a few seconds of a real trigger used to drop that
+trigger's remaining retries.
 
 ### Other invariants
 
@@ -805,8 +842,9 @@ become nine become twenty-seven, all turn long (`isRetry`).
   the work meant a pass that placed nothing still *swallowed the arrival*: the next trigger saw
   no new resources and did nothing, so one badly timed event could cost the player the whole
   feature until their next acquisition.
-- `startAutoAssign` calls `forgetPriorityMemory()` — a different game may have been loaded, and
-  settlement keys are only unique within one game.
+- `startAutoAssign` calls `forgetPriorityMemory()`, and `priorities.js` also subscribes it to
+  `GameStarted` — a different game may have been loaded, and settlement keys are only unique
+  within one game.
 - `TRIGGER_GRACE_MS = 1500` exists for **event order**: the engine raises the notification and
   these events in the same burst and nothing promises which lands first, so "is a pass
   scheduled" can still be false at the moment the notification is offered. See
@@ -834,7 +872,9 @@ a cue arrives  →  debounce 400ms  →  walk the settlements
 ```
 
 The events are cues to look, not the mechanism. `ResourceAssigned` is still one of them, and there
-is a 15s sweep behind the lot for the same reason auto-assign.js has one.
+is a 15s sweep behind the lot for the same reason auto-assign.js has one. The settlement cues
+(`ResourceCapChanged`, `CityAddedToMap` and the constructible events) are filtered to the local
+player, exactly as in auto-assign.js; the sweep does not arm the late-arrival follow-ups.
 
 ### ⚠️ `approved` is the whole safety mechanism
 
@@ -899,10 +939,11 @@ getPriority(cityID)                  // what the PLAYER chose — null for Balan
 effectivePriority(cityID, isTown?)   // what the SCORING feeds first — never null
 setPriority(cityID, yieldType)
 cityKey(cityID)                      // String(cityID.id) — used as a map key everywhere
-forgetPriorityMemory()
-DEFAULT_CITY_PRIORITY = 'YIELD_PRODUCTION'
-DEFAULT_TOWN_PRIORITY = 'YIELD_FOOD'
+forgetPriorityMemory()               // also on GameStarted — not GameAgeEnded: settlements outlive an age
 ```
+
+Balanced means `YIELD_PRODUCTION` for a city and `YIELD_FOOD` for a town (module-private
+constants).
 
 Every yield already has a translated name in the game's data, so **only "Balanced" needs a
 string of ours** — one line of translation per language instead of eight.
@@ -946,7 +987,8 @@ campaign** — carrying the map across a load would apply one game's choices to 
 5. **Modifiers found by `ResourceType` argument**, not only by `ModifierMetadatas`.
 6. **`givesUnitProductionBonus`** covers unqualified modifiers (Truffles, Salt).
 7. **`scalesWithWarehouses`** read from the data, so Clay and Crabs are included.
-8. **`yieldTypeFromIcon`** actually works, so yield totals are not all zero.
+8. **Yields are read from the game's own per-city array**, not pattern-matched out of icon
+   strings, so yield totals are not all zero.
 9. **The gathering tier** — a culture settlement and a gold settlement, built from whatever pays
    those yields. Requested for this mod; both piles switchable.
 10. **`TOWN_PRODUCTION_PENALTY`** and the **production fallback tier**.

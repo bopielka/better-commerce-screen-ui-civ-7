@@ -5,7 +5,7 @@ Two unrelated things, both about telling the player something: the end-turn nag 
 
 ## `assign-notification.js` — the end-turn nag
 
-411 lines for one behaviour, and the file is dense with dead ends. Read this before touching it.
+Over 400 lines for one behaviour, and the file is dense with dead ends. Read this before touching it.
 
 ## What it does
 
@@ -106,6 +106,10 @@ The check therefore skips those pairs before asking. It uses `settlementHasFacto
 of "has a factory" is how the screen and the engine come to disagree, and that file exists to stop
 exactly that.
 
+⚠️ `hasFactory` is read **lazily**: only when a factory resource is tried against a settlement,
+and then remembered for that settlement for the rest of the computation. A pool with no factory
+resource in it costs no factory reads at all.
+
 ⚠️ The neighbouring rule needs no such help: a **City** resource cannot go into a Town, and
 `canAssign` **does** refuse that one. Only the factory rule leaks.
 
@@ -196,6 +200,11 @@ The events are split in two, and the split is a performance fix as much as a tid
   lands, so without it the first chance to hide would be whatever happened next). It changes only
   *whether to ask*, never the answer, so it must **not** forget it.
 
+⚠️ Both lists are subscribed **for the local player only**, and `NotificationAdded` carries its
+owner only on `id` — `engine/events.js` reads it there. Without that every AI notification passed
+as ours and, with automatic assignment in a placing mode, repainted the action panel through the
+AI turn.
+
 ⚠️ `NotificationAdded` used to sit in the first list, and that is what made the answer cache almost
 worthless. It fires constantly, and every one of them threw away an answer that
 `anythingCanBePlaced` — the most expensive call in this mod — then had to work out again from
@@ -229,10 +238,10 @@ PanelAction.prototype.getNotificationInfo = function (id) {
 A pass running or on its way → **hide**, rather than draw something that is wrong a second later.
 Never the last word: the re-check asks again once nothing is being placed.
 
-⚠️ The `blocking` probe logged alongside is a **probe, not logic**. `panel-action` draws this
-notification twice over: as a slot icon (which this filter controls) and, when it is what blocks
-the end of the turn, on the main action button — and *that* one is fetched straight from
-`findEndTurnBlocking`, **never through here.** Knowing which of the two you are looking at is the
+⚠️ **The filter controls only the slot icon.** `panel-action` draws this notification twice over:
+as a slot icon, and, when it is what blocks the end of the turn, on the main action button — and
+*that* one is fetched straight from `findEndTurnBlocking`, **never through here**, which is why the
+two action-button methods are wrapped as well. Knowing which of the two you are looking at is the
 difference between hiding a nag and hiding the reason the turn will not end.
 
 ⚠️ If `getNotificationInfo` is missing, the module warns **loudly** rather than failing quietly: a

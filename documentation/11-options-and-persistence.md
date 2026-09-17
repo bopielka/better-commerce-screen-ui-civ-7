@@ -13,7 +13,7 @@ them in the save file.
 | "Imports first" | `ui/planner/imports-first-setting.js` | `better-commerce-screen-ui.importsFirstChoice` |
 | "Factories first" | `ui/planner/factory-first-setting.js` | `better-commerce-screen-ui.factoryFirstChoice` |
 | Per-settlement priority | `ui/planner/priority-store.js` | `better-commerce-screen-ui.priority.<gameSeed>.<cityKey>` |
-| Resource locks allowed | `ui/engine/resource-locks.js` | `better-commerce-screen-ui.allowResourceLocks` |
+| Resource locks allowed | `ui/engine/resource-locks.js` | `better-commerce-screen-ui.resourceLockingAllowed` |
 | Hide this mod's tooltips | `ui/engine/tooltip-setting.js` | `better-commerce-screen-ui.hideTooltips` |
 
 ### ⚠️ "Don't show tooltips on the Commerce screen"
@@ -154,8 +154,12 @@ and not compare against `Off`. `auto-assign.js` and `assign-notification.js` bot
 asked and shows nothing while doing it.**
 
 `migrateFromCheckboxes()` carries over the three checkboxes the dropdown replaced, so an existing
-setting is not silently switched off. It is marked safe to delete once the mod has shipped with the
-dropdown.
+setting is not silently switched off.
+
+⚠️ **It is not dead code, however old it looks.** Its answer is never persisted, so a profile that
+holds only the old checkbox keys runs it every session; deleting it switches that player's
+automatic assignment Off without a word. It can go only after something writes the migrated mode
+once.
 
 ### The change event
 
@@ -164,8 +168,12 @@ export const CommerceOptionsChangedEventName = 'najane-commerce-options-changed'
 window.dispatchEvent(new CustomEvent(CommerceOptionsChangedEventName));
 ```
 
-Dispatched on every write. (`factory-first-setting.js` mirrors the pattern with
-`FactoryFirstChangedEventName`.)
+Dispatched on every write.
+
+⚠️ **The settings modules raise no change event of their own** unless something listens: only
+hidden tooltips (`TooltipSettingChangedEventName`) and resource locks
+(`ResourceLocksChangedEventName`) announce a change. The planner reads every other setting at the
+moment it plans, so there is nobody to tell.
 
 ### ⚠️ Order in the group is registration order
 
@@ -177,12 +185,10 @@ dropdown is registered **before** automatic assignment to sit above it. There is
 ## `ui/planner/happiness-setting.js`
 
 ```js
-HappinessPriorityMode          // { Never: 0, CitiesOnly: 1, AllSettlements: 2 }
-happinessPriorityMode()
+happinessPriorityMode()        // Never 0 / CitiesOnly 1 / AllSettlements 2
 isHappinessRescueEnabled()     // → mode !== Never
 townsMayBeRescued()            // → mode === AllSettlements
 setHappinessPriorityMode(value)
-HappinessPriorityChangedEventName
 ```
 
 The rescue tier sits above every other consideration in `scoring.js` — above factories, above
@@ -201,7 +207,6 @@ mode's shape — see how `isFactoryFirstEnabled()` folds the age check in for th
 ```js
 isCultureGatheringEnabled()   /  setCultureGatheringEnabled(value)
 isGoldGatheringEnabled()      /  setGoldGatheringEnabled(value)
-HoardSettingChangedEventName
 ```
 
 Two switches, not one, because the two piles are independent: gathering culture is worth doing
@@ -214,7 +219,6 @@ settlement, which only matters when both are on. Both default **on**.
 
 ```js
 isImportsFirstEnabled()  /  setImportsFirstEnabled(value)
-ImportsFirstChangedEventName
 ```
 
 ⚠️ **Not age-gated**, unlike factories-first: imported resources exist in every age, and so does
@@ -258,7 +262,6 @@ module under `ui/planner/` and let the option write to it, so nothing in `planne
 ```js
 isFactoryFirstEnabled()       // → boolean AND isFactoryAge()
 setFactoryFirstEnabled(value)
-FactoryFirstChangedEventName
 ```
 
 ⚠️ The setting lives here and the checkbox lives in `ui/screen/assign-switches.js`. They started as
@@ -310,8 +313,11 @@ games.
 If the seed cannot be read, reads return `undefined` and writes are skipped — better to forget than
 to apply one game's choices to another's cities.
 
-`forgetLoadedGame()` clears the cached seed so the next read uses the new game's key. It is called
-from `forgetPriorityMemory()`, which `startAutoAssign()` calls at load.
+The seed is `currentGameKey()` from `ui/engine/mod-storage.js`, the one copy every store shares; it
+caches a non-null seed and drops it through `support/game-data.js` on `GameStarted`.
+`forgetLoadedGame()` only re-arms the one-time "priorities are filed under…" report. It is called
+from `forgetPriorityMemory()`, which `startAutoAssign()` calls at load and `priorities.js`
+subscribes to `GameStarted`.
 
 ### ⚠️ Why not `localStorage` alone
 

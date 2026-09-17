@@ -66,7 +66,7 @@ The full list of 141 keys is in `text/en_us/InGameText.xml`. Groups worth knowin
 | Sort tabs | `SORT_BALANCED`, `SORT_YIELD`, `SORT_RESOURCE`, `SORT_EMPIRE`, `SORT_FACTORY` | `trade-sort-tabs.js` |
 | Merchant buttons | `SHOW_MERCHANT` + `_TOOLTIP`, `TRADE_FULL` + `_TOOLTIP` | `trade-buy-merchant.js` |
 | Improve & buy | `IMPROVE_AND_BUY` + `_TOOLTIP`, `IMPROVE_FUNDS` | `trade-buy-merchant.js` |
-| Warning fix | `TRADE_FULL_PROPOSE`, `TRADE_FULL_OPEN` | `trade-buy-merchant.js` |
+| Warning fix | `TRADE_FULL_OPEN` | `trade-buy-merchant.js` |
 | Refusal reason | `IMPROVE_STARTED` | `ui/engine/diplomacy.js` (`REASON_OVERRIDES`) |
 | Settlement unassign | `SETTLEMENT_UNASSIGN` + `_TOOLTIP` | `settlement-controls.js` |
 | Spare merchant | `SEND_SPARE` + `_TOOLTIP` | `trade-buy-merchant.js` |
