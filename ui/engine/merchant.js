@@ -13,6 +13,11 @@
  *
  * ⚠️ "A merchant" is `MakeTradeRoute` on the unit definition, not the type name. Half a dozen
  * civs have their own, so matching UNIT_MERCHANT left those civs with a button that never worked.
+ *
+ * ⚠️ TEMPORARY: every `[trade-crash-probe]` warn() below is diagnostic-only, chasing a
+ * crash-to-desktop reported from clicking a merchant button in Trade Routes (2026-09-17). None of
+ * this changes behaviour. Remove every `[trade-crash-probe]` line (here and in merchant-orders.js,
+ * trade-queue.js, trade-buy-merchant.js) once UI.log has pinned the call that never returns.
  */
 import { isFactoryAge } from './age.js';
 import { waitForEngineEvent } from './wait.js';
@@ -235,11 +240,14 @@ function purchaseMerchant(cityID, definition) {
     if (!args) {
         return false;
     }
+    warn(`[trade-crash-probe] purchaseMerchant: city=${cityID?.id} unitType=${args.UnitType}`);
     try {
         if (!Game.CityCommands.canStart(cityID, CityCommandTypes.PURCHASE, args, false).Success) {
+            warn('[trade-crash-probe] purchaseMerchant: canStart refused');
             return false;
         }
         Game.CityCommands.sendRequest(cityID, CityCommandTypes.PURCHASE, args);
+        warn('[trade-crash-probe] purchaseMerchant: sendRequest returned');
         return true;
     } catch (error) {
         warn(`buying a merchant failed: ${error}`);
@@ -264,17 +272,24 @@ function delay(ms) {
 export async function purchaseAndCollectMerchant(cityID, definition) {
     const before = new Set(localMerchants().map((unit) => unitKey(unit.id)));
     if (!purchaseMerchant(cityID, definition)) {
+        warn('[trade-crash-probe] purchaseAndCollectMerchant: purchase itself was refused');
         return null;
     }
     // `sendRequest` only queues; nothing exists until the engine has processed it.
+    warn('[trade-crash-probe] purchaseAndCollectMerchant: waiting for CityMadePurchase');
     await waitForEngineEvent('CityMadePurchase');
+    warn('[trade-crash-probe] purchaseAndCollectMerchant: CityMadePurchase settled, polling for the new unit');
     const appeared = () => localMerchants().find((unit) => !before.has(unitKey(unit.id)));
     const deadline = Date.now() + NEW_MERCHANT_MS;
     let fresh = appeared();
+    let polls = 0;
     while (!fresh && Date.now() < deadline) {
         await delay(NEW_MERCHANT_POLL_MS);
+        polls++;
         fresh = appeared();
     }
+    warn(`[trade-crash-probe] purchaseAndCollectMerchant: fresh unit=${unitKey(fresh?.id) || 'NONE'} `
+        + `after ${polls} poll(s)`);
     return fresh ?? null;
 }
 
@@ -344,6 +359,8 @@ const ENOUGH_REACHABLE = 3;
  * counts the attempt.
  */
 export function approachLocations(unit, city) {
+    warn(`[trade-crash-probe] approachLocations: unit=${unitKey(unit?.id)} `
+        + `location=${JSON.stringify(unit?.location)} city=${city?.id?.id}`);
     const locations = [];
     const seen = new Set();
 
@@ -374,13 +391,17 @@ export function approachLocations(unit, city) {
             break;
         }
         probes++;
+        warn(`[trade-crash-probe] approachLocations: probe ${probes} Units.getPathTo unit=${unitKey(unit?.id)} `
+            + `target=${JSON.stringify(location)}`);
         try {
             if ((Units.getPathTo(unit.id, location)?.plots?.length ?? 0) > 0) {
                 reachable.push(location);
             }
         } catch (error) {
             // Not reachable, and not worth a warning: that is what this loop is asking.
+            warn(`[trade-crash-probe] approachLocations: probe ${probes} threw: ${error}`);
         }
+        warn(`[trade-crash-probe] approachLocations: probe ${probes} returned`);
     }
     if (reachable.length > 0) {
         return reachable;
@@ -405,11 +426,16 @@ function moveArgs(location) {
 }
 
 export function moveMerchant(unit, location) {
+    warn(`[trade-crash-probe] moveMerchant: unit=${unitKey(unit?.id)} target=${JSON.stringify(location)}`);
     try {
+        warn('[trade-crash-probe] moveMerchant: calling Game.UnitOperations.canStart');
         if (!Game.UnitOperations.canStart(unit.id, UnitOperationTypes.MOVE_TO, moveArgs(location), false).Success) {
+            warn('[trade-crash-probe] moveMerchant: canStart refused');
             return false;
         }
+        warn('[trade-crash-probe] moveMerchant: canStart accepted, calling sendRequest');
         Game.UnitOperations.sendRequest(unit.id, UnitOperationTypes.MOVE_TO, moveArgs(location));
+        warn('[trade-crash-probe] moveMerchant: sendRequest returned');
         return true;
     } catch (error) {
         warn(`sending a merchant on its way failed: ${error}`);
@@ -491,20 +517,27 @@ export function stopMerchant(unit) {
 }
 
 export function canSignRoute(unit, location) {
+    warn(`[trade-crash-probe] canSignRoute: unit=${unitKey(unit?.id)} location=${JSON.stringify(location)}`);
     try {
-        return Game.UnitCommands.canStart(unit.id, UnitCommandTypes.MAKE_TRADE_ROUTE, routeArgs(location), false)
+        const result = Game.UnitCommands.canStart(unit.id, UnitCommandTypes.MAKE_TRADE_ROUTE, routeArgs(location), false)
             .Success === true;
+        warn(`[trade-crash-probe] canSignRoute: canStart returned ${result}`);
+        return result;
     } catch (error) {
+        warn(`[trade-crash-probe] canSignRoute: threw: ${error}`);
         return false;
     }
 }
 
 export function signRoute(unit, location) {
+    warn(`[trade-crash-probe] signRoute: unit=${unitKey(unit?.id)} location=${JSON.stringify(location)}`);
     if (!canSignRoute(unit, location)) {
         return false;
     }
     try {
+        warn('[trade-crash-probe] signRoute: calling Game.UnitCommands.sendRequest(MAKE_TRADE_ROUTE)');
         Game.UnitCommands.sendRequest(unit.id, UnitCommandTypes.MAKE_TRADE_ROUTE, routeArgs(location));
+        warn('[trade-crash-probe] signRoute: sendRequest returned');
         return true;
     } catch (error) {
         warn(`opening the trade route failed: ${error}`);

@@ -22,6 +22,9 @@
  * It sits at the right-hand end of the card's TITLE ROW; the portrait keeps the corner and the
  * resources have the row below. The row is Solid's, so a redraw takes the stack and the tab's
  * observer puts it back.
+ *
+ * ⚠️ TEMPORARY: `[trade-crash-probe]` warn() lines are diagnostic-only; see the note atop
+ * ../engine/merchant.js. Remove once the crash is pinned down.
  */
 import { RaiseDiplomacyEvent } from '/base-standard/ui/diplomacy/diplomacy-events.js';
 
@@ -41,6 +44,7 @@ import {
     stopMerchant,
     turnsUntilRouteOpens,
     tradeCapacityWith,
+    unitKey,
 } from '../engine/merchant.js';
 import {
     clearMerchantOrder,
@@ -855,20 +859,26 @@ function buyTooltip(site, targetCity) {
  * `targetCity`. Shared so the two flows cannot drift apart on what "send a merchant" means.
  */
 async function purchaseAndSend(site, targetCity) {
+    warn(`[trade-crash-probe] purchaseAndSend: city=${site?.city?.id?.id} target=${targetCity?.id?.id} `
+        + `definition=${site?.offer?.definition?.UnitType}`);
     const merchant = await purchaseAndCollectMerchant(site.city.id, site.offer.definition);
     if (!merchant) {
         warn('the merchant did not turn up after the purchase; no order was given');
         return;
     }
+    warn(`[trade-crash-probe] purchaseAndSend: got merchant=${unitKey(merchant.id)}, calling orderMerchantTo`);
     orderMerchantTo(merchant, targetCity);
+    warn('[trade-crash-probe] purchaseAndSend: orderMerchantTo returned');
     log(() => `${Locale.compose(site.offer.definition.Name)} bought in `
         + `${Locale.compose(site.city.name ?? '')}, heading for ${Locale.compose(targetCity.name ?? '')}`);
 }
 
 async function buyAndSend(stack, route, targetCity) {
+    warn(`[trade-crash-probe] buyAndSend CLICKED: target=${targetCity?.id?.id} route=${route?.leaderId}`);
     const key = cityKey(targetCity);
     const site = siteFor(route, targetCity);
     if (!site?.offer?.canBuy || busyTargets.has(key) || merchantsOrderedTo(targetCity).length > 0) {
+        warn('[trade-crash-probe] buyAndSend: bailed early (not ready / busy / already ordered)');
         return;
     }
     busyTargets.add(key);
@@ -878,6 +888,7 @@ async function buyAndSend(stack, route, targetCity) {
     renderAvailableStack(stack, route, targetCity);
     try {
         await purchaseAndSend(site, targetCity);
+        warn('[trade-crash-probe] buyAndSend: purchaseAndSend resolved cleanly');
     } catch (error) {
         warn(`buying and sending a merchant failed: ${error}`);
     } finally {
@@ -885,6 +896,7 @@ async function buyAndSend(stack, route, targetCity) {
         // Gold has been spent and the next merchant costs more than this one did.
         forgetMerchantOffers();
         redrawAfterAction(stack, route, targetCity, renderAvailableStack);
+        warn('[trade-crash-probe] buyAndSend: cleanup finished');
     }
 }
 
@@ -910,10 +922,12 @@ function redrawAfterAction(stack, route, targetCity, render) {
  * ⚠️ `mayMove: false` - see the note where it is passed.
  */
 async function improveAndSend(stack, route, targetCity, offer) {
+    warn(`[trade-crash-probe] improveAndSend CLICKED: target=${targetCity?.id?.id} route=${route?.leaderId}`);
     const key = cityKey(targetCity);
     const site = siteFor(route, targetCity);
     const ready = offer?.canStart && site?.offer?.canBuy;
     if (!ready || busyTargets.has(key) || merchantsOrderedTo(targetCity).length > 0) {
+        warn('[trade-crash-probe] improveAndSend: bailed early (not ready / busy / already ordered)');
         return;
     }
     busyTargets.add(key);
@@ -921,12 +935,15 @@ async function improveAndSend(stack, route, targetCity, offer) {
     // Same reasoning as `buyAndSend`: the click has to redraw its own button.
     renderImproveStack(stack, route, targetCity);
     try {
+        warn('[trade-crash-probe] improveAndSend: calling proposeTradeRelations');
         if (proposeTradeRelations(route.leaderId, offer)) {
             log(() => `proposed Improve Trade Relations with ${leaderName(route.leaderId)}`);
         } else {
             warn(`proposing Improve Trade Relations with ${leaderName(route.leaderId)} was refused at the door`);
         }
+        warn('[trade-crash-probe] improveAndSend: proposeTradeRelations returned, calling purchaseAndSend');
         await purchaseAndSend(site, targetCity);
+        warn('[trade-crash-probe] improveAndSend: purchaseAndSend resolved cleanly');
     } catch (error) {
         warn(`proposing trade relations and sending a merchant failed: ${error}`);
     } finally {
@@ -934,6 +951,7 @@ async function improveAndSend(stack, route, targetCity, offer) {
         // Influence and gold have both been spent; the next attempt of either costs more.
         forgetMerchantOffers();
         redrawAfterAction(stack, route, targetCity, renderImproveStack);
+        warn('[trade-crash-probe] improveAndSend: cleanup finished');
     }
 }
 
@@ -1132,6 +1150,8 @@ function buildWarnButton(leaderId, warning, targetCity, site, limitBlocked, scop
     }
 
     bindActivatable(button, () => {
+        warn(`[trade-crash-probe] buildWarnButton CLICKED: target=${targetCity?.id?.id} leader=${leaderId} `
+            + `canWait=${canWait} queued=${queued} ready=${ready}`);
         /*
          * The waiting states first: this button is the one control for them, so the same press
          * both files the request and takes it back. Nothing here spends anything - the spending
@@ -1159,6 +1179,7 @@ function buildWarnButton(leaderId, warning, targetCity, site, limitBlocked, scop
              * order is retried when the turn begins, by which time the treaty has resolved.
              */
             const live = nearestIdleMerchant(targetCity);
+            warn(`[trade-crash-probe] buildWarnButton: proposed, spare merchant=${live ? unitKey(live.id) : 'NONE'}`);
             if (live && orderMerchantTo(live, targetCity, { mayMove: false })) {
                 log(() => `a spare merchant will open the route to ${Locale.compose(targetCity.name ?? '')} once the limit rises`);
             }
@@ -1171,6 +1192,7 @@ function buildWarnButton(leaderId, warning, targetCity, site, limitBlocked, scop
         // Not ready, or the fresh canStart inside proposeTradeRelations disagreed with the
         // cached offer this button was drawn from - either way, the fallback this button has
         // always offered.
+        warn('[trade-crash-probe] buildWarnButton: falling back to openDiplomacyWith');
         openDiplomacyWith(leaderId);
     });
 
@@ -1275,16 +1297,20 @@ function buildSendSpareButton(targetCity, scope) {
     button.textContent = '+';
 
     bindActivatable(button, () => {
+        warn(`[trade-crash-probe] buildSendSpareButton CLICKED: target=${targetCity?.id?.id}`);
         // Re-asked at the click: the screen may have been sitting open while this merchant
         // was given something else to do.
         const live = nearestIdleMerchant(targetCity);
         if (!live) {
+            warn('[trade-crash-probe] buildSendSpareButton: no idle merchant found any more');
             return;
         }
+        warn(`[trade-crash-probe] buildSendSpareButton: sending unit=${unitKey(live.id)}`);
         if (orderMerchantTo(live, targetCity)) {
             log(() => `sent a spare merchant to ${Locale.compose(targetCity.name ?? '')}`);
             markMerchantStateStale();
         }
+        warn('[trade-crash-probe] buildSendSpareButton: orderMerchantTo returned');
     });
 
     const mount = makeElement('div', `${SEND_CLASS}-mount`);
@@ -1314,6 +1340,8 @@ function buildCancelErrandButton(unit, targetCity, scope) {
         scope,
         className: CANCEL_CLASS,
         onActivate: () => {
+            warn(`[trade-crash-probe] buildCancelErrandButton CLICKED: unit=${unitKey(unit?.id)} `
+                + `target=${targetCity?.id?.id}`);
             stopMerchant(unit);
             clearMerchantOrder(unit.id);
             log(() => `called a merchant off its errand to ${Locale.compose(targetCity.name ?? '')}`);
@@ -1336,6 +1364,7 @@ function buildCancelQueueButton(targetCity, scope) {
         scope,
         className: CANCEL_CLASS,
         onActivate: () => {
+            warn(`[trade-crash-probe] buildCancelQueueButton CLICKED: target=${targetCity?.id?.id}`);
             cancelTradeAction(targetCity);
             log(() => `cancelled the queued trade action for ${Locale.compose(targetCity.name ?? '')}`);
             // `cancelTradeAction` announces; the tab redraws every card off that.

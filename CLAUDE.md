@@ -40,6 +40,16 @@ BBCode file is over its character limit.
 
 After deploying, **return to the main menu or restart** — scripts are loaded once.
 
+### `game-files-snapshots/`
+
+1:1 copies of the original game `.js` files this mod imports from or overrides (via
+`ComponentRegistry`), one sub-folder per game version — see
+[`game-files-snapshots/README.md`](game-files-snapshots/README.md) for the file-by-file
+breakdown and how to add the next one. It is **tracked in git** (not ignored), so a future update
+can be diffed against exactly what was captured. ⚠️ It never reaches the player's mod folder —
+`deploy.sh` only copies `.modinfo` + `ui/` + `text/` + `config/` (see above); this folder is a
+sibling of those, outside them by construction, not by an exclude list.
+
 ### ⚠️ `node --check` is worthless on these files
 
 It parses `.js` as CommonJS, meets `import`, gives up, and **exits 0 on a file with a syntax
@@ -121,6 +131,15 @@ Two shared choke points worth knowing before writing anything new:
 6. **`TODO.md` says: "For AI agents: Don't edit this file unless asked. Don't implement TODOs from
    here unless asked."** Honour it.
 7. **Set `DIAGNOSTICS = false` before publishing.**
+8. **`game-files-snapshots/` keeps AT MOST two versions: newest, and ONE version back** (user's
+   instruction, 2026-09-20) — the opposite rule from the changelog in 5. Adding a third snapshot
+   folder means deleting the oldest one in the same change. As of 1.18 there is only `1.5.0/`,
+   because that is the first game update this process covers.
+9. **A change that makes the mod import from, or override, an original game file not already under
+   `game-files-snapshots/<newest>/` must add that file there in the same change** (user's
+   instruction, 2026-09-20) — the snapshot has to stay a complete inventory of what the mod
+   touches, not just what it touched on the day it was captured. See
+   [`game-files-snapshots/README.md`](game-files-snapshots/README.md).
 
 ## Performance is a correctness requirement here
 

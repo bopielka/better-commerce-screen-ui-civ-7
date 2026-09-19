@@ -30,6 +30,9 @@
  * ⚠️ STORED, like a merchant's standing order and for the same reason: the wait is measured in
  * turns and the screen will not be open when it ends. Nothing is written into the save; this mod
  * declares AffectsSavedGames = 0.
+ *
+ * ⚠️ TEMPORARY: `[trade-crash-probe]` warn() lines are diagnostic-only; see the note atop
+ * ./merchant.js. Remove once the crash is pinned down.
  */
 import { influenceBalance, proposeTradeRelations, tradeRelationsOffer } from './diplomacy.js';
 import {
@@ -38,6 +41,7 @@ import {
     purchaseAndCollectMerchant,
     purchaseSite,
     tradeCapacityWith,
+    unitKey,
 } from './merchant.js';
 import { merchantsOrderedTo, nearestIdleMerchant, orderMerchantTo } from './merchant-orders.js';
 import { currentGameKey, readSection, writeSection } from './mod-storage.js';
@@ -181,6 +185,7 @@ export function isTradeActionQueued(city) {
 }
 
 export function queueTradeAction(city) {
+    warn(`[trade-crash-probe] queueTradeAction CLICKED: city=${city?.id?.id}`);
     const plotIndex = plotOf(city);
     if (plotIndex < 0 || currentGameKey() === null) {
         return false;
@@ -190,7 +195,9 @@ export function queueTradeAction(city) {
         + `${Locale.compose(city.name ?? '')}`);
     // ⚠️ At once, not at the turn: a merchant standing idle while a route is planned for it is
     // simply a wasted turn of travel. Only spare ones; see `dispatchSpareMerchantsToQueue`.
+    warn('[trade-crash-probe] queueTradeAction: calling dispatchSpareMerchantsToQueue');
     dispatchSpareMerchantsToQueue();
+    warn('[trade-crash-probe] queueTradeAction: dispatchSpareMerchantsToQueue returned');
     return true;
 }
 
@@ -206,7 +213,9 @@ export function queueTradeAction(city) {
  * engine, so it cannot interleave with the turn pass.
  */
 function dispatchSpareMerchantsToQueue() {
-    for (const plotIndex of queuedPlots()) {
+    const plots = queuedPlots();
+    warn(`[trade-crash-probe] dispatchSpareMerchantsToQueue: ${plots.length} queued plot(s)`);
+    for (const plotIndex of plots) {
         if (stepAtPlot(plotIndex) !== STEP_NEEDS_MERCHANT) {
             continue;
         }
@@ -220,6 +229,8 @@ function dispatchSpareMerchantsToQueue() {
             continue;
         }
         const spare = nearestIdleMerchant(city);
+        warn(`[trade-crash-probe] dispatchSpareMerchantsToQueue: plot=${plotIndex} city=${city?.id?.id} `
+            + `spare=${spare ? unitKey(spare.id) : 'NONE'}`);
         if (!spare || !orderMerchantTo(spare, city)) {
             continue;
         }
@@ -227,9 +238,11 @@ function dispatchSpareMerchantsToQueue() {
         announceRan(QUEUE_STEP_MERCHANT, city.owner, city);
         log(() => `queued action: a spare merchant is on its way to ${Locale.compose(city.name ?? '')}`);
     }
+    warn('[trade-crash-probe] dispatchSpareMerchantsToQueue: loop finished');
 }
 
 export function cancelTradeAction(city) {
+    warn(`[trade-crash-probe] cancelTradeAction CLICKED: city=${city?.id?.id}`);
     const plotIndex = plotOf(city);
     if (plotIndex < 0) {
         return;
@@ -307,8 +320,10 @@ function merchantSource(city) {
 /** Takes what `merchantSource` found - the only step here that spends gold. */
 async function takeMerchant(source) {
     if (source.spare) {
+        warn(`[trade-crash-probe] takeMerchant: using spare unit=${unitKey(source.spare.id)}`);
         return source.spare;
     }
+    warn(`[trade-crash-probe] takeMerchant: buying at city=${source.site.city?.id?.id}`);
     return purchaseAndCollectMerchant(source.site.city.id, source.site.offer.definition);
 }
 
@@ -349,11 +364,14 @@ async function runOne(plotIndex) {
             // Nothing spare and nothing affordable. Waiting costs nothing; try again next turn.
             return false;
         }
+        warn(`[trade-crash-probe] runOne: step=needs-merchant plot=${plotIndex} city=${city?.id?.id} `
+            + `source=${source.spare ? 'spare' : 'buy'}`);
         const merchant = await takeMerchant(source);
         if (!merchant) {
             warn('a queued trade action could not obtain a merchant');
             return false;
         }
+        warn(`[trade-crash-probe] runOne: got merchant=${unitKey(merchant.id)}, calling orderMerchantTo`);
         // ⚠️ `mayMove` is left ALONE here, unlike the screen's own version of this button: nothing
         // has just been queued at the engine, so there is no stale limit for the merchant to read
         // as distance. It should set off exactly as any other ordered merchant does.
@@ -366,6 +384,7 @@ async function runOne(plotIndex) {
             warn('a queued trade action could not give the merchant its order');
             return false;
         }
+        warn('[trade-crash-probe] runOne: orderMerchantTo succeeded');
         write(plotIndex, STEP_NEEDS_TREATY);
         announceRan(QUEUE_STEP_MERCHANT, leaderId, city);
         log(() => `queued action: a merchant is on its way to ${Locale.compose(city.name ?? '')}`);
@@ -430,7 +449,9 @@ async function runQueue() {
      */
     forgetMerchantOffers();
     try {
-        for (const plotIndex of queuedPlots()) {
+        const plots = queuedPlots();
+        warn(`[trade-crash-probe] runQueue: starting pass over ${plots.length} queued plot(s)`);
+        for (const plotIndex of plots) {
             try {
                 if (await runOne(plotIndex)) {
                     write(plotIndex, 0);
@@ -439,6 +460,7 @@ async function runQueue() {
                 warn(`a queued trade action failed: ${error}`);
             }
         }
+        warn('[trade-crash-probe] runQueue: pass finished');
     } finally {
         running = false;
     }

@@ -15,9 +15,9 @@
 # disappear there instead of lingering as stale leftovers.
 #
 # Only what the game actually loads is copied - the .modinfo and the content
-# directories listed below. Everything else (this script, README, .git, notes)
-# stays out of the player's mod folder by construction, not by an exclude list
-# that can drift.
+# directories listed below. Everything else (this script, README, .git, notes,
+# game-files-snapshots/) stays out of the player's mod folder by construction,
+# not by an exclude list that can drift.
 #
 # Usage:  ./deploy.sh          deploy
 #         ./deploy.sh --dry    show what would happen, change nothing

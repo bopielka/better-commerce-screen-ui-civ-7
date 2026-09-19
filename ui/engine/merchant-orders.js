@@ -12,6 +12,9 @@
  *
  * ⚠️ Stored as a NUMBER through `UI.setOption` - the target plot index plus one, so zero can mean
  * "no order". Nothing is written into the save; this mod declares AffectsSavedGames = 0.
+ *
+ * ⚠️ TEMPORARY: `[trade-crash-probe]` warn() lines are diagnostic-only; see the note atop
+ * ./merchant.js. Remove once the crash is pinned down.
  */
 import {
     approachLocations,
@@ -377,6 +380,7 @@ export function clearMerchantOrder(unitID) {
 
 /** One merchant: sign if the engine will have it, walk on if the caller allows it. */
 function advance(unit, city, mayMove) {
+    warn(`[trade-crash-probe] advance: unit=${unitKey(unit?.id)} city=${city?.id?.id} mayMove=${mayMove}`);
     if (signRoute(unit, city.location)) {
         log(() => `trade route opened with ${Locale.compose(city.name ?? '')}`);
         return true;
@@ -411,7 +415,10 @@ function advance(unit, city, mayMove) {
     if (!mayAttempt(unitKey(unit.id))) {
         return false;
     }
-    for (const location of approachLocations(unit, city)) {
+    warn(`[trade-crash-probe] advance: unit=${unitKey(unit?.id)} calling approachLocations`);
+    const locations = approachLocations(unit, city);
+    warn(`[trade-crash-probe] advance: unit=${unitKey(unit?.id)} approachLocations returned ${locations.length} location(s)`);
+    for (const location of locations) {
         if (moveMerchant(unit, location)) {
             commandedAt.set(unitKey(unit.id), Date.now());
             return false;
@@ -533,11 +540,17 @@ function scheduleProcess(mayMove = false, { force = false } = {}) {
  * and a merchant with movement reads that as "too far" and walks off for nothing.
  */
 export function orderMerchantTo(unit, city, { mayMove = true } = {}) {
+    warn(`[trade-crash-probe] orderMerchantTo: unit=${unitKey(unit?.id)} `
+        + `unitLocation=${JSON.stringify(unit?.location)} unitMoves=${unit?.Movement?.movementMovesRemaining} `
+        + `city=${city?.id?.id} mayMove=${mayMove}`);
     if (!isMerchant(unit) || !city?.location) {
+        warn(`[trade-crash-probe] orderMerchantTo: bailed - isMerchant=${isMerchant(unit)} `
+            + `cityLocation=${JSON.stringify(city?.location)}`);
         return false;
     }
     const key = unitKey(unit.id);
     if (!key || currentGameKey() === null) {
+        warn('[trade-crash-probe] orderMerchantTo: bailed - no key or no game key');
         return false;
     }
 
@@ -559,9 +572,11 @@ export function orderMerchantTo(unit, city, { mayMove = true } = {}) {
 
     // ⚠️ `advance` may correctly do NOTHING - a merchant bought this turn has no movement. The
     // order is still filed, and the turn beginning picks it up.
+    warn(`[trade-crash-probe] orderMerchantTo: unit=${key} calling advance`);
     if (advance(unit, city, mayMove)) {
         clearMerchantOrder(unit.id);
     }
+    warn(`[trade-crash-probe] orderMerchantTo: unit=${key} advance returned`);
     return true;
 }
 
