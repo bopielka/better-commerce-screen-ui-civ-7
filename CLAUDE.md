@@ -121,6 +121,10 @@ Two shared choke points worth knowing before writing anything new:
    the module fails to load, taking the whole mod with it. Use quotes in CSS comments.
 5. **The changelog is `STEAM_CHANGELOG.bbcode`, and it is the only one.** One bullet per change,
    newest section first.
+   ⚠️ **WRITTEN FOR THE PLAYER** (user's instruction, 2026-09-20): short, plain entries saying what
+   changes on screen in the game. No rem figures, file, class or texture names, no engine reasoning -
+   that belongs in a `⚠️` comment beside the code. The rule is repeated at the top of the changelog
+   itself.
    ⚠️ **THE FILE HAS NO LENGTH LIMIT** (user, 2026-09-10): only the NEWEST section is ever pasted
    into the Workshop's change note, so this file is the archive and old sections are **never
    deleted**. The 6000-character limit `deploy.sh` enforces is on `steam-description.bbcode`, which

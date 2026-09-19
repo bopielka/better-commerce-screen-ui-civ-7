@@ -142,8 +142,12 @@ const PASS_RECHECK_MS = 400;
 
 function isUnlocked(player) {
     try {
-        // ⚠️ The engine's spelling, not a typo of ours: `isRessourceAssignmentLocked`.
-        return !(player?.Resources?.isRessourceAssignmentLocked?.() ?? true);
+        // ⚠️ `isResourceAssignmentLocked`, ONE "s" - matches commerce-screen-model.js in
+        // game-files-snapshots/1.5.0. The double-"s" spelling this used to carry does not exist
+        // on the live Resources object: `?.()` on a missing method returns undefined, `?? true`
+        // then always read as "locked", so this mod's own colouring and pulse never fired at all
+        // (confirmed via `typeof`, UI.log 2026-09-20).
+        return !(player?.Resources?.isResourceAssignmentLocked?.() ?? true);
     } catch (error) {
         return false;
     }
