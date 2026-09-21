@@ -191,9 +191,12 @@ function anythingCouldFit(scope, targetCityID) {
 
 /**
  * Places as much as it can, best first.
+ * @param onlyJob restricts every `bestAssignment` call in this run to one `scoring.js` job -
+ *   the dev panel's per-job buttons; see `run.js`'s `runOnlyJob`. `undefined` for every other
+ *   caller, which runs the full order.
  * @returns how many resources were placed.
  */
-export async function placeResources({ scope = null, targetCityID = null, label = 'assign' } = {}) {
+export async function placeResources({ scope = null, targetCityID = null, label = 'assign', onlyJob = null } = {}) {
     // Whatever was remembered describes a board that has since moved on.
     forgetEligibility();
     forgetSettlementFacts();
@@ -279,7 +282,7 @@ export async function placeResources({ scope = null, targetCityID = null, label 
 
         mark = Date.now();
         const plan = available.length
-            ? bestAssignment(buildHeadlessModel(settlements, available), targetCityID, blockedPairs)
+            ? bestAssignment(buildHeadlessModel(settlements, available), targetCityID, blockedPairs, { onlyJob })
             : null;
         choosingMs += Date.now() - mark;
 

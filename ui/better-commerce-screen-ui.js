@@ -49,6 +49,14 @@ startDockResourceButton();
 startDockTradeButton();
 // A lock belongs to a resource IN a settlement, so it drops when the resource leaves.
 startResourceLockUpkeep();
+// ⚠️ DEV-ONLY, and a DYNAMIC import on purpose (2026-09-21): `enable-devtools.sh` /
+// `disable-devtools.sh` toggle whether deploy.sh includes screen/dev-panel.js in what ships at
+// all. A static import of a file a release build left out would fail to PARSE, taking the whole
+// mod down with it; a dynamic one just rejects, caught below, when the file is not there. Also
+// gated on DIAGNOSTICS inside, for when the file IS present but a build should still stay quiet.
+import('./screen/dev-panel.js')
+    .then((module) => module.startDevPanel())
+    .catch(() => log('dev panel not included in this build'));
 /*
  * ⚠️ The options menu opens OVER the Commerce screen, so this is thrown with the screen up as
  * often as not. Only the plain tooltips can be undone where they stand; a framed one mounts its

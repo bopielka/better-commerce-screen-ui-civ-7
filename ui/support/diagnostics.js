@@ -2,7 +2,7 @@
  * ⚠️ `console.log` never reaches Logs\UI.log in this engine; everything goes through
  * `console.error`. DIAGNOSTICS ships false - `warn` still writes, `log` does not.
  */
-export const DIAGNOSTICS = false;
+export const DIAGNOSTICS = true;
 
 /**
  * ⚠️ A FUNCTION ARGUMENT IS CALLED HERE, and that is what makes it free with diagnostics off.

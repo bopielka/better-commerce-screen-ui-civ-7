@@ -7,7 +7,7 @@ four are covered in [planner: valuation](08-planner-valuation.md).
 |---|---|
 | `effects.js` | reading the modifier tables |
 | `facts.js` | what a resource **is** and **does** |
-| `scoring.js` | the tiers and `bestAssignment` |
+| `scoring.js` | the jobs and `bestAssignment` |
 | `place.js` | the placement loop, shared by both paths |
 | `run.js` | every entry point — one guard around `place.js` |
 | `auto-assign.js` | deciding **when** to run with the screen closed |
@@ -21,9 +21,10 @@ four are covered in [planner: valuation](08-planner-valuation.md).
 
 The assignment engine is a **port of Resource+** (`brads-assign-all-resources`, Steam id
 3756000777) by **Br4d**, at this mod's author's request, so the buttons behave identically.
-The scoring constants, the ordering rules, the conditional-bonus table and the overall shape
-of `bestAssignment` are **Br4d's work, used with permission** — see the note at the top of
-`ui/planner/scoring.js`. Keep that note.
+The conditional-bonus table and much of what a job scores internally are **Br4d's work, used
+with permission** — see the note at the top of `ui/planner/scoring.js`. Keep that note. The
+**job architecture itself** (`bestAssignment` trying jobs in order, rather than one score
+compared against Br4d's original magnitude constants) is this mod's own, added 2026-09-20.
 
 Divergences from Resource+ are marked in the source and listed at the end of this document.
 
@@ -205,60 +206,92 @@ direction flips between ages — Antiquity pearls are better *outside* the capit
 
 ---
 
-## `scoring.js` — the tiers
+## `scoring.js` — the jobs
 
-`bestAssignment(model, targetCityID = null, blockedPairs = new Set())` returns
-`{ resource, settlement, score, tier }` or `null` — `tier` names the tier that won, for the log.
+`bestAssignment(model, targetCityID = null, blockedPairs = new Set(), { onlyJob } = {})` returns
+`{ resource, settlement, score, tier }` or `null` — `tier` names the job that won, for the log.
 `CAMEL_RESOURCE_TYPE` is exported so `place.js` tests the same name.
 
+⚠️ **`onlyJob`, a `JOB_LIST` key, restricts the whole call to ONE job** (added 2026-09-20, for
+`screen/dev-panel.js`'s per-job buttons — see [screen: interaction](09-screen-interaction.md)).
+`buildJobs()` builds the same nine closures either way; `onlyJob` set just runs one of them
+instead of walking the `??` chain. `JOB_LIST` (key + label, same order) is exported so a caller can
+list the jobs without duplicating the order by hand — the one place it is written down, per the
+comment on `buildJobs`. `planner/run.js`'s `runOnlyJob(key, opts)` is the entry point that actually
+places anything with it, through the same `runExclusively` guard and `placeResources` loop every
+other button uses — running a single job is a real run, not a preview, and stops only once that
+one job has nothing left to place.
+
+⚠️ **JOBS, NOT ONE MAGNITUDE TOWER** (user's instruction, 2026-09-20). An earlier version of this
+file scored every job for every pair and picked the global winner by a stack of constants sized to
+out-rank each other — `CITIES_FIRST_PENALTY`, the last one added, existed only to wedge "cities
+before towns" between two other constants without colliding with either. `bestAssignment` now
+tries each job below **in order** (`??` chains them) and returns the first one that finds a pair.
+A job only ever scores and orders its **own** candidates, so nothing needs to be sized against a
+job it has never heard of, and adding a job never risks silently outranking one that already
+exists. Each job still makes **one** decision per call — `place.js`'s loop re-reads the board and
+calls again, so the happiness job still "levels out" and none of this is a batch (see the rule at
+the top of `place.js`).
+
 ⚠️ `givesUnitProductionBonus` is asked **once per kind** per call, not per pair: its cache key
-reads `Game.age`, a native call, and every copy in a group shares the group's type. The
-happiness-resource test checks `affectedYields(...).has(HAPPINESS)` before computing a boost — the
-answer is identical, and it skips cold boost computations for every other kind while a settlement
-is unhappy.
+reads `Game.age`, a native call, and every copy in a group shares the group's type.
 
-### The tiers, highest first
+### The jobs, in the order `bestAssignment` tries them
 
-| Base constant | Value | What it is |
+| # | Job | Function |
 |---|---|---|
-| `HAPPINESS_RESCUE_BASE` | 10 000 000 000 | **not Br4d's** — the whole reason this file diverges |
-| `FACTORY_FIRST_SCORE_BASE` | 5 000 000 000 | factory resources into fillable factories, when the switch is on |
-| `CAMEL_SCORE_BASE` | 1 000 000 000 | slot-carriers first: they make room for everything after |
-| `IMPORT_FIRST_SCORE_BASE` | 900 000 000 | imported resources into **cities**, when the switch is on |
-| `SPECIALIZED_CONDITIONAL_SCORE_BASE` | 850 000 000 | serves the settlement's priority **and** a conditional bonus applies |
-| `SPECIALIZED_SCORE_BASE` | 700 000 000 | serves the settlement's priority |
-| `HOARD_SCORE_BASE` | 600 000 000 | gathering culture / gold — compared against, never chained |
-| `PRODUCTION_FALLBACK_SCORE_BASE` | 550 000 000 | nothing serves this city's priority, but this brings production |
-| `CONDITIONAL_SCORE_BASE` | 500 000 000 | a conditional bonus applies here |
-| `SINGLE_YIELD_SCORE_BASE` | 100 000 000 | one yield |
-| `MULTI_YIELD_SCORE_BASE` | 50 000 000 | more than one |
-| `FALLBACK_YIELD_SCORE_BASE` | 10 000 000 | no readable yields |
-| `UNIT_PRODUCTION_SCORE_BASE` | 1 000 000 | ⚠️ below everything: resources whose whole point is cheaper units |
+| 1 | rescue unhappiness, to at least +1 | `tryHappinessJob` |
+| 2 | factory resources into fillable factories, when "factories first" is on | `tryFactoryJob` |
+| 3 | the culture pile | `tryPileJob(CULTURE_YIELD, ...)` |
+| 4 | the gold pile | `tryPileJob(GOLD_YIELD, ...)` |
+| 5 | every other explicit focus, shared evenly (**cities**) | `tryFocusedSettlementsJob` |
+| 6 | imported resources into **cities**, when "imports first" is on | `tryImportJob` |
+| 7 | a camel with no more specific job to do | `tryGenericCamelJob` |
+| 8 | any city with room left, focus or not | `tryOrdinaryJob` (cities) |
+| 9 | every other explicit focus, shared evenly (**towns**) | `tryFocusedSettlementsJob` |
+| 10 | any town with room left, focus or not | `tryOrdinaryJob` (towns) |
 
-Modifiers within and across tiers:
+⚠️ **Imports run AFTER every explicitly focused city** (user's instruction, 2026-09-20 - moved
+from 3rd to 6th). A city the player told what to make gets first claim on an import too; imports
+only sweep up whatever none of jobs 3-5 wanted.
 
-| Constant | Value | Effect |
-|---|---|---|
-| `TOWN_PRODUCTION_PENALTY` | 500 000 | a town wanting a production-carrying resource is docked half a priority step. A nudge, not a ban |
-| `PRODUCTION_FALLBACK_WEIGHT` | 1 000 | inside `scorePair`; stays under the 100 000 a priority match is worth |
-| `FACTORY_CONTINUE_BONUS` | 3 000 000 000 | finishing a running factory beats opening another |
-| `FACTORY_STOCK_WEIGHT` | 10 000 000 | per copy that would actually **fit**, choosing what to start an empty factory on |
-| `FACTORY_STOCK_CAP` | 40 | past this more copies stop mattering; keeps the tier under the rescue |
-| `FACTORY_LEFTOVER_WEIGHT` | 1 000 | best fit: settles ties towards the snugger factory |
-| `HOARD_CULTURE_FIRST` | 10 000 000 | culture pile is settled before the gold pile |
+⚠️ **Job 8 stopped filtering by focus** (user's instruction, 2026-09-21 - was "cities left on
+Balanced", i.e. `cities.filter(getPriority(cityID) === null)`). An empty slot in a focused city
+that has run out of matching resources is worse than one filled with something off-focus. This is
+safe only because **job order, not a filter, is what protects the focus**: job 5 runs before job
+8 and is tried again from scratch on every call, so as long as any resource still matches a
+focused city's priority, job 5 claims it first - job 8 only ever reaches a focused city once
+nothing before it wants what remains. `effectivePriority` still returns that city's own priority
+rather than Balanced, so job 8's "priority boost" scoring tier keeps preferring a focus match
+over a plain yield even here, for whatever job 5 did not use this call.
 
-### The happiness rescue — `rescueScore`
+⚠️ **Job 9 gives towns the same "focus first" step cities get, at jobs 9/10 rather than 5/8**
+(user's instruction, 2026-09-21). `tryFocusedSettlementsJob` is now the shared implementation
+behind BOTH job 5 (handed `cities`) and job 9 (handed `towns`) - the logic never assumed a
+settlement class, only that `effectivePriority` returns whatever the player explicitly chose. It
+sits at 9/10 rather than mirroring cities' 5/8 split **on purpose**: every job that routes a
+resource by priority already puts cities strictly before towns (divergence 16), and a town-focus
+job running any earlier than job 8 would let a town's focus jump the queue ahead of job 8's
+cities, which the ordering exists to prevent. The cost is job 7 (generic camel) no longer being
+guaranteed to leave a camel for job 9's camel-assist the way it already is for jobs 3/4/5 - see
+the note on `tryGenericCamelJob` in the source.
 
-Above everything, including camels. **No settlement should sit on negative happiness.**
+Jobs 8 and 10 share one function (`tryOrdinaryJob`); the only real differences are which
+settlements are handed in and that `effectivePriority` resolves Balanced differently for a city
+than a town. Jobs 5 and 9 likewise share one function (`tryFocusedSettlementsJob`).
+
+### Job 1 — happiness rescue (`tryHappinessJob` / `rescueScore`)
+
+**No settlement the job may touch should sit below `HAPPINESS_TARGET` (+1, not zero).**
 
 ⚠️ **How far this goes is the player's** — see [`happiness-setting.js`](11-options-and-persistence.md#uiplannerhappiness-settingjs).
-It is the single largest thing the mod does to a layout and it used to be unconditional:
+It is the single largest thing the mod does to a layout:
 
 | Mode | Effect |
 |---|---|
-| Never | the tier does not run; happiness is just another yield |
+| Never | the job does not run; happiness is just another yield |
 | Cities only | cities are rescued, towns are left where they fall |
-| All settlements (default) | cities first as a class, then towns — the original behaviour |
+| All settlements (default) | cities first as a class, then towns |
 
 ⚠️ In "cities only" a town's deficit is left out of the reading altogether rather than filtered
 later, so an empire with one permanently unhappy town does not walk the whole board every pass
@@ -266,18 +299,21 @@ for a rescue it is going to refuse.
 
 - `deficit * 1000` dominates, so the most unhappy settlement is served first.
 - The tie-break is `min(boost, deficit) * 10` — credit for how much of the hole a resource
-  actually fills, **with no reward for overshooting**, because the goal is zero and not a
+  actually fills, **with no reward for overshooting**, because the goal is the target and not a
   maximum.
-- ⚠️ Deficits are read **fresh on every pass**. That is what makes the rescue *level out*
+- ⚠️ Deficits are read **fresh on every call**. That is what makes the rescue *level out*
   instead of dumping everything into one settlement: each assignment is chosen against the
   deficits left after the previous one landed.
-- **Cities come first as a class**: while any city is unhappy, no town is considered, however
-  far below zero it may be (`townsAreEligible`).
-- A camel scores here too, one point lower, but **only in a settlement that is unhappy *and*
+- **Cities come first as a class**: while any city is below target, no town is considered,
+  however far below it may be (`townsAreEligible`).
+- A camel scores here too, one point lower, but **only in a settlement below target *and*
   full** — it fixes nothing itself, it opens the two slots a happiness resource then needs.
   Pointless if no happiness resource is left, hence `happinessResourceExists`.
+- If job 1 finds nothing this call (nobody is below target, or nothing can help), it returns
+  `null` and job 2 gets a turn in the **same** call — a permanently unfixable deficit in one town
+  does not block factories, imports or anything else for the rest of the empire.
 
-### Factories first — `factoryFirstScore`
+### Job 2 — factories first (`tryFactoryJob` / `factoryFirstScore`)
 
 ⚠️ **The game's rule decides the shape of this, and it is not what the first version assumed:**
 
@@ -318,7 +354,108 @@ for "the kind with the most copies." Fixed by reading `resourceType(group[0])` o
 instead of trusting the map's own key, and summing rather than overwriting so an imported and a
 home-grown copy of the same kind count as the one stock they are.
 
-### Imports first — `importFirstScore`
+### Jobs 3 and 4 — the culture pile and the gold pile (`tryPileJob`)
+
+Everything paying **culture** into whichever city makes the most culture on its own; everything
+paying **gold** into a different city, so the two piles do not compete for the same slots. One
+function, called once for each yield: `tryPileJob(CULTURE_YIELD, ...)` and
+`tryPileJob(GOLD_YIELD, ...)`.
+
+⚠️ **The role-holder is whichever CITY has this focus set EXPLICITLY, if any do — otherwise the
+best natural producer, picked automatically** (user's instruction, 2026-09-20). `hoard-setting.js`
+only gates the automatic case: a player who has explicitly told a city to gather culture is not
+guessing, so the switch does not apply to them at all. If two or more cities explicitly share the
+focus, the ranking below runs **among just those cities** instead of the whole empire.
+
+⚠️ **Concentration, not even sharing — deliberately different from job 5.** Every other explicit
+focus (job 5) shares its matching resources evenly between the cities that chose it. Culture and
+gold do not, because their bonuses are largely **percentage** effects that compound where the base
+yield is already highest: a +10% Culture resource in a settlement making 12 Culture is worth about
+a point, and gathering more of them there compounds rather than diluting. Job 5's flat bonuses have
+no such advantage to concentrating, so they spread instead.
+
+⚠️ **"Pays the yield" is asked of THIS settlement**, not of the resource in the abstract: silk pays
+culture in a city and nothing in a town, and a resource contributing nothing here has no business
+being gathered here.
+
+#### ⚠️ The single best producer gets first refusal on EVERY copy, camel included
+
+The gold pile used to have no target at all: it scored **every** city that was not the culture
+city, weighted by that city's own gold. That is "spread gold around, richest first", not "build a
+gold settlement", and it cost a slot in play.
+
+⚠️ **`ranking[0]` is tried FIRST on every call, camel-help included, before anything else is even
+considered** (user's instruction, 2026-09-20, fixing a real bug). An earlier version picked
+whichever candidate currently had room and only fell back to a camel on `ranking[0]` once THAT
+search failed — so the moment the best producer filled up, the next call moved straight to the
+second-best city instead of trying a camel on the best one first. Two Silk copies split across two
+cities where a camel could have kept both in the first. Confirmed fixed in `UI.log`: 20 resources
+landed in one city across repeated camel-assisted refills before the role ever moved on.
+
+Only once the best producer can take nothing more - full and no camel can help, or nothing left
+pays this yield anywhere - does the role move on to the next candidate **with room** (a plain
+ordinary fit there; that candidate does not get its own camel-help, only `ranking[0]` does).
+
+#### ⚠️ A camel opens room once the role-holder is full
+
+Not ported from the original hoard mechanism — new (user's instruction, 2026-09-20), and shared
+with job 5 through `camelOpensRoomFor`. Only fires once the settlement is already FULL and a
+resource still paying this yield is waiting elsewhere in the pool - a settlement with room is
+served by the ordinary fit instead.
+
+#### ⚠️ The ranking is settled once per run; only "who has room" moves
+
+`pileRankingThisRun` (keyed by yield type) orders the candidates by `bareYield` on the first call
+that needs it and holds that order for the whole run. `startPlacementRun()` clears it.
+
+`bareYield` subtracts the estimated contribution of what is slotted, so the culture city's own
+bare culture **falls as its pile grows**, and with percentage resources the estimate is taken off
+a total those same resources inflated. Re-ranked every call, the leader could hand the role to a
+rival partway through and leave the pile split between two settlements — the one outcome this job
+exists to prevent. Fixing the order means the role only ever walks **down** a settled list.
+
+⚠️ **Only `cityKey`s are cached.** Settlement objects are rebuilt from the board before every
+pass, so anything held across passes must be a key and not an object.
+
+The log prints one line whenever a pile's target changes, so a handover is visible:
+
+```
+culture pile -> Yetakapewaki
+culture pile -> Berlin        ← Yetakapewaki filled up
+```
+
+⚠️ `bestAssignment` builds `scoreContext` from **every** settlement before filtering to
+`targetCityID`. Quick-assigning one settlement must not make that settlement the culture city by
+default, and a `scoreContext` missing a city reads as "contributes nothing", which would hand the
+pile to whichever city happened to be outside the filter.
+
+⚠️ **An empire with no cities at all still gets a pile, built from its towns** — `pileHosts` in
+`bestAssignment` falls back to `towns` when `cities` is empty, matching what the original
+hoard-only mechanism already did.
+
+⚠️ This started as **three resource names** — turtles, silk, jade — because that is how it was
+first asked for. That left every other culture resource in the age out of the pile it obviously
+belonged in: mangos, flax, wine and incense all pay culture and were being scattered. It is now
+read from the data, so a patch or a DLC adding another one needs no maintenance here.
+
+Both piles are switchable for the AUTOMATIC case; see
+[`hoard-setting.js`](11-options-and-persistence.md#uiplannerhoard-settingjs).
+
+### Jobs 5 and 9 — every other explicit focus (`tryFocusedSettlementsJob`)
+
+Settlements with an explicit focus that is not the culture or gold pile - those go through jobs
+3/4 instead. Shares matching resources **evenly** between every settlement that chose the same
+focus (`scorePair`'s `distributionScore`, below) - unlike jobs 3/4, because a flat bonus (+2
+Science, say) is worth the same wherever it lands, so there is no reason to concentrate it. A
+camel opens room here too, the same way as jobs 3/4, once nothing in `focused` has room to spare.
+
+One function, called twice: job 5 hands it `cities`, job 9 hands it `towns` (2026-09-21, user's
+instruction). Nothing inside cares which it got - `effectivePriority` returns the explicit choice
+regardless of the `isTown` it is passed, since `focused` already excludes any settlement without
+one. See the note on the job table above for why job 9 sits where it does rather than mirroring
+job 5's early position.
+
+### Job 6 — imports first (`tryImportJob` / `importFirstScore`)
 
 Off by default, offered in **every** age, and a bet on one victory condition. Towards the Economic
 Victory a resource slotted in a city is worth **+1 GDP a turn**, and an imported one is worth
@@ -339,8 +476,8 @@ originCity.owner !== GameContext.localPlayerID
 The **current** owner, not `originalOwner`; the model reads that too, but only to pick the flag's
 colours. A city you have since captured stops being an import.
 
-The four ranks, best first. They decide the **order** imports are placed in, not whether they are
-placed, because every one of them outranks everything that is not an import:
+The four ranks, best first. They decide the **order** imports are placed in **within job 6**, once
+job 6 has decided to run at all:
 
 | Rank | Meaning |
 |---|---|
@@ -351,22 +488,15 @@ placed, because every one of them outranks everything that is not an import:
 
 ⚠️ Rank 3 is measured against the player's **explicit** choice, not `effectivePriority`. A
 settlement left on Balanced has not asked for anything, so an import landing there displaces no
-plan and belongs at rank 1 — that is what "fill the unspecialised cities next" means. Resolving
-Balanced to production here would collapse ranks 3, 2 and 1 into one for every city the player
-never touched.
+plan and belongs at rank 1.
 
-⚠️ **Above the priority tiers on purpose**, which is the point and also the cost. A culture city
-that has run out of imported culture must not start on *our* culture while an imported resource is
-still homeless elsewhere: the import is worth double wherever it lands and ours is worth the same
-wherever it lands, so ours can wait.
+⚠️ **Tried AFTER every explicitly focused city on purpose** (user's instruction, 2026-09-20 - job 6
+used to run third, ahead of jobs 3-5). A city the player told what to make gets first claim on an
+import too; job 6 only ever sees whatever jobs 3-5 did not want, or a settlement already full when
+they tried it - which is also why rank 3 rarely fires any more (see the note in the source).
 
-⚠️ **Below camels.** A camel is not a priority and does not compete with this — it brings two slots
-with it, so placing one first can only mean *more* imports fit. That is also why the three are
-compared with `Math.max` rather than chained with `??`: `importFirst ?? ordinary` would have pushed
-an **imported camel** down off its own tier and cost the two slots it carries.
-
-⚠️ **Cities only.** An import in a town earns nothing towards the tracker, so there is nothing to
-promote and it falls back to the ordinary rules.
+⚠️ **Cities only.** An import in a town earns nothing towards the tracker, so job 6 never
+considers one; it falls through to whichever later job wants it instead.
 
 #### ⚠️ It broke an invariant in `groupByResourceType`
 
@@ -380,75 +510,7 @@ the invariant holds again.
 `startPlacementRun()` — a city changing hands changes the answer, and that cannot happen while
 resources are being assigned.
 
-### Gathering — `hoardScore`
-
-Everything paying **culture** into whichever city makes the most culture on its own; everything
-paying **gold** into a different city, so the two piles do not compete for the same slots.
-
-- Below the priority tier: a settlement takes what it was told to prioritise first.
-- Above the conditional tier: gathering beats the generic "this bonus applies here" rule —
-  including, deliberately, the warehouse rule that would otherwise scatter turtles.
-- ⚠️ Compared against the ordinary score with `Math.max`, **not chained**, so it never
-  overrides a settlement's own priority.
-- ⚠️ "Pays the yield" is asked of **this settlement**, not of the resource in the abstract: silk
-  pays culture in a city and nothing in a town, and a resource contributing nothing here has no
-  business being gathered here.
-- Cities only.
-
-#### ⚠️ Exactly one settlement holds each role — and the role can move on
-
-The gold pile used to have no target at all: it scored **every** city that was not the culture
-city, weighted by that city's own gold. That is "spread gold around, richest first", not "build a
-gold settlement", and it cost a slot in play — Jade reached the gathering tier (600 000 000) in
-the **capital** while Silk, which was not the capital's pile, could only reach the conditional
-tier (500 000 000) there and stayed in the pool.
-
-⚠️ **When the settlement holding a role fills up, the next-best city takes it over.** A culture
-city with two free slots would otherwise take two culture resources and let the remaining twelve
-scatter under the ordinary rules — the very thing the option exists to prevent, merely delayed by
-two slots.
-
-⚠️ The gold role skips whichever settlement **currently** holds the culture role, not the one
-picked at the start — so handing the culture role on also frees the city it left.
-
-#### ⚠️ The ranking is settled once per run; only "who has room" moves
-
-`hoardRanking` orders the cities by `bareYield` on the first pass of a run and holds that order.
-`startPlacementRun()` — called by `place.js` next to `forgetEligibility()` — clears it.
-
-`bareYield` subtracts the estimated contribution of what is slotted, so the culture city's own
-bare culture **falls as its pile grows**, and with percentage resources the estimate is taken off
-a total those same resources inflated. Re-ranked every pass, the leader could hand the role to a
-rival partway through and leave the pile split between two settlements — the one outcome this
-tier exists to prevent. Fixing the order means the role only ever walks **down** a settled list.
-
-⚠️ **Only `cityKey`s are cached.** Settlement objects are rebuilt from the board before every
-pass, so anything held across passes must be a key and not an object.
-
-The log prints one line whenever the pair changes, so a handover is visible:
-
-```
-gathering: culture -> Yetakapewaki, gold -> Cilakofa
-gathering: culture -> Berlin, gold -> Cilakofa        ← Yetakapewaki filled up
-```
-
-⚠️ `bestAssignment` builds `scoreContext` and picks the targets from **every** settlement, and
-applies `targetCityID` only to the loop. Quick-assigning one settlement must not make that
-settlement the culture city by default, and a `scoreContext` missing a city reads as "contributes
-nothing", which would hand the pile to whichever city happened to be outside the filter.
-
-⚠️ This started as **three resource names** — turtles, silk, jade — because that is how it was
-first asked for. That left every other culture resource in the age out of the pile it obviously
-belonged in: mangos, flax, wine and incense all pay culture and were being scattered. It is now
-read from the data, so a patch or a DLC adding another one needs no maintenance here.
-
-Both piles are switchable; see [`hoard-setting.js`](11-options-and-persistence.md#uiplannerhoard-settingjs).
-
-`bareYield` is the settlement's yield minus the estimated contribution of what is slotted now
-— *not* the model's `baseYields`, which is a snapshot taken when the screen opened and still
-includes whatever was assigned at the time.
-
-### `scorePair` — ordering within a tier
+### `scorePair` — ordering within jobs 2, 5, 6, 8, 9 and 10
 
 ```js
 priorityBonus            // 100000 serving the priority, 0 not
@@ -470,11 +532,44 @@ how well a resource serves that priority is the dominant term — so a resource 
 production is only reached for once every resource giving more of it has been placed. Llamas
 (+1 production alongside +3 happiness) are the case that makes this visible.
 
-⚠️ `PRODUCTION_FALLBACK_SCORE_BASE` had to become a **tier of its own, not a tiebreak**. As a
-term inside `scorePair` it only ordered resources already on the same tier — so a
-culture-focused city with no culture resources left still took pearls, because a conditional
-bonus outranks a plain one, and the production sitting in the pool never got a look in. Cities
-only: production in a town turns into gold rather than buildings.
+⚠️ `PRODUCTION_FALLBACK_SCORE_BASE` had to become a **branch of its own inside jobs 8/10, not a
+tiebreak** inside `scorePair`. As a term inside `scorePair` it only ordered resources already on
+the same branch — so a Balanced city with nothing serving it still took a plain conditional
+resource ahead of one that would have brought production, because a conditional bonus outranks a
+plain one and the production sitting in the pool never got a look in. Cities only: production in a
+town turns into gold rather than buildings.
+
+### Job 7 — the camel with nowhere more important to go (`tryGenericCamelJob`)
+
+⚠️ **Runs AFTER jobs 1-6, deliberately.** A camel used earlier would starve job 3/4/5's own "open
+room for the focus that wants it" need, which is a more specific, more useful use of the same
+resource - see `camelOpensRoomFor`. Smaller-capacity settlements are preferred
+(`-settlementResourceCapacity(settlement)`): two open slots matter more, proportionally, in a
+settlement that has fewer of them.
+
+⚠️ **Job 9 (a town's own explicit focus) is NOT protected the same way**, even though it wants
+exactly the same kind of camel-assist as jobs 3/4/5 - it runs at position 9, after this job, so a
+camel this job hands to some unrelated city is one job 9 can no longer offer a focused town.
+Accepted, not fixed: job 9 cannot move earlier than job 8 without letting a town's focus jump the
+queue ahead of job 8's cities, which the "cities strictly before towns" ordering (divergence 16)
+exists to prevent.
+
+⚠️ **CITIES ONLY** (user correction, 2026-09-21, replacing an earlier version of this doc that
+had this job handed the whole `settlements` list). A camel is `RESOURCECLASS_CITY` in the game's
+own data - it can never be assigned to a town, room or no room - confirmed by the game's own drag
+validation in `commerce-screen-resources-tab.js`, which refuses any `RESOURCECLASS_CITY` resource
+dropped on a town with a class-wide message, not a Camel-specific one. Towns are filtered out
+before `settlements` is even walked, rather than left for the engine to refuse one at a time - see
+`27-resources.md` in the shared knowledge base (`Documents\Civ7Modding\knowledge-base\`) for the
+full finding, including that the `CITY` class is not Camel-specific and changes between ages.
+
+### Jobs 8 and 10 — cities, and towns (`tryOrdinaryJob`)
+
+The last two jobs that route a resource by a settlement's own priority, and the only ones
+restricted to exactly one settlement class each. `TOWN_PRODUCTION_PENALTY` (500 000) docks a
+production-carrying resource in a town — not to prefer a city over a town, the job order already
+guarantees no city with a matching priority wants it, but because the SAME resource is genuinely
+worth less in a town, which turns production into gold rather than buildings.
 
 ### Caches, and when they are cleared
 
@@ -482,7 +577,12 @@ only: production in a town turns into gold rather than buildings.
 |---|---|---|
 | `eligibilityByCity` (`canAssign` answers) | settlement → resource value | `forgetEligibility()` at the start of a run; `forgetEligibility(cityID)` after a placement there, or when the engine contradicts a cached yes |
 | `boostsThisPass`, `scoresThisPass`, `conditionalsThisPass` | settlement → resource kind | `forgetSettlementScores(cityID)` after a placement there; all of them in `startPlacementRun()` and on the placement loop's full re-read |
-| hoard ranking | the run | `startPlacementRun()` |
+| `pileRankingThisRun` (jobs 3/4) | yield type (culture, gold) | `startPlacementRun()` |
+
+⚠️ **All of the above are module-level, so every job shares them within one run** — that is what
+keeps the job architecture cheap. Job 1 calling `assignableCopy` for a pair costs one engine call;
+if job 6 asks about the very same pair later in the same call, `eligibilityByCity` already has the
+answer and the engine is not asked again.
 
 ⚠️ **One settlement, not the board.** A placement changes the settlement it landed in; the other
 settlements' scores are computed from yields `headless-model.js` holds frozen until the loop's
@@ -513,11 +613,15 @@ every other unreadable one.
 ## `place.js` — the placement loop
 
 ```js
-placeResources({ scope = null, targetCityID = null, label = 'assign' })  // → Promise<number>
+placeResources({ scope = null, targetCityID = null, label = 'assign', onlyJob = null })  // → Promise<number>
 ```
 
 **One loop for both paths** — the buttons on screen and the automatic placement with the screen
 shut. They used to be two.
+
+⚠️ `onlyJob` (added 2026-09-20) is threaded straight into every `bestAssignment` call this run
+makes - see `scoring.js`'s own note. Nothing else about the loop changes: still one placement,
+still a re-read of the board, still the same confirmation and refusal handling.
 
 ### ⚠️ Why it does not go through the screen's model
 
@@ -663,6 +767,7 @@ assignAll(model?, { scope?, label? })   // → Promise<number placed | false>
 reassignAll(model?, { label? })         // clear everything, then place
 unassignAll(model?)                     // clear everything and stop there
 quickAssignSettlement(model, cityID)    // one settlement only
+runOnlyJob(jobKey, { model?, label? })  // one scoring.js job alone - screen/dev-panel.js
 isAssignmentInProgress()                // read by the buttons and by assign-notification.js
 ```
 
@@ -976,9 +1081,9 @@ campaign** — carrying the map across a load would apply one game's choices to 
 
 ## Divergences from Resource+, in one list
 
-1. **The happiness rescue tier** — entirely new, and the reason the file diverges at all.
-   Switchable: never / cities only / all settlements.
-2. **Factories first** — a Modern-age tier Resource+ has no equivalent of, and it packs by
+1. **The happiness rescue job, to +1 not zero** — entirely new, and the reason the file diverges
+   at all. Switchable: never / cities only / all settlements.
+2. **Factories first** — a Modern-age job Resource+ has no equivalent of, and it packs by
    capacity rather than by stock alone.
 3. **Conditional bonuses read from the data** instead of a hand-written per-age table that was
    inverted for six resources and missing 31 — and a conditional bonus has to be the resource's
@@ -989,12 +1094,39 @@ campaign** — carrying the map across a load would apply one game's choices to 
 7. **`scalesWithWarehouses`** read from the data, so Clay and Crabs are included.
 8. **Yields are read from the game's own per-city array**, not pattern-matched out of icon
    strings, so yield totals are not all zero.
-9. **The gathering tier** — a culture settlement and a gold settlement, built from whatever pays
-   those yields. Requested for this mod; both piles switchable.
-10. **`TOWN_PRODUCTION_PENALTY`** and the **production fallback tier**.
+9. **The culture and gold piles** — a culture settlement and a gold settlement, built from
+   whatever pays those yields. Requested for this mod; both piles switchable for the automatic
+   case, and overridden outright by an explicit player focus (see jobs 3/4).
+10. **`TOWN_PRODUCTION_PENALTY`** and the **production fallback branch** inside jobs 8/10.
 11. **"Balanced" means city-production / town-food**, not "whichever yield it has least of".
 12. **Per-resource locks are NOT ported** — no lock UI here, so the lock set is always empty and
     "reassign" clears everything.
 13. **The loop talks to the engine, not the model** — 30.7 s → a fraction of it.
 14. **One implementation of "empty every settlement"**, shared by all three buttons and the
     automatic rebuild; it sends the game's own bulk `Clear` operation.
+15. **`bestAssignment` is a sequence of jobs, not one scored tower** (user's instruction,
+    2026-09-20) — see the section above. Every divergence below this line is new with the jobs:
+16. **Cities are strictly before towns for every job that routes a resource by priority** — jobs
+    3, 4, 5, 6 and 8 only ever consider a city; jobs 9 and 10 (towns) are tried last of all, so a
+    town is only ever offered a resource that way once nothing above it wants one. Job 1
+    (happiness) is not restricted this way - a town can still win a rescue once no city has any
+    deficit. Job 7 (a camel with nothing more specific to do) is cities-only for a different
+    reason (a camel cannot go into a town at all - see divergence 21), not this one.
+17. **A camel opens room for a full, explicitly-focused settlement** (jobs 3/4/5/9) once it is
+    full and something is still waiting - not ported, Resource+ camels only ever open room in
+    general.
+18. **An explicit player focus on Culture or Gold overrides the automatic pile-city pick
+    outright**, and ranks among just the explicitly-focused cities if there is more than one -
+    the automatic switches in `hoard-setting.js` do not apply to an explicit choice.
+19. **Job 8 fills any city with room, not only ones left on Balanced** (user's instruction,
+    2026-09-21) - an empty slot outranks an unfilled focus. Relies on job order rather than a
+    filter to keep a focus's own resources first, since job 5 is tried again on every call.
+20. **Towns get their own "explicit focus first" job (9), not only the plain catch-all (10)**
+    (user's instruction, 2026-09-21) - Resource+ has no town/city distinction to diverge from
+    here; this mirrors jobs 5/8's split for cities, one call later in the order for the reason
+    divergence 16 already gives.
+21. **A camel is never offered to a town, anywhere** (user correction, 2026-09-21, fixing a bug
+    this file's own jobs 1, 7 and `camelOpensRoomFor` had) - a camel is `RESOURCECLASS_CITY` in
+    the game's data, a class the game's own commerce screen refuses to drop on a town outright.
+    Not Camel-specific: see `27-resources.md` in the shared knowledge base for the general rule
+    and which other resources are `CITY`-class in which age.

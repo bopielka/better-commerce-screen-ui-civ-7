@@ -8,6 +8,19 @@ comment.
 
 [hr][/hr]
 
+[h2]1.19[/h2]
+
+[list]
+[*][b]Fixed: the Resource Allocation button on the HUD never lit up or gently pulsed[/b] when assigning resources was unlocked. It now does both together, every time.
+[*][b]Assigning resources now fills Cities before Towns.[/b] Once happiness is taken care of, a Town is only offered a resource once every City is full - it used to compete with Cities on equal footing.
+[*][b]Setting a City's focus to Culture or Gold now takes priority over the mod's own automatic pick.[/b] Every matching resource goes there first, and once it is full, a Camel steps in to open more room there before anything moves on to a second City. The automatic Culture/Gold City is only chosen when no City has that focus set.
+[*][b]The happiness rescue now aims a little higher,[/b] bringing every settlement to just above zero instead of stopping right at it.
+[*][b]Imported resources now wait their turn behind a City's own chosen focus.[/b] A City you told what to make gets first claim on a resource before an import does; imports only pick up what none of your focused Cities wanted.
+[*][b]Fixed: Unassign All (and clearing a single settlement) could mishandle a Camel[/b] in a settlement that also held a locked resource - leaving the Camel stuck, or freeing its room by unassigning the locked resource instead. Locked resources are never touched now, and everything else is released properly.
+[/list]
+
+[hr][/hr]
+
 [h2]1.18[/h2]
 
 [list]
@@ -27,7 +40,6 @@ comment.
 [*][b]Fixed: the GDP breakdown counted resources from a city you had since captured as imports.[/b]
 [*][b]Fixed: trade route names were not shortened before the leader portrait[/b] while the "one trade slot away" group was collapsed or filtered out.
 [*][b]Fixed: opening the Commerce screen or the Trade Routes tab crashed the game[/b] after Civilization VII 1.5.0.
-[*][b]Fixed: the Resource Allocation button on the HUD never lit up or pulsed,[/b] even when a resource could actually be assigned somewhere.
 [/list]
 
 [hr][/hr]

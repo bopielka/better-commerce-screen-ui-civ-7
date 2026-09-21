@@ -97,6 +97,7 @@ export function canAssign(cityID, resourceValue) {
 export function requestAssign(cityID, resourceValue) {
     return send(assignArgs(cityID, resourceValue), `assigning resource ${resourceValue}`);
 }
+
 //#endregion
 
 //#region releasing
@@ -110,11 +111,6 @@ export function canUnassign(cityID, resourceValue) {
 /** Sends without re-checking; callers ask canUnassign first. */
 export function requestUnassign(cityID, resourceValue) {
     return send(unassignArgs(cityID, resourceValue), `unassigning resource ${resourceValue}`);
-}
-
-/** Checks and sends in one go, for callers with nothing to decide in between. */
-export function unassignIfAllowed(cityID, resourceValue) {
-    return checkedSend(unassignArgs(cityID, resourceValue), `unassigning resource ${resourceValue}`);
 }
 
 /** Empties one settlement in a single operation, rather than one resource at a time. */

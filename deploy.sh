@@ -188,6 +188,25 @@ for dir in "${CONTENT_DIRS[@]}"; do
     [[ -d "$SRC_DIR/$dir" ]] && cp -r "$SRC_DIR/$dir" "$DEST_DIR/"
 done
 
+# --- devtools: excluded from the deployed copy when disabled ------------------
+#
+# ui/screen/dev-panel.js is dev-only by design and never meant to reach a release (see
+# CLAUDE.md) - DIAGNOSTICS being false already keeps it from DOING anything, but the file itself
+# was still copied into every player's mod folder regardless. `enable-devtools.sh` /
+# `disable-devtools.sh` toggle this marker; its ABSENCE means "included", matching what every
+# deploy did before the marker existed, so an existing checkout's behaviour does not change.
+#
+# ⚠️ Safe only because better-commerce-screen-ui.js imports it with a DYNAMIC import for exactly
+# this reason - a static import of a file removed here would fail to parse and take the whole mod
+# down with it.
+DEVTOOLS_MARKER="$SRC_DIR/.devtools-disabled"
+if [[ -f "$DEVTOOLS_MARKER" ]]; then
+    rm -f "$DEST_DIR/ui/screen/dev-panel.js"
+    say "devtools: excluded (./enable-devtools.sh to re-include)"
+else
+    say "devtools: included (./disable-devtools.sh to exclude)"
+fi
+
 # --- stamp the build ----------------------------------------------------------
 #
 # The game loads the mod's scripts ONCE, at startup or on returning to the main menu.

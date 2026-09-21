@@ -2,21 +2,22 @@
  * Returning assigned resources to the unassigned pool.
  *
  * ⚠️ Removing a slot-granting resource (a camel) SHRINKS the settlement's capacity, so others may
- * have to leave first or the settlement would end up holding more than it can. Companions are
- * pulled from a queue one at a time and only for as long as the engine keeps refusing; see
- * engine/resource-slots.js.
+ * have to leave first or the settlement would end up holding more than it can. Two mechanisms,
+ * for two different shapes of `doomed`:
+ *   - a SINGLE resource (`unassignOne`, `freeRoomForMove`): a companion is pulled from a queue
+ *     one at a time, only for as long as the engine keeps refusing - see `companionCandidates`
+ *     in engine/resource-slots.js.
+ *   - a BULK list (`unassignSettlement`, `unassignEverySettlement`): `slotGrantingLast` sorts
+ *     camels to the end, so their own bulk-mates leave first and make the room naturally -
+ *     `companionCandidates` has too little left to draw from once almost everything in the
+ *     settlement is doomed at once (2026-09-20 bug report).
  *
  * ⚠️ Locks are obeyed here, which is the whole point of them: this is what the bulk buttons call.
  */
-import {
-    canAssign,
-    canUnassign,
-    requestClearSettlement,
-    requestUnassign,
-    unassignIfAllowed,
-} from './operations.js';
-import { companionCandidates } from './resource-slots.js';
+import { canAssign, canUnassign, requestClearSettlement, requestUnassign } from './operations.js';
+import { companionCandidates, grantsBonusSlots } from './resource-slots.js';
 import { isResourceLocked } from './resource-locks.js';
+import { heldResourceType } from './resource-types.js';
 import { waitForEngineEvent } from './wait.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -94,11 +95,90 @@ function trySend(resource) {
 }
 
 /**
- * Releases one resource, pulling companions out of `queue` only for as long as the engine keeps
- * refusing it. @returns how many were released in total, this one included.
+ * Confirms a resource has actually left, polling the settlement directly - the same reason
+ * `place.js`'s `awaitAssignment` does not trust `ResourceAssigned`. Same cadence, mirrored.
+ *
+ * ⚠️ THE EVENT IS NOT ENOUGH ON ITS OWN (2026-09-21 bug report). `waitForEngineEvent` resolved
+ * for every release in a bulk batch, yet `getAssignedResources()` still reported the ORIGINAL
+ * full count once the loop reached a camel at the end - `ResourceUnassigned` can fire before the
+ * settlement's own state has actually caught up, not merely "fires for every player" the way
+ * `ResourceAssigned` does. A camel's `canUnassign` reads that state directly (removing it must
+ * not overflow the settlement), so it is exactly the case this staleness broke - a regular
+ * resource's `canUnassign` never depends on it, which is why nothing noticed sooner.
+ */
+const RELEASE_POLL_MS = 4;
+const RELEASE_FAST_WINDOW_MS = 50;
+const RELEASE_POLL_CEILING_MS = 32;
+const RELEASE_TIMEOUT_MS = 2000;
+
+/** Polls `settlement`'s CURRENT assigned count down to `expected`, once, instead of per-resource. */
+function awaitSettlementDropTo(cityID, expected) {
+    return new Promise((resolve) => {
+        const started = Date.now();
+        const settled = () => {
+            try {
+                return (Cities.get(cityID)?.Resources?.getAssignedResources()?.length ?? 0) <= expected;
+            } catch (error) {
+                return true;
+            }
+        };
+        let wait = RELEASE_POLL_MS;
+        const check = () => {
+            if (settled()) {
+                resolve(true);
+                return;
+            }
+            if (Date.now() - started >= RELEASE_TIMEOUT_MS) {
+                resolve(false);
+                return;
+            }
+            setTimeout(check, wait);
+            if (Date.now() - started >= RELEASE_FAST_WINDOW_MS) {
+                wait = Math.min(wait * 2, RELEASE_POLL_CEILING_MS);
+            }
+        };
+        setTimeout(check, wait);
+    });
+}
+
+function awaitReleased(cityID, resourceValue) {
+    return new Promise((resolve) => {
+        const started = Date.now();
+        const gone = () => {
+            try {
+                return !(Cities.get(cityID)?.Resources?.getAssignedResources() ?? []).some(
+                    (resource) => resource.value === resourceValue,
+                );
+            } catch (error) {
+                return true;
+            }
+        };
+        let wait = RELEASE_POLL_MS;
+        const check = () => {
+            if (gone()) {
+                resolve(true);
+                return;
+            }
+            if (Date.now() - started >= RELEASE_TIMEOUT_MS) {
+                resolve(false);
+                return;
+            }
+            setTimeout(check, wait);
+            if (Date.now() - started >= RELEASE_FAST_WINDOW_MS) {
+                wait = Math.min(wait * 2, RELEASE_POLL_CEILING_MS);
+            }
+        };
+        setTimeout(check, wait);
+    });
+}
+
+/**
+ * Releases one SLOT-GRANTING resource, pulling companions out of `queue` only for as long as the
+ * engine keeps refusing it. @returns how many were released in total, this one included.
  */
 async function releaseOne(resource, queue) {
     if (trySend(resource)) {
+        await awaitReleased(resource.cityID, resource.resourceValue);
         return 1;
     }
 
@@ -110,9 +190,10 @@ async function releaseOne(resource, queue) {
         }
         released++;
         log(`freed ${companion.resourceType} to make room for ${resource.resourceType}`);
-        await waitForEngineEvent(UNASSIGNED_EVENT);
+        await awaitReleased(companion.cityID, companion.resourceValue);
 
         if (trySend(resource)) {
+            await awaitReleased(resource.cityID, resource.resourceValue);
             return released + 1;
         }
     }
@@ -124,20 +205,36 @@ async function releaseOne(resource, queue) {
     return released;
 }
 
+/**
+ * ⚠️ ORDINARY RESOURCES NEVER NEED TO WAIT FOR EACH OTHER (2026-09-21 bug report: confirming
+ * every single release individually - correct after the previous fix - made a bulk unassign
+ * crawl, one resource at a time, for a settlement that used to clear in one breath). Removing an
+ * ordinary resource only ever FREES room, so no other ordinary resource's `canUnassign` depends
+ * on it having actually landed yet; they can all be sent back to back with no wait in between.
+ * Only a SLOT-GRANTING one changes that - see `awaitReleased`'s own note - so the wait is spent
+ * ONCE, right before those, rather than after every resource on the way there.
+ */
 async function release(settlement, doomed) {
     const queue = companionCandidates(settlement, doomed);
+    const slotGranting = doomed.filter((resource) => grantsBonusSlots(resource.resourceType));
+    const ordinary = doomed.filter((resource) => !grantsBonusSlots(resource.resourceType));
+
     let released = 0;
-    for (const resource of doomed) {
-        const count = await releaseOne(resource, queue);
-        released += count;
-        /*
-         * ⚠️ Only when something was actually SENT. A release the engine refused raises no event,
-         * so waiting for one was a full timeout spent on a message that could not arrive - once
-         * per resource, and these are chained.
-         */
-        if (count > 0) {
-            await waitForEngineEvent(UNASSIGNED_EVENT);
+    for (const resource of ordinary) {
+        if (trySend(resource)) {
+            released++;
         }
+    }
+
+    if (slotGranting.length === 0) {
+        return released;
+    }
+
+    if (released > 0) {
+        await awaitSettlementDropTo(settlement.cityID, settlement.slottedResources.length - released);
+    }
+    for (const resource of slotGranting) {
+        released += await releaseOne(resource, queue);
     }
     return released;
 }
@@ -176,6 +273,34 @@ export function unassignOne(settlement, slottedResource) {
     return release(settlement, [slottedResource]);
 }
 
+/**
+ * Shapes a raw `getAssignedResources()` entry the way `release()`/`companionCandidates` expect -
+ * `resourceValue` and `cityID`, not `value`, and a real `resourceType` rather than none.
+ * `engine/` may not import `model/headless-model.js`, which builds the same shape for the
+ * screen - this is the same conversion, kept local to stay under the layer rule.
+ */
+function toReleaseShape(cityID, resource) {
+    return { resourceValue: resource.value, resourceType: heldResourceType(resource), cityID };
+}
+
+/**
+ * A bulk `doomed` list, slot-granting resources (camels) moved to the END.
+ *
+ * ⚠️ WHY, ON TOP OF `companionCandidates` (2026-09-20 bug report). That queue is a reserve drawn
+ * from whatever is NOT in `doomed` - fine for `unassignOne`, where almost the whole settlement
+ * qualifies as a reserve, but a bulk clear dooms nearly everything TOGETHER, so once locked
+ * resources are (correctly) excluded there is often no reserve left at all. `release()` still
+ * works here because it processes `doomed` one at a time: a camel ordered last is only tried
+ * once its own bulk-mates have already left and made room on their own, no reserve needed. A
+ * camel sorted first - the settlement's own slot order - was tried while everything else was
+ * still assigned, found no room, and had nothing left in the queue to free it either.
+ */
+function slotGrantingLast(doomed) {
+    return [...doomed].sort(
+        (a, b) => Number(grantsBonusSlots(a.resourceType)) - Number(grantsBonusSlots(b.resourceType)),
+    );
+}
+
 /** Empties ONE settlement, sparing anything the player has locked. */
 export async function unassignSettlement(cityID) {
     const city = Cities.get(cityID);
@@ -189,21 +314,21 @@ export async function unassignSettlement(cityID) {
         return 0;
     }
 
-    let cleared = 0;
+    let cleared;
     if (doomed.length === assigned.length && requestClearSettlement(cityID)) {
         cleared = assigned.length;
-    } else {
-        for (const resource of doomed) {
-            if (unassignIfAllowed(cityID, resource.value)) {
-                cleared++;
-            } else {
-                warn(`failed to request unassign for resource ${resource.value}`);
-            }
-        }
-    }
-    // ⚠️ Nothing went to the engine, so nothing is coming back; see `release`.
-    if (cleared > 0) {
+        // ⚠️ Nothing went through `release()`, so nothing is coming back that way.
         await waitForEngineEvent(UNASSIGNED_EVENT);
+    } else {
+        /*
+         * ⚠️ THROUGH `release()`, NOT A PLAIN PER-RESOURCE LOOP (2026-09-20 bug report). A camel
+         * among `doomed` shrinks the settlement's capacity the moment it leaves, so the engine
+         * refuses it outright unless something else has already gone first - `release()`, with
+         * camels ordered last (`slotGrantingLast`), is what lets that happen naturally.
+         */
+        const settlement = { cityID, slottedResources: assigned.map((resource) => toReleaseShape(cityID, resource)) };
+        const doomedShaped = slotGrantingLast(doomed.map((resource) => toReleaseShape(cityID, resource)));
+        cleared = await release(settlement, doomedShaped);
     }
     log(`returned ${cleared} resource(s) from one settlement (${assigned.length - doomed.length} locked)`);
     return cleared;
@@ -235,28 +360,28 @@ export async function unassignEverySettlement() {
             continue;
         }
 
-        let sent = 0;
         if (doomed.length === assigned.length && requestClearSettlement(city.id)) {
-            sent = assigned.length;
-        } else {
-            for (const resource of doomed) {
-                if (unassignIfAllowed(city.id, resource.value)) {
-                    sent++;
-                } else {
-                    warn(`failed to request unassign for resource ${resource.value}`);
-                }
-            }
-        }
-        cleared += sent;
-        // ⚠️ Only when something was actually sent, and these are chained one per settlement -
-        // a whole empire of refusals used to cost the full timeout apiece. See `release`.
-        if (sent > 0) {
+            cleared += assigned.length;
+            // ⚠️ Only when something was actually sent, and these are chained one per settlement -
+            // a whole empire of refusals used to cost the full timeout apiece. See `release`.
             await waitForEngineEvent(UNASSIGNED_EVENT);
+        } else {
+            // ⚠️ Same reasoning as `unassignSettlement` - camels ordered last so their own
+            // bulk-mates make room naturally, through `release()` rather than the plain loop
+            // this replaced (2026-09-20 bug report: camels left stuck in a settlement that also
+            // held a locked resource).
+            const settlement = {
+                cityID: city.id,
+                slottedResources: assigned.map((resource) => toReleaseShape(city.id, resource)),
+            };
+            const doomedShaped = slotGrantingLast(doomed.map((resource) => toReleaseShape(city.id, resource)));
+            cleared += await release(settlement, doomedShaped);
         }
     }
 
-    // ⚠️ Last, and it is not optional: everything above waits for ONE event per settlement, and a
-    // cleared settlement raises one per resource. See `awaitReleasesLanded`.
+    // ⚠️ Last, and it is not optional: everything above waits for ONE event per settlement (the
+    // bulk-clear branch) or per resource (the `release()` branch), and a cleared settlement can
+    // still have releases in flight either way. See `awaitReleasesLanded`.
     if (cleared > 0) {
         await awaitReleasesLanded(locked);
     }

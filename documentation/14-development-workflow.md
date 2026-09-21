@@ -166,6 +166,10 @@ literals, so a `/* ... */` in a style constant is part of a string — editing o
 6. Set `DIAGNOSTICS = false` in `ui/support/diagnostics.js` **before publishing**. It ships
    `false`; turn it on while working and off again before you publish. The author's previous mod
    shipped 1.0 with logging on.
+7. `./disable-devtools.sh` **before publishing** — a second, independent switch from #6, added
+   2026-09-21. `DIAGNOSTICS = false` stops the dev panel from doing anything; this additionally
+   keeps `ui/screen/dev-panel.js` out of the deployed files entirely. `./enable-devtools.sh` turns
+   it back on for the next working session.
 
 ## Compatibility
 

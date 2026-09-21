@@ -26,6 +26,7 @@ DOM facts recorded there.
 | `icon-button.js` | the shared icon-only button |
 | `close-screen.js` | closing the screen, by the one name the game knows it under |
 | `help-mark.js` | the shared round "?" |
+| `dev-panel.js` | ⚠️ **DEV-ONLY**, gated on `DIAGNOSTICS` — a Numpad9-toggled panel, not tied to any screen |
 
 ---
 
@@ -371,3 +372,76 @@ different kind of control. Not clickable — just a label with a tooltip.
 
 Exports `HELP_CLASS`, `HELP_STYLE` (to be concatenated into the caller's sheet) and
 `makeHelpMark(tooltipKey, labelKey)`.
+
+---
+
+## `dev-panel.js` — the developer panel (added 2026-09-20)
+
+⚠️ **NEVER SHIPS - two independent switches, not one (the second added 2026-09-21).**
+`startDevPanel()` returns immediately unless `DIAGNOSTICS` is `true`, which it never is in a
+published build ([workflow](14-development-workflow.md) already requires flipping it off before
+publishing). On top of that, `./disable-devtools.sh` (see the root `CLAUDE.md`) excludes
+`dev-panel.js` from what `deploy.sh` copies at all, via a `.devtools-disabled` marker file it
+checks for - so a release build does not carry the file regardless of `DIAGNOSTICS`. The entry
+point (`better-commerce-screen-ui.js`) imports it with a **dynamic** `import()` specifically so a
+build with the file excluded still parses and loads - a static import of a missing file would take
+the whole mod down. Installing it prints both a `log()` and a `warn()` line, so it cannot go
+unnoticed in `UI.log` if diagnostics were ever left on by mistake.
+
+**Two ways in**, from anywhere - not tied to the Commerce screen or any other component:
+
+1. **Numpad 9.** ⚠️ **No engine action exists for a raw physical key.** The base game's own
+   hotkeys run through `engine-input` / `hotkey-next-action` `CustomEvent`s tied to pre-bound
+   `InputActionID`s defined outside this mod's reach (XML/native, not JS). A capture-phase
+   `keydown` on `window` is the only way in — the same mechanism
+   [`shift-click.js`](#shift-clickjs--making-shift-clicks-work-at-all) already relies on for the
+   same reason.
+   ⚠️ **`event.code === 'NumPad9'`, capital P — NOT the W3C spelling** ("Numpad9"). First shipped
+   with the standard spelling and was reported not to fire at all; a `[probe]` `warn()` on every
+   `keydown` (since removed) showed this engine reports the numpad row's codes capitalised
+   differently from the spec, `.key` as an unrelated `"i"`, and `.location` as `0` rather than the
+   standard `3` for a numpad key — none of which match a browser. Confirmed from `UI.log`, not
+   guessed; see the standing rule on logging rather than guessing.
+2. **An orange dock icon**, added as a second, more reliable way in once the key alone was
+   reported not to work (before the cause above was known). `DevPanelDockButton` decorates
+   `panel-sub-system-dock` exactly as
+   [`dock-resource-button.js`](#dock-resource-buttonjs) does — `Controls.decorate` keeps a LIST,
+   so both coexist. Built as a fresh element rather than a clone of the real `.resources` button,
+   so it never inherits whatever colour/pulse classes or tooltip data that button happens to carry
+   at the moment of insertion; inserted as its DOM **sibling** so it shares the same flex row
+   instead of needing its own hand-kept coordinates. Same background image
+   (`blp:ntf_discover_resource_blk`) and the same offset fix `dock-resource-button.js` needed for
+   it, tinted with an approximate CSS filter for `#ffa500` — adjust `hue-rotate` in the source if
+   the shade reads wrong in game. Carries a tooltip through `makeElement`'s
+   `data-tooltip-content` handling, not a direct `setAttribute` - `support/dom.js`'s "one door"
+   rule applies even to a tool a player will never see.
+
+⚠️ **Plain DOM on `document.body`**, the same shape as
+[`treasure-toast.js`](13-notifications.md#treasure-toastjs--a-convoy-saying-what-it-brought-home):
+appended directly, not into any screen container, because it must exist with any screen open or
+none. Toggling removes-and-rebuilds by id (`document.getElementById(PANEL_ID)?.remove()`) rather
+than tracking a visibility flag — the DOM's own presence is the only state worth trusting.
+
+**Draggable by its title bar** (`makeDraggable`), plain `mousedown`/`mousemove`/`mouseup` on
+`window` — the same event family `shift-click.js` already relies on in this DOM. ⚠️ Switches the
+panel from the stylesheet's `top`/`right` to explicit inline `left`/`top`, read from
+`getBoundingClientRect()`, on the **first** drag — an inline `left` fighting the stylesheet's
+`right` on the same element would stretch its width instead of moving it, not being an available
+rectangle both can agree on.
+
+**Paged, through one list.** `SECTIONS` is `[{ key, label, render(container) }]`; a nav bar and a
+content area are both built from it (`renderNav` / `renderContent`), so a new page is one new
+entry in `SECTIONS` and nothing else — neither render site is touched by hand. ⚠️ The active page
+(`activeSectionKey`) is a **module variable, not DOM state**: switching pages clears and rebuilds
+only the content area, not the whole panel, so the title bar and the drag position survive a page
+switch. It is kept across a close/reopen too (only a build reload resets it to the first page).
+
+Today's only page, **"Resource management"**, is one button per `scoring.js` job (`JOB_LIST` — see
+[planner: assignment](07-planner-assignment.md)), running that job ALONE through `runOnlyJob` in
+`planner/run.js` until it has nothing left to place. ⚠️ **A real placement run, not a preview** —
+the same `runExclusively` guard and the same `placeResources` loop Assign All uses, through a new
+`onlyJob` parameter threaded through both that restricts every `bestAssignment` call in the run to
+one job instead of the full order. Useful for seeing what a single job would do with the rest of
+the empire held constant, without having to reason it out from a full Assign All's mixed log.
+
+No localisation: a tool that never reaches a player has no player-facing text to translate.

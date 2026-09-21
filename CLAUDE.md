@@ -40,6 +40,19 @@ BBCode file is over its character limit.
 
 After deploying, **return to the main menu or restart** — scripts are loaded once.
 
+```bash
+./disable-devtools.sh   # excludes ui/screen/dev-panel.js from the deploy, then deploys
+./enable-devtools.sh    # re-includes it, then deploys
+```
+
+⚠️ Toggles a marker file (`.devtools-disabled`, tracked like any other file — no private path in
+it, unlike `CIV7_MODS_DIR`) `deploy.sh` checks before copying —
+separate from `DIAGNOSTICS` in `ui/support/diagnostics.js`, which only stops the dev panel from
+*doing* anything, not from shipping. Run `disable-devtools.sh` before publishing, on top of
+setting `DIAGNOSTICS = false`, not instead of it. `better-commerce-screen-ui.js` imports
+`dev-panel.js` **dynamically** for exactly this reason — a static import of a file a build left
+out would fail to parse and take the whole mod down with it.
+
 ### `game-files-snapshots/`
 
 1:1 copies of the original game `.js` files this mod imports from or overrides (via

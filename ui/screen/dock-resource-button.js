@@ -1,21 +1,22 @@
 /**
- * The Resource Allocation button in the HUD dock: coloured when the screen is worth opening,
- * pulsing when there is actually something to place.
+ * The Resource Allocation button in the HUD dock: lit up and pulsing while resource assignment
+ * is unlocked at all - the count the game prints on the button is how many resources are in the
+ * pool, not whether the screen is worth opening, so this gives the button its own opinion.
  *
- * Two deliberately different questions - coloured means assignment is unlocked at all, pulsing
- * means an unassigned resource would actually be ACCEPTED somewhere. The second is the useful
- * one: the count the game prints is how many are in the pool, which is not the same thing.
+ * ⚠️ Colour and pulse are the SAME signal, deliberately (user's instruction, 2026-09-20). An
+ * earlier version pulsed only when an unassigned resource would actually be accepted somewhere,
+ * which could leave the pulse off while lit (e.g. only a City resource in the pool with every
+ * free slot in a Town) - judged more confusing than useful, so both classes now toggle together
+ * off `isUnlocked` alone.
  *
  * ⚠️ Written to sit alongside beezany's **Ready or Not**, which colours the same button.
  * `Controls.decorate` keeps a LIST of decorators, so both run and neither replaces the other; the
  * colouring rule here is Ready or Not's rule under a class of our own, so whichever wins the
- * cascade the result is identical. The pulse is ours alone.
+ * cascade the result is identical.
  *
  * ⚠️ THE DOCK IS OLD-FRAMEWORK, which is the only reason any of this is possible -
  * `Controls.decorate` does nothing to a `ui-next` component.
  */
-import { anythingCanBePlaced } from './assign-notification.js';
-import { isAssignmentInProgress } from '../planner/run.js';
 import { onEngineEvents, stopEngineEvents } from '../engine/events.js';
 import { ensureStyle } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
@@ -24,7 +25,7 @@ const STYLE_ID = 'najane-dock-resource-style';
 
 /** On the button while the Resource Allocation screen is unlocked. */
 const READY_CLASS = 'najane-dock-ready';
-/** On the button while something in the pool would actually be accepted somewhere. */
+/** On the button whenever READY_CLASS is - see the header note; the two never differ. */
 const ASSIGNABLE_CLASS = 'najane-dock-assignable';
 
 const STYLE = `
@@ -137,9 +138,6 @@ const REFRESH_EVENTS = [
     'LocalPlayerTurnBegin',
 ];
 
-/** How often a refresh held back by an assignment pass looks again; same as the icon's re-check. */
-const PASS_RECHECK_MS = 400;
-
 function isUnlocked(player) {
     try {
         // ⚠️ `isResourceAssignmentLocked`, ONE "s" - matches commerce-screen-model.js in
@@ -160,7 +158,6 @@ class DockResourceButton {
         this.refresh = this.refresh.bind(this);
         this.refreshSoon = this.refreshSoon.bind(this);
         this.refreshFrame = null;
-        this.passTimer = null;
         /** The shared-dispatcher handles, kept so `afterDetach` can hand them back. */
         this.subscriptions = [];
     }
@@ -173,22 +170,11 @@ class DockResourceButton {
     }
 
     /**
-     * Coalesces a burst into one refresh, on the next frame. ⚠️ `anythingCanBePlaced` is the most
-     * expensive call in this mod and these events arrive in clumps - a turn boundary raises several
-     * at once, an assignment pass one per resource.
-     * ⚠️ HELD while a pass runs: frames advance between placements, so a frame per event rebuilt
-     * the answer (an empire walk plus `canStart`) once per resource placed. The end of a pass raises
-     * no event, so the held refresh polls the flag rather than waiting to be told.
+     * Coalesces a burst into one refresh, on the next frame - a turn boundary or an assignment
+     * pass can raise several of `REFRESH_EVENTS` together.
      */
     refreshSoon() {
-        if (this.refreshFrame !== null || this.passTimer !== null) {
-            return;
-        }
-        if (isAssignmentInProgress()) {
-            this.passTimer = setTimeout(() => {
-                this.passTimer = null;
-                this.refreshSoon();
-            }, PASS_RECHECK_MS);
+        if (this.refreshFrame !== null) {
             return;
         }
         this.refreshFrame = requestAnimationFrame(() => {
@@ -211,10 +197,7 @@ class DockResourceButton {
             }
             const unlocked = isUnlocked(player);
             button.classList.toggle(READY_CLASS, unlocked);
-            const placeable = unlocked && anythingCanBePlaced();
-        // ⚠️ Only while unlocked: a pulsing grey button would invite the player to open a screen
-        // that will not let them do anything.
-            button.classList.toggle(ASSIGNABLE_CLASS, placeable);
+            button.classList.toggle(ASSIGNABLE_CLASS, unlocked);
         } catch (error) {
             warn(`could not update the resources button on the dock: ${error}`);
         }
@@ -226,7 +209,7 @@ class DockResourceButton {
         ensureStyle(STYLE_ID, STYLE);
         /*
          * ⚠️ Filtered by whose event it is - `ResourceAssigned` is raised for EVERY player, so an
-         * AI rearranging its empire used to run this mod's most expensive call once per resource.
+         * AI rearranging its empire would otherwise repaint this button once per resource placed.
          * ⚠️ Through this mod's own dispatcher rather than `Root.listenForEngineEvent`, which would
          * be a SECOND `engine.on` for names three other modules already listen for; `afterDetach`
          * does the cleanup the component's version would have done.
@@ -249,10 +232,6 @@ class DockResourceButton {
         if (this.refreshFrame !== null) {
             cancelAnimationFrame(this.refreshFrame);
             this.refreshFrame = null;
-        }
-        if (this.passTimer !== null) {
-            clearTimeout(this.passTimer);
-            this.passTimer = null;
         }
     }
 }

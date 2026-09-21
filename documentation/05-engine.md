@@ -216,10 +216,50 @@ So each step waits for the engine to confirm, and **the decision is made by aski
 rather than by arithmetic**: companions are pulled one at a time and only until the resource
 the player actually clicked is accepted.
 
+⚠️ **`unassignSettlement` and `unassignEverySettlement` bypassed this entirely whenever a
+settlement held a LOCKED resource** (2026-09-20/21 bug report, fixed in four parts):
+
+1. `requestClearSettlement` cannot spare a locked resource, so a mixed settlement fell to a plain
+   per-resource loop that called `unassignIfAllowed` directly - no companion freed first. A camel
+   processed before enough else had actually left stayed stuck, refused by the engine for the
+   exact reason this section describes. Fixed by building a `{cityID, slottedResources}` shape
+   from the raw `getAssignedResources()` list and going through `release()` like every other
+   caller. `operations.js`'s `unassignIfAllowed` had no other caller left and was removed with it.
+2. That exposed a second bug: `companionCandidates` drew from `settlement.slottedResources`
+   without knowing about locks, so freeing room for the camel could pick the player's own LOCKED
+   resource as the sacrifice - the one thing locking it was meant to prevent. Fixed in
+   `companionCandidates` itself (see resource-slots.js), not by filtering every caller's list.
+3. Even with both of those fixed, a camel could still get stuck: `companionCandidates` is a
+   reserve drawn from whatever is NOT in `doomed`, which works for `unassignOne` (almost the
+   whole settlement qualifies) but not a bulk clear, which dooms nearly everything AT ONCE -
+   once locked resources are excluded there is often no reserve left to draw from at all. Fixed
+   by `slotGrantingLast`, which sorts camels to the end of a bulk `doomed` list so their own
+   bulk-mates leave first and make room naturally, with no reserve needed.
+4. **Even with the camel tried dead last, it still failed** - the actual root cause, found by
+   probing `canStart`'s own reply: `waitForEngineEvent('ResourceUnassigned')` resolved after
+   every one of the bulk's earlier releases, yet `getAssignedResources()` still reported the
+   FULL original count by the time the loop reached the camel. The event can fire before the
+   settlement's own state has caught up - it is not merely "fires for every player" the way
+   `ResourceAssigned` is, which is the trap `place.js`'s `awaitAssignment` already avoids for
+   assigning by polling the settlement directly instead of trusting an event. A plain resource's
+   `canUnassign` never depends on that state, so nothing surfaced this until a camel's did. Fixed
+   by `awaitReleased`, the same poll (mirrored from `awaitAssignment`) checking absence instead
+   of presence, used in place of `waitForEngineEvent` for every release `release()` makes.
+5. **That fix made a bulk clear crawl** (2026-09-21 bug report: correct, but visibly one resource
+   at a time). `awaitReleased` was being awaited after *every* release, including ordinary ones -
+   but an ordinary resource leaving only ever frees room, so no other ordinary resource's
+   `canUnassign` depends on it having actually landed yet. `release()` now sends every ordinary
+   resource in `doomed` back to back with no wait, then - only if there is a slot-granting one to
+   process - spends a single `awaitSettlementDropTo` poll (checking the settlement's assigned
+   *count*, not one resource's absence) before handing the slot-granting resources to the
+   unchanged, carefully-sequenced `releaseOne`. The wait moved from "after every resource" to
+   "once, right before it is actually needed."
+
 ### Exports
 
 ```js
 unassignOne(settlement, slottedResource)                // → Promise<number released>
+unassignSettlement(cityID)                              // → Promise<number released>
 unassignAllOfTypeInSettlement(settlement, resourceType) // → Promise<number released>
 unassignEverySettlement()                               // → Promise<number released>
 freeRoomForMove(sourceSettlement, slottedResource, targetCityID) // → Promise<boolean>
@@ -253,6 +293,13 @@ companionCandidates(settlement, doomed)  // → array, best candidate first
 `companionCandidates` is a **queue to draw from, not a list to remove**. The caller pulls one
 at a time and stops the moment the engine accepts what it actually wanted to remove — that is
 what keeps the settlement from losing more than the situation demands.
+
+⚠️ **A LOCKED resource is never a candidate** (2026-09-20 bug report, fixed) — checked here, via
+`isResourceLocked(candidate.cityID, candidate.resourceValue)`, rather than trusting every caller
+to filter its `settlement.slottedResources` first. `unassign.js` hands this whatever a settlement
+currently holds, locked resources included, because they are still legitimately slotted; nothing
+upstream removes them. Without the check here, freeing room for a camel during Unassign All could
+pick the player's own locked resource as the sacrifice — the exact thing locking one is for.
 
 Order and safety:
 

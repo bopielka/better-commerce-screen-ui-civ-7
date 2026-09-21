@@ -154,3 +154,12 @@ export function quickAssignSettlement(model, cityID) {
         'quick assign',
     );
 }
+
+/**
+ * Runs ONE `scoring.js` job alone, until it has nothing left to place - `screen/dev-panel.js`'s
+ * per-job buttons. Goes through the same `runExclusively` guard as every other entry point, so a
+ * dev-panel click cannot overlap a live auto-assign pass or another button's run.
+ */
+export function runOnlyJob(onlyJob, { model = null, label = `dev panel: ${onlyJob}` } = {}) {
+    return runExclusively(model, () => placeResources({ label, onlyJob }), label);
+}

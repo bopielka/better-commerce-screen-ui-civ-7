@@ -8,6 +8,7 @@
  * may have to leave first.
  */
 import { onGameDataStale } from '../support/game-data.js';
+import { isResourceLocked } from './resource-locks.js';
 
 const bonusSlotsByType = new Map();
 let indexed = false;
@@ -59,6 +60,12 @@ export function firstSlotGrantingType() {
  * Ordered from the END of the settlement's list backwards - most recently slotted first, which
  * is what the player expects to lose. Slot-granting resources are never candidates (that would
  * cascade), and the queue is capped at the number of slots actually going away.
+ *
+ * ⚠️ A LOCKED resource is never a candidate either (2026-09-20 bug report, fixed) - `unassign.js`
+ * hands this whatever the settlement currently holds, LOCKED ones included, because they are
+ * still legitimately slotted; nothing upstream filters them out. Without this check, freeing room
+ * for a camel could pick a locked resource as the sacrifice - the one thing locking a resource is
+ * meant to prevent. Checked here, not by every caller, so nothing can forget it.
  */
 export function companionCandidates(settlement, doomed) {
     const slotsLost = doomed.reduce((total, resource) => total + bonusSlotsFor(resource.resourceType), 0);
@@ -72,7 +79,11 @@ export function companionCandidates(settlement, doomed) {
     const slotted = settlement.slottedResources ?? [];
     for (let i = slotted.length - 1; i >= 0 && candidates.length < slotsLost; i--) {
         const candidate = slotted[i];
-        if (alreadyGoing.has(candidate.resourceValue) || grantsBonusSlots(candidate.resourceType)) {
+        if (
+            alreadyGoing.has(candidate.resourceValue)
+            || grantsBonusSlots(candidate.resourceType)
+            || isResourceLocked(candidate.cityID, candidate.resourceValue)
+        ) {
             continue;
         }
         candidates.push(candidate);
