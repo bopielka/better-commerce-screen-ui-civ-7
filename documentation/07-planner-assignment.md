@@ -888,10 +888,12 @@ Marketplace or a wonder. Neither produced a trigger: a Colossus finished while t
 changed nothing until the next turn began, and a resource that had failed to place sat there
 with room now waiting for it.
 
-⚠️ **New room is a reason to run, but NOT in "the new resource only".** A Marketplace does not
-hand the player a resource, so in that mode there is genuinely nothing new and what sits in the
-pool is what the player left there. The other two modes are explicitly about the pool, so more
-room is exactly their cue. A resource that arrived and could not be placed is covered either
+⚠️ **In "the new resource only", new room fills only the settlement that gained it** (user's
+instruction, 2026-10-30). A building or wonder with slots is the player asking for them to be
+used, so that settlement gets a quick-assign pass (`settlementsThatGrew` compares per-settlement
+caps); the rest of the pool may be there on purpose and is not touched. A settlement new to the
+list - founded or captured - does not count. The other two modes are explicitly about the pool,
+so more room anywhere is their cue for a full pass. A resource that arrived and could not be placed is covered either
 way, because `known` is only advanced after a pass that placed something.
 
 ⚠️ **Every mode still waits for something to actually happen.** What the modes differ in is

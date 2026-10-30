@@ -157,6 +157,11 @@ Two shared choke points worth knowing before writing anything new:
    instruction, 2026-09-20) — the snapshot has to stay a complete inventory of what the mod
    touches, not just what it touched on the day it was captured. See
    [`game-files-snapshots/README.md`](game-files-snapshots/README.md).
+10. **Per-game state that a loaded save must reproduce lives IN THE SAVE** (user's instruction,
+   2026-10-30): merchant orders, the trade queue, resource locks and settlement priorities go
+   through `ui/engine/save-store.js` (the game's `Catalog`), never seed-keyed `localStorage` — the seed survives a reload, so every save
+   of one game shared one store. A player-catalog write is queued; read through `save-store.js`.
+   Nothing `ui/options/` imports may reach it (shell scope has no save).
 
 ## Performance is a correctness requirement here
 

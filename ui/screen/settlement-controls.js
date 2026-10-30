@@ -14,6 +14,7 @@ import { appendAll, bindActivatable, clearChildren, ensureStyle, makeElement } f
 import { settlementCardsOnScreen, watchCommerceScreen } from './screen-observer.js';
 import { iconBackground } from './icons.js';
 import { log, warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 
 const CONTROL_CLASS = 'najane-priority-control';
 const OPEN_CLASS = 'najane-priority-open';
@@ -725,3 +726,6 @@ export function stopSettlementControls() {
     styleElement?.remove();
     styleElement = null;
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('settlement-controls', { liveMounts, composedByKey, labelsByCity });

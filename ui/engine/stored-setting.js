@@ -8,13 +8,20 @@
  * "on" or 0 is a legitimate choice (the happiness dropdown's "Never"). So nothing here stores a
  * raw value: a switch stores 1 for off and 2 for on, a choice its index plus one.
  *
- * ⚠️ Written to BOTH `UI.setOption` and `saveCheckpoint()`. Without the checkpoint the value is
- * remembered for the session and forgotten on exit, which reads as a switch that does not stick.
+ * ⚠️ `UI.setOption('user', 'Mod', ...)` DOES NOT REACH THE DISK: on 2026-09-30 no key of this mod
+ * was in UserOptions.txt or anywhere else in the profile, while the `modSettings` mirror was in
+ * LocalStorage.sqlite. With no mirror, every switch here fell back to its default on each start
+ * (player report: happiness priority and both gathering switches). The mirror is what persists;
+ * the option is still written and read first, in case a game version starts keeping it.
  *
  * ⚠️ `window.dispatchEvent` from engine/ is a deliberate exception to the layer rule: a setting has
  * to be able to announce itself to whatever is drawing it.
  */
+import { readSection, writeSection } from './mod-storage.js';
 import { log, warn } from '../support/diagnostics.js';
+
+/** ⚠️ A section of the SHARED `modSettings` key - see ./mod-storage.js for why. */
+const SECTION = 'settings';
 
 /** Never touched. Not a value; the absence of one. */
 const UNSET = 0;
@@ -24,13 +31,16 @@ const STORED_ON = 2;
 /** Choices are stored one higher than their value, so that 0 stays free to mean UNSET. */
 const CHOICE_OFFSET = 1;
 
+/** ⚠️ Asked once per setting per session - the callers memoise - so the JSON parse is not hot. */
 function readRaw(option, label) {
+    let fromOption = UNSET;
     try {
-        return Number(UI.getOption('user', 'Mod', option));
+        fromOption = Number(UI.getOption('user', 'Mod', option)) || UNSET;
     } catch (error) {
         warn(`could not read the ${label} setting: ${error}`);
-        return UNSET;
     }
+    const fromMirror = Number(readSection(SECTION)[option]) || UNSET;
+    return fromOption !== UNSET ? fromOption : fromMirror;
 }
 
 function writeRaw(option, label, stored) {
@@ -40,6 +50,9 @@ function writeRaw(option, label, stored) {
     } catch (error) {
         warn(`could not save the ${label} setting: ${error}`);
     }
+    writeSection(SECTION, (settings) => {
+        settings[option] = stored;
+    });
 }
 
 function announce(changedEventName) {

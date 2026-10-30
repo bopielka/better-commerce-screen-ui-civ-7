@@ -31,6 +31,7 @@ import { isTreasureAutoReturnEnabled } from './treasure-return-setting.js';
 import { unitKey } from './merchant.js';
 import { onEngineEvent, onLocalPlayerEvent } from './events.js';
 import { log, warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 
 /** See the ⚠️ at the top of the file. This number is the difference between a working
  *  mod and a hung game. */
@@ -594,3 +595,6 @@ export function startTreasureConvoys() {
     scheduleProcess(true);
     log('treasure convoy auto-return installed');
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('treasure-convoys', { notAConvoy, attempts });

@@ -95,8 +95,8 @@ export function forgetPriorityMemory() {
 }
 
 /*
- * ⚠️ City ids repeat between games, and engine/mod-storage.js drops the seed on `GameStarted`, so
- * this memo must go with it. `GameStarted` alone, not `GameAgeEnded`: settlements outlive an age,
+ * ⚠️ City ids repeat between games, and engine/save-store.js drops its copy of the save on
+ * `GameStarted`, so this memo must go with it. `GameStarted` alone, not `GameAgeEnded`: settlements outlive an age,
  * and the memo is only a copy of storage - dropping it costs a re-read, never a choice.
  */
 onEngineEvent('GameStarted', forgetPriorityMemory);

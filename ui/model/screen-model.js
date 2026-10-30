@@ -3,6 +3,7 @@
  * under the cursor, and what the model says about it.
  */
 import { log } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 import { onGameDataStale } from '../support/game-data.js';
 
 const CITY_CARD_PREFIX = 'city-resource-container-';
@@ -506,3 +507,6 @@ function availableResourceAmong(model, hits) {
 
     return { entries, resource, slotIndex, cardElement: poolElement, slotElements };
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('screen-model', { nameByCity, composedCardName });

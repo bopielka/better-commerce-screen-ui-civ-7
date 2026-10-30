@@ -27,9 +27,8 @@
  * it means the entry has to be cancellable and has to be visible while it waits. Both prices are
  * on the button before it is pressed, and the same button cancels.
  *
- * ⚠️ STORED, like a merchant's standing order and for the same reason: the wait is measured in
- * turns and the screen will not be open when it ends. Nothing is written into the save; this mod
- * declares AffectsSavedGames = 0.
+ * ⚠️ STORED IN THE SAVE (./save-store.js), like a merchant's standing order: the wait is measured
+ * in turns, and loading a save must bring back exactly the requests it was saved with.
  *
  * ⚠️ TEMPORARY: `[trade-crash-probe]` warn() lines are diagnostic-only; see the note atop
  * ./merchant.js. Remove once the crash is pinned down.
@@ -44,14 +43,13 @@ import {
     unitKey,
 } from './merchant.js';
 import { merchantsOrderedTo, nearestIdleMerchant, orderMerchantTo } from './merchant-orders.js';
-import { currentGameKey, readSection, writeSection } from './mod-storage.js';
+import { savedMap, writeSaved } from './save-store.js';
 import { onEngineEvent } from './events.js';
 import { log, warn } from '../support/diagnostics.js';
 
-const MOD_ID = 'better-commerce-screen-ui';
-
-/** ⚠️ A section of the SHARED `modSettings` key - see ./mod-storage.js for why. */
-const SECTION = 'tradeQueue';
+/** The store's name in the save, and the `modSettings` section it is migrated out of once. */
+const STORE = 'tradeQueue';
+const STORE_OPTIONS = { legacySection: 'tradeQueue' };
 
 /** Raised when an entry is added, cancelled or spent; anything drawing one redraws on it. */
 export const TradeQueueChangedEventName = 'najane-trade-queue-changed';
@@ -85,15 +83,10 @@ const QUEUE_STEP_TREATY = 'treaty';
  * on its way and only the treaty is left. Without that second state the pass could not tell "no
  * merchant sent yet" from "one sent and standing at the gate", and bought a second one.
  *
- * ⚠️ Zero stays free to mean "nothing queued": `UI.getOption` answers 0 for an option that was
- * never set, and the two must not be the same answer.
+ * ⚠️ Zero stays free to mean "nothing queued": the save store drops an entry written as 0.
  */
 const STEP_NEEDS_MERCHANT = 1;
 const STEP_NEEDS_TREATY = 2;
-
-function optionName(plotIndex) {
-    return `${MOD_ID}.tradeQueue.${currentGameKey()}.${plotIndex}`;
-}
 
 function plotOf(city) {
     if (!city?.location) {
@@ -114,69 +107,19 @@ function announce() {
     }
 }
 
-/**
- * What every entry says, read through to storage ONCE per leader.
- *
- * ⚠️ `UI.getOption` is a lookup, and a card asks this on every redraw of the tab. Negative answers
- * are cached too - "nothing queued with this leader" is the common case and is the one that was
- * paying for a lookup every time. Same rule, and the same reason, as `orderByKey` in
- * ./merchant-orders.js.
- *
- * ⚠️ Written only by `write`, which repairs the entry rather than dropping the cache.
- */
-const queuedByPlot = new Map();
-
-// Plots are stable, but the seed is not; nothing here may survive into the next game.
-onEngineEvent('GameStarted', () => queuedByPlot.clear());
-
 function write(plotIndex, code) {
-    queuedByPlot.set(plotIndex, code);
-    try {
-        UI.setOption('user', 'Mod', optionName(plotIndex), code);
-        Configuration.getUser().saveCheckpoint();
-    } catch (error) {
-        warn(`could not save the queued trade action: ${error}`);
+    if (!writeSaved(STORE, plotIndex, code, STORE_OPTIONS)) {
+        warn('could not save the queued trade action');
     }
-    // ⚠️ A finished entry is DELETED from the mirror, not written as 0 - same rule and reason as
-    // `writeFallback` in ./merchant-orders.js: every reader treats the two alike.
-    writeSection(SECTION, (all) => {
-        const game = currentGameKey();
-        if (code > 0) {
-            all[game] ??= {};
-            all[game][String(plotIndex)] = code;
-            return;
-        }
-        if (all[game]) {
-            delete all[game][String(plotIndex)];
-            if (Object.keys(all[game]).length === 0) {
-                delete all[game];
-            }
-        }
-    });
     announce();
 }
 
 /** @returns the step this settlement's request has reached, or 0 for none. */
 function stepAtPlot(plotIndex) {
-    if (plotIndex < 0 || currentGameKey() === null) {
+    if (plotIndex < 0) {
         return 0;
     }
-    const cached = queuedByPlot.get(plotIndex);
-    if (cached !== undefined) {
-        return cached;
-    }
-    let code = null;
-    try {
-        code = UI.getOption('user', 'Mod', optionName(plotIndex));
-    } catch (error) {
-        code = null;
-    }
-    if (code == null) {
-        code = readSection(SECTION)?.[currentGameKey()]?.[String(plotIndex)];
-    }
-    const answer = Number(code) > 0 ? Number(code) : 0;
-    queuedByPlot.set(plotIndex, answer);
-    return answer;
+    return savedMap(STORE, STORE_OPTIONS)?.get(String(plotIndex)) ?? 0;
 }
 
 /** Whether a request is waiting for THIS settlement, at whatever step. */
@@ -187,7 +130,7 @@ export function isTradeActionQueued(city) {
 export function queueTradeAction(city) {
     warn(`[trade-crash-probe] queueTradeAction CLICKED: city=${city?.id?.id}`);
     const plotIndex = plotOf(city);
-    if (plotIndex < 0 || currentGameKey() === null) {
+    if (plotIndex < 0 || !savedMap(STORE, STORE_OPTIONS)) {
         return false;
     }
     write(plotIndex, STEP_NEEDS_MERCHANT);
@@ -250,26 +193,9 @@ export function cancelTradeAction(city) {
     write(plotIndex, 0);
 }
 
-/**
- * Every leader with something queued.
- *
- * ⚠️ Read from the localStorage MIRROR, because `UI.getOption` cannot be enumerated - it answers
- * about a name you already know. Same limitation, and the same answer, as the merchant orders.
- * A mirror that cannot be read costs a turn's pass, never correctness: the entry is still in the
- * durable store and `isTradeActionQueued` still finds it once a card asks.
- */
+/** Every settlement with something queued. A copy: the pass writes while it walks it. */
 function queuedPlots() {
-    const found = [];
-    try {
-        for (const [key, code] of Object.entries(readSection(SECTION)?.[currentGameKey()] ?? {})) {
-            if (Number(code) > 0) {
-                found.push(Number(key));
-            }
-        }
-    } catch (error) {
-        // An unreadable mirror is not worth a warning; see above.
-    }
-    return found;
+    return [...(savedMap(STORE, STORE_OPTIONS)?.keys() ?? [])].map(Number);
 }
 
 function leaderName(leaderId) {

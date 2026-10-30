@@ -94,7 +94,7 @@ because it is Modern-age only.
 | Setting | `AutoAssignMode` | Behaviour |
 |---|---|---|
 | Never | `Off` | nothing — **and the end-turn nag is left alone too**, see [notifications](13-notifications.md) |
-| Place the new resource | `NewOnly` | only values that were not owned last pass |
+| Place the new resource | `NewOnly` | only values that were not owned last pass, plus filling a settlement that just gained slots |
 | Place everything unassigned | `EverythingUnassigned` | the arrival is a cue to tidy the pool |
 | Rebuild every assignment | `RebuildEverything` | clears every settlement and starts again |
 | Do not touch my resources | `HandsOff` | the other direction — anything **the game** slots by itself goes back to the pool |
@@ -141,9 +141,10 @@ no Ukrainian locale). See [localisation](12-localisation.md).
 
 ## What the mod deliberately does *not* do
 
-- No game rules, values or balance are changed; `AffectsSavedGames = 0`.
-- Nothing is written into the save file. Priorities go through `UI.setOption`, keyed by
-  `gameSeed`. See [options](11-options-and-persistence.md).
+- No game rules, values or balance are changed; `AffectsSavedGames = 0`, so a save still loads
+  without the mod.
+- Per-game choices (priorities, locks, merchant orders, the trade queue) are written into the
+  save through the game's `Catalog`; settings are not. See [options](11-options-and-persistence.md).
 - **Nothing is locked by default.** Resource+'s per-resource locks *are* here — the padlock on
   a slotted resource, `ui/screen/resource-locks-ui.js` over `ui/engine/resource-locks.js` — but
   the lock set starts empty and the feature can be switched off entirely under

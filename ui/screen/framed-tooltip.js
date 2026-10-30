@@ -15,6 +15,7 @@ import { Tooltip } from '/core/ui-next/components/tooltip.js';
 import { areModTooltipsHidden } from '../engine/tooltip-setting.js';
 import { makeElement, setTooltip } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 
 /** How far the frame floats off the control it belongs to. The game's default is 0. */
 const TOOLTIP_OFFSET = 12;
@@ -206,3 +207,6 @@ export function appendWithFramedTooltip(
     setTooltip(trigger, text);
     parent.appendChild(trigger);
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('framed-tooltip', { scopes: disposersByScope, disposers: () => [...disposersByScope.values()].reduce((n, set) => n + set.size, 0), parentScopes });

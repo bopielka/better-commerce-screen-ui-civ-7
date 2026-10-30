@@ -33,7 +33,6 @@ import {
     BUY_STYLE,
     LEADER_LINK_CLASS,
     TradeCapacityChangedEventName,
-    canRaiseLimitLater,
     decorateBuyMerchant,
     decorateLeaderLink,
     forgetBuyStacks,
@@ -44,6 +43,8 @@ import {
 import {
     SORT_STYLE,
     ensureSortTabs,
+    forgetOfferedTabs,
+    keepSortTabsIn,
     removeSortTabs,
     removeSortTabsFrom,
     routeScorer,
@@ -90,6 +91,12 @@ const SCROLL_CLASS = 'najane-trade-scroll';
 const GROUP_CLASS = 'najane-trade-group';
 /** Our mark on a card the filter is hiding. */
 const HIDDEN_CARD_CLASS = 'najane-trade-filtered';
+/**
+ * Our mark on a card whose criteria band is hidden. The band is trade-route-card.js's `_tmpl$7`,
+ * drawn for every route the model stamped Unavailable.
+ */
+const NO_CRITERIA_CLASS = 'najane-trade-no-criteria';
+const CRITERIA_BAND_SELECTOR = '.mt-2.p-2.flex-col.justify-between';
 
 const MEASURED_STYLE_ID = 'najane-trade-routes-measured';
 
@@ -327,6 +334,9 @@ ${CARD_SELECTOR} > * {
  */
 ${CARD_SELECTOR}.${HIDDEN_CARD_CLASS} { display: none !important; }
 
+/* See syncCriteriaBand. */
+${CARD_SELECTOR}.${NO_CRITERIA_CLASS} ${CRITERIA_BAND_SELECTOR} { display: none !important; }
+
 .${CLASS}__arrow {
     flex: 0 0 auto;
     margin: 0 0.5rem;
@@ -531,7 +541,7 @@ function entryForRoute(route) {
  * ⚠️ A DECISION, NOT A DEAD END (user's instruction, 2026-09-10). A slot can be bought with
  * Influence and the card carries that price; burying such a route under "unavailable" - a heading
  * that also starts out collapsed - hid the one thing the player could act on. What is left under
- * that heading is only what no amount of diplomacy fixes.
+ * that heading is out of range, or blocked by a war the engine reports.
  *
  * ⚠️ Moved in the DATA, before Solid renders it, exactly like the underway section; and ordered
  * BELOW the untouched ones by `applyFilterAndHeaders`, which reads `limitBlockedTargets`.
@@ -547,12 +557,12 @@ function liftLimitBlocked(sections, underwaySection) {
     for (const route of unavailable.tradeRoutes ?? []) {
         const entry = entryForRoute(route);
         /*
-         * ⚠️ ONLY WHERE THE LIMIT CAN ACTUALLY BE RAISED (user's instruction, 2026-09-10). Held
-         * back by the limit is a decision the player can buy their way out of - unless the two are
-         * hostile, when the treaty is shut and no turn opens it. Such a route is genuinely
-         * unavailable and stays under that heading.
+         * ⚠️ RELATIONS DO NOT KEEP A ROUTE HERE (user's instruction, 2026-10-30, replacing the
+         * 2026-09-10 hostility rule): "unavailable" is for range, and the limit has its own group
+         * under "available" whoever the leader is. The old rule kept every limit-only route of
+         * three hostile leaders (level -20 to -49) under "unavailable".
          */
-        if (entry && unavailableGroupFor(entry) === 'limit' && canRaiseLimitLater(entry.leaderId)) {
+        if (entry && unavailableGroupFor(entry) === 'limit') {
             lifted.push(route);
             liftedRoutes.add(route);
         } else {
@@ -629,6 +639,8 @@ function syncUnderwaySection(tabData) {
     }
 
     liftLimitBlocked(sections, section);
+    // The limit strip offers tabs from this set; see `isLimitRoute` in `startTradeRoutes`.
+    forgetOfferedTabs();
 
     if (underway.length === 0) {
         // ⚠️ Taken out rather than left empty: an ornate section bar over nothing reads as a bug.
@@ -725,12 +737,12 @@ function stripResourceOrigins(tabData) {
 
 /**
  * The tab's data on its way into the tab: sections split and lifted, met criteria and origin marks
- * dropped, and every section opened - the model draws "unavailable trade routes" closed, which
- * made sense for a list nobody could act on and hides the groups and sort strip this mod puts on it.
+ * dropped.
  *
- * ⚠️ The DATA is changed, not the DOM. `CollapsibleContainer` reads `initiallyCollapsed` once
- * into a signal at creation, and clicking from script would mean forging the engine's own input
- * event - `Activatable` ignores DOM clicks.
+ * ⚠️ "Unavailable trade routes" is LEFT COLLAPSED, as the model draws it (user's instruction,
+ * 2026-10-30): with the limit lifted out it holds only what range or war rules out. To open a
+ * section from here, write `collapsibleContainerData.initiallyCollapsed` - `CollapsibleContainer`
+ * reads it once at creation, and `Activatable` ignores DOM clicks.
  *
  * ⚠️ Written in place and only when it differs: the sections are entries in the model's store, so
  * replacing them with copies would give Solid new identities and rebuild every card.
@@ -739,12 +751,6 @@ export function prepareTradeTabData(tabData) {
     // ⚠️ Untracked: this reads out of a mutable store and writes back, from inside the tab's own
     // reactive scope. Tracking it would make the write wake the read.
     untrack(() => {
-        for (const section of tabData?.tradeRouteSections ?? []) {
-            const collapsible = section?.collapsibleContainerData;
-            if (collapsible?.initiallyCollapsed) {
-                collapsible.initiallyCollapsed = false;
-            }
-        }
         tradeTabData = tabData;
         syncUnderwaySection(tabData);
         hideMetCriteria(tabData);
@@ -1104,6 +1110,22 @@ function removeGroupHeaders() {
 const collapsedGroups = new Set();
 
 /**
+ * Hides the "Trade route limit (1 / 1)" band on a card under "held back only by the limit", and on
+ * an errand in "being established" that only the limit holds back.
+ *
+ * ⚠️ Only there (user's instruction, 2026-10-30): the heading already says the limit is in the
+ * way, and `hideMetCriteria` has left that one line as the band's whole content - range and war
+ * keep a route out of the group. Elsewhere the band carries the reason and stays.
+ *
+ * ⚠️ A class on the CARD, not on the band: the band is Solid's and comes back without it.
+ */
+function syncCriteriaBand(card, hide) {
+    if (card.classList.contains(NO_CRITERIA_CLASS) !== hide) {
+        card.classList.toggle(NO_CRITERIA_CLASS, hide);
+    }
+}
+
+/**
  * The route entry behind a card, found by its title.
  *
  * ⚠️ ONCE PER CARD PER PASS. `decorate` and `applyFilterAndHeaders` each walk every card on the
@@ -1156,7 +1178,12 @@ function applyFilterAndHeaders() {
     for (const row of document.querySelectorAll(CARD_ROW_SELECTOR)) {
         const cards = Array.from(row.querySelectorAll(CARD_SELECTOR));
         const entries = cards.map(cardRoute);
-        const kind = sectionKindOf(entries.filter(Boolean));
+        const isLimitRow = entries.some(
+            (entry) => entry && limitBlockedTargets.has(targetKey(entry.targetCityId)),
+        );
+        // ⚠️ A row of lifted routes alone is still "available": none of them is startable, which
+        // `sectionKindOf` would read as the unavailable section.
+        const kind = isLimitRow ? 'available' : sectionKindOf(entries.filter(Boolean));
         if (!kind) {
             continue;
         }
@@ -1172,10 +1199,21 @@ function applyFilterAndHeaders() {
         if (isUnderwayRow) {
             removeSortTabsFrom(row);
             row.querySelectorAll(`.${GROUP_CLASS}`).forEach((header) => header.remove());
+            // ⚠️ The limit band goes here too (user, 2026-10-30): a merchant is already on the way,
+            // so the limit says nothing. Range and war still show - those can strand the errand.
+            cards.forEach((card, index) => {
+                const route = entries[index];
+                syncCriteriaBand(card, Boolean(route) && (route.startable || unavailableGroupFor(route) === 'limit'));
+            });
             continue;
         }
-        ensureSortTabs(row, kind);
-        const scorer = routeScorer(kind);
+        /*
+         * ⚠️ ONE STRIP PER LIST (user's instruction, 2026-10-30): "available" above the routes that
+         * need nothing, "limit" under that group's own header - each filters only its own cards.
+         * None on "unavailable", which opens collapsed and is not a list to choose from.
+         */
+        const scorers = { all: routeScorer('available'), limit: routeScorer('limit') };
+        const balanced = routeScorer('unavailable');
 
         // One bucket per group, so a group's cards are ordered among themselves and the
         // headers keep their runs apart. The available section has the one bucket.
@@ -1191,9 +1229,11 @@ function applyFilterAndHeaders() {
                     // that decision was taken.
                     : (limitBlockedTargets.has(targetKey(route.targetCityId)) ? 'limit' : null);
             }
+            const scorer = kind === 'unavailable' ? balanced : (scorers[group ?? 'all'] ?? balanced);
             const hidden = Boolean(route)
                 && (!scorer.matches(route) || (group !== null && collapsedGroups.has(group)));
             card.classList.toggle(HIDDEN_CARD_CLASS, hidden);
+            syncCriteriaBand(card, group === 'limit' && kind !== 'unavailable');
 
             // ⚠️ The available section's bucket is `all`, not `limit` - naming it `limit` would hide
             // every available card whenever the limit filter was on.
@@ -1201,8 +1241,21 @@ function applyFilterAndHeaders() {
             if (!buckets.has(bucket)) {
                 buckets.set(bucket, []);
             }
-            buckets.get(bucket).push({ card, route, hidden });
+            buckets.get(bucket).push({ card, route, hidden, scorer });
         });
+
+        const strips = [];
+        if (kind === 'available' && buckets.has('all')) {
+            strips.push('available');
+        }
+        const limitStrip = kind === 'available' && buckets.has('limit') && !collapsedGroups.has('limit');
+        if (limitStrip) {
+            strips.push('limit');
+        }
+        keepSortTabsIn(row, strips);
+        if (strips.includes('available')) {
+            ensureSortTabs(row, 'available');
+        }
 
         const wanted = [];
         for (const bucket of ['all', 'limit', 'range', 'other']) {
@@ -1217,7 +1270,7 @@ function applyFilterAndHeaders() {
                     return first.hidden ? 1 : -1;
                 }
                 return first.route && second.route
-                    ? scorer.compare(first.route, second.route)
+                    ? first.scorer.compare(first.route, second.route)
                     : 0;
             });
             items.forEach((item, position) => {
@@ -1244,8 +1297,14 @@ function applyFilterAndHeaders() {
                 row.querySelector(`.${GROUP_CLASS}--${group.kind}`)?.remove();
                 continue;
             }
+            // ⚠️ Header, then the group's strip, then its cards: the strip takes `order` base - 1, the
+            // header base - 2, and the header goes in front of the strip in the DOM as well.
+            let firstNode = items[0].card;
+            if (group.kind === 'limit' && limitStrip) {
+                firstNode = ensureSortTabs(row, 'limit', { before: firstNode, order: GROUP_ORDER.limit - 1 });
+            }
             // A collapsed group keeps its header - it is the only way back.
-            positionGroupHeader(row, group, items[0].card, GROUP_ORDER[group.kind] - 1, collapsed);
+            positionGroupHeader(row, group, firstNode, GROUP_ORDER[group.kind] - 2, collapsed);
         }
     }
 }
@@ -1346,7 +1405,10 @@ ${SORT_STYLE}
 ${RELATIONSHIP_FOOTER_STYLE}`);
     // Which tab is in force outlives one visit to the tab; what it needs handing over is how
     // to read a card and how to redraw once the player picks a different one.
-    startSortTabs({ onChange: scheduleDecorate });
+    startSortTabs({
+        onChange: scheduleDecorate,
+        isLimitRoute: (route) => limitBlockedTargets.has(targetKey(route?.targetCityId)),
+    });
     // ⚠️ Its own observer, on a root outside this screen; see relationship-trade-footer.js.
     startRelationshipFooter();
     // ⚠️ The prices the engine gives at this instant are not to be trusted; see the note above.
@@ -1562,6 +1624,18 @@ function stopWatchingForCorePlayback() {
 let teardownFrame = null;
 
 /**
+ * ⚠️ CRASH GUARD (user's instruction, 2026-09-23): the game hard-crashed (V8 fatal abort, not a
+ * catchable JS error) right after opening the Trade tab via the dock button, with the whole
+ * crashing thread's native stack inside v8.dll/v8_libbase.dll and the same handful of addresses
+ * repeating hundreds of times - the signature of runaway recursion, exactly the failure this file
+ * already documents once below ("recurses until the game process dies"). No mod conflict explained
+ * a new trigger, so this stops a repeat from being a hard crash: past a shallow depth it warns and
+ * bails instead of letting `originalFactory` call back into itself off the JS stack.
+ */
+let factoryDepth = 0;
+const MAX_FACTORY_DEPTH = 15;
+
+/**
  * Hooking in: the tab container is a plain exported function, so wrapping the CARD is the only
  * mount signal this tab offers. The count is checked a frame later because a rebuild unmounts the
  * old cards around the same time it mounts the new ones.
@@ -1587,7 +1661,17 @@ function TradeRouteCardWithDestination(props) {
         });
     });
 
-    return originalFactory(props);
+    factoryDepth++;
+    try {
+        if (factoryDepth > MAX_FACTORY_DEPTH) {
+            warn(`TradeRouteCard factory re-entered ${factoryDepth} times without returning - ` +
+                'stopping short of a stack overflow instead of letting it crash the game');
+            return null;
+        }
+        return originalFactory(props);
+    } finally {
+        factoryDepth--;
+    }
 }
 
 ComponentRegistry.register({

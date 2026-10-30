@@ -22,6 +22,7 @@
 import { isFactoryAge } from './age.js';
 import { waitForEngineEvent } from './wait.js';
 import { log, warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 import { onGameDataStale } from '../support/game-data.js';
 
 /** A unit is identified the way settlements are elsewhere in this mod: by the id alone. */
@@ -516,6 +517,39 @@ export function stopMerchant(unit) {
     }
 }
 
+/**
+ * Puts a merchant to sleep, so it stops asking for orders every turn.
+ * ⚠️ `canStart` on SLEEP is false for a unit already asleep - the game's own wake check reads it
+ * that way (unit-actions.js) - so this is a no-op on a sleeping one.
+ * @returns whether the request was sent.
+ */
+export function sleepMerchant(unit) {
+    try {
+        if (Game.UnitOperations.canStart(unit.id, 'UNITOPERATION_SLEEP', {}, false)?.Success !== true) {
+            return false;
+        }
+        Game.UnitOperations.sendRequest(unit.id, 'UNITOPERATION_SLEEP', {});
+        return true;
+    } catch (error) {
+        warn(`could not put a merchant to sleep: ${error}`);
+        return false;
+    }
+}
+
+/** Wakes a sleeping merchant. @returns whether the request was sent. */
+export function wakeMerchant(unit) {
+    try {
+        if (Game.UnitCommands.canStart(unit.id, 'UNITCOMMAND_WAKE', {}, false)?.Success !== true) {
+            return false;
+        }
+        Game.UnitCommands.sendRequest(unit.id, 'UNITCOMMAND_WAKE', {});
+        return true;
+    } catch (error) {
+        warn(`could not wake a merchant: ${error}`);
+        return false;
+    }
+}
+
 export function canSignRoute(unit, location) {
     warn(`[trade-crash-probe] canSignRoute: unit=${unitKey(unit?.id)} location=${JSON.stringify(location)}`);
     try {
@@ -544,3 +578,6 @@ export function signRoute(unit, location) {
         return false;
     }
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('merchant', { offerCache, merchantRowByIndex });

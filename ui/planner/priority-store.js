@@ -1,20 +1,17 @@
 /**
- * Each settlement's chosen priority, across reloads.
+ * Each settlement's chosen priority, kept IN THE SAVE (engine/save-store.js), so a loaded save
+ * holds exactly the priorities it was saved with. Planner layer: only the planner reads it.
  *
- * ⚠️ `UI.setOption` + `saveCheckpoint()`, storing a NUMBER - `localStorage` alone did not survive
- * a reload, and every use of setOption in the game itself passes a number. localStorage is kept
- * as a mirror.
- *
- * ⚠️ Keyed per game by `Configuration.getGame().gameSeed`: a settlement is identified by the
- * numeric part of its ComponentID, which is only unique within one game. Nothing is written into
- * the save - this mod declares AffectsSavedGames = 0.
+ * ⚠️ A settlement is identified by the numeric part of its ComponentID, which is only unique
+ * within one game - safe here because the save itself is per game. The old seed-keyed
+ * `modSettings` section `priorities` is migrated once; see save-store.js.
  */
-import { currentGameKey as readGameKey, readSection, writeSection } from '../engine/mod-storage.js';
+import { savedMap, writeSaved } from '../engine/save-store.js';
 import { log, warn } from '../support/diagnostics.js';
 
-const MOD_ID = 'better-commerce-screen-ui';
-/** ⚠️ A section of the SHARED `modSettings` key - see engine/mod-storage.js for why. */
-const SECTION = 'priorities';
+/** The store's name in the save, and the `modSettings` section it is migrated out of once. */
+const STORE = 'priorities';
+const STORE_OPTIONS = { legacySection: 'priorities' };
 
 /**
  * Stored as an index into this list PLUS ONE, so 0/null/undefined all mean "never chosen" and
@@ -31,59 +28,29 @@ const CODES = [
     'YIELD_DIPLOMACY',
 ];
 
-let reportedKey = false;
+let reported = false;
 
-function currentGameKey() {
-    const gameKey = readGameKey();
-    if (!reportedKey) {
-        reportedKey = true;
-        log(`priorities are filed under game seed ${gameKey ?? '(unavailable)'}`);
+function priorities() {
+    const map = savedMap(STORE, STORE_OPTIONS);
+    if (!reported && map) {
+        reported = true;
+        log(`priorities read from the save: ${map.size} settlement(s)`);
     }
-    return gameKey;
-}
-
-function optionName(cityKey) {
-    return `${MOD_ID}.priority.${currentGameKey()}.${cityKey}`;
-}
-
-function readFallback(cityKey) {
-    return readSection(SECTION)?.[currentGameKey()]?.[cityKey];
-}
-
-function writeFallback(cityKey, code) {
-    writeSection(SECTION, (all) => {
-        const key = currentGameKey();
-        all[key] ??= {};
-        all[key][cityKey] = code;
-    });
+    return map;
 }
 
 /**
  * Whether the store can be read at all yet.
- * ⚠️ Before the game seed is available every answer is "never chosen", and a caller that
+ * ⚠️ Before the save can be reached every answer is "never chosen", and a caller that
  * remembers that would hide the real choices for the rest of the session. See `getPriority`.
  */
 export function isPriorityStoreReady() {
-    return currentGameKey() !== null;
+    return priorities() !== null;
 }
 
 /** @returns the stored priority, `null` for an explicit Balanced, or undefined if unset. */
 export function storedPriority(cityKey) {
-    if (currentGameKey() === null) {
-        return undefined;
-    }
-
-    let code = null;
-    try {
-        code = UI.getOption('user', 'Mod', optionName(cityKey));
-    } catch (error) {
-        warn(`could not read the stored priority for ${cityKey}: ${error}`);
-    }
-    if (code == null) {
-        code = readFallback(cityKey);
-    }
-
-    const index = Number(code) - 1;
+    const index = Number(priorities()?.get(String(cityKey))) - 1;
     if (!Number.isInteger(index) || index < 0 || index >= CODES.length) {
         return undefined;
     }
@@ -91,29 +58,20 @@ export function storedPriority(cityKey) {
 }
 
 export function storePriority(cityKey, yieldType) {
-    if (currentGameKey() === null) {
-        return;
-    }
     const index = CODES.indexOf(yieldType ?? null);
     if (index < 0) {
         warn(`refusing to store an unknown priority "${yieldType}"`);
         return;
     }
-
-    const code = index + 1;
-    try {
-        UI.setOption('user', 'Mod', optionName(cityKey), code);
-        Configuration.getUser().saveCheckpoint();
-    } catch (error) {
-        warn(`could not save the priority for ${cityKey}: ${error}`);
+    if (!writeSaved(STORE, cityKey, index + 1, STORE_OPTIONS)) {
+        warn(`could not save the priority for ${cityKey}`);
     }
-    writeFallback(cityKey, code);
 }
 
 /**
- * Called when a different game is loaded. The key itself is cached and dropped by
- * engine/mod-storage.js; this only re-arms the one-time report.
+ * Called when a different game is loaded. The store itself is dropped by engine/save-store.js;
+ * this only re-arms the one-time report.
  */
 export function forgetLoadedGame() {
-    reportedKey = false;
+    reported = false;
 }

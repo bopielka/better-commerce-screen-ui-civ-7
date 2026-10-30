@@ -1,5 +1,6 @@
 /**
- * A tab strip inside each trade route section: what should be at the front of the list.
+ * A tab strip over each list of trade routes to choose from - "available", and the limit group
+ * under its own header: what should be at the front of the list.
  *
  * A tab FILTERS and then orders - pick Production and the section shows only routes carrying a
  * resource that pays Production, most first. Balanced filters nothing and orders by total count.
@@ -11,7 +12,7 @@
  * trade-routes.js hides with a class and orders within the card's own row. Never sort the model's
  * array instead - the tab's own effect re-sorts it and the game hangs.
  *
- * ⚠️ Each section keeps its OWN choice - the two answer different questions.
+ * ⚠️ Each list keeps its OWN choice - they answer different questions.
  *
  * ⚠️ THE STRIP IS A COPY OF THE GAME'S TAB BAR, NOT AN INSTANCE OF IT: the classes are lifted from
  * `core/ui-next/components/tab.js`, so it is the same object on screen without mounting a Solid
@@ -28,6 +29,7 @@ import { appendWithFramedTooltip, disposeFramedTooltips } from './framed-tooltip
 import { iconBackground, resourceIcon, yieldIcon } from './icons.js';
 import { appendAll, bindActivatable, makeElement } from '../support/dom.js';
 import { warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 import { onGameDataStale } from '../support/game-data.js';
 
 const SORT_CLASS = 'najane-trade-sort';
@@ -341,12 +343,23 @@ export function setSortRoutes(routes) {
     offeredCache.clear();
 }
 
-/** Which strip a route belongs under; the same three sections the tab draws. */
+/** The routes lifted into the limit group; trade-routes.js owns that decision. */
+let isLimitRoute = () => false;
+
+/** Which strip a route belongs under: a section the tab draws, or the limit group. */
 function sectionOfRoute(route) {
     if (route?.established) {
         return 'established';
     }
+    if (isLimitRoute(route)) {
+        return 'limit';
+    }
     return route?.startable ? 'available' : 'unavailable';
+}
+
+/** Called when the limit group changes membership, so its strip offers the right tabs. */
+export function forgetOfferedTabs() {
+    offeredCache.clear();
 }
 
 /** The tabs worth drawing in ONE section: balanced, plus what a route there can be sorted by. */
@@ -380,9 +393,11 @@ let onChange = () => {};
 
 /**
  * @param options.onChange called after a tab is picked, to redraw the sections
+ * @param options.isLimitRoute whether a route entry sits in the limit group
  */
 export function startSortTabs(options) {
     onChange = options.onChange;
+    isLimitRoute = options.isLimitRoute ?? (() => false);
 }
 
 /**
@@ -582,29 +597,52 @@ function stripsOf(row) {
     return strips;
 }
 
-/** Gives a section its strip, or brings the one it has up to date. */
-export function ensureSortTabs(row, section) {
-    const first = row.firstElementChild;
-    const existing = first?.classList.contains(SORT_CLASS) ? first : stripsOf(row)[0];
+function sectionOfStrip(strip) {
+    return strip.querySelector(`.${BAR_CLASS}`)?.dataset.najaneSortSection;
+}
+
+/**
+ * Gives a section its strip, or brings the one it has up to date.
+ * @param options.before the node the strip goes in front of; the top of the row when omitted.
+ * @param options.order the flex `order` it takes, for a strip in the middle of the row.
+ * @returns the strip.
+ */
+export function ensureSortTabs(row, section, { before = null, order = null } = {}) {
+    let strip = stripsOf(row).find((candidate) => sectionOfStrip(candidate) === section) ?? null;
     const wanted = offeredTabs(section).map((tab) => tab.key).join(',');
-    if (existing) {
-        const bar = existing.querySelector(`.${BAR_CLASS}`);
-        // Rebuilt when the row has been reused for the other section.
-        if (bar?.dataset.najaneSortSection !== section || bar?.dataset.najaneSortTabs !== wanted) {
-            // The frames are anchored to the tabs about to be discarded.
-            releaseStrip(bar);
-            existing.remove();
-        } else {
-            if (existing !== row.firstChild) {
-                // A card the game inserted ahead of it; put the strip back on top.
-                row.insertBefore(existing, row.firstChild);
-            }
-            paintSelection(bar);
-            return;
+    const bar = strip?.querySelector(`.${BAR_CLASS}`);
+    if (strip && bar?.dataset.najaneSortTabs !== wanted) {
+        // The frames are anchored to the tabs about to be discarded.
+        releaseStrip(bar);
+        strip.remove();
+        strip = null;
+    }
+    if (strip) {
+        paintSelection(bar);
+    } else {
+        releaseDiscardedStrips(row);
+        strip = buildStrip(section);
+    }
+    const value = order === null ? '' : String(order);
+    if (strip.style.order !== value) {
+        strip.style.order = value;
+    }
+    const target = before ?? row.firstChild;
+    // ⚠️ Only when it is not already there: a move is a childList mutation the observer answers.
+    if (strip.parentElement !== row || (target !== strip && strip.nextSibling !== target)) {
+        row.insertBefore(strip, target ?? null);
+    }
+    return strip;
+}
+
+/** Drops every strip in the row whose section is not in `sections`, tooltips with it. */
+export function keepSortTabsIn(row, sections) {
+    for (const strip of stripsOf(row)) {
+        if (!sections.includes(sectionOfStrip(strip))) {
+            releaseStrip(strip.querySelector(`.${BAR_CLASS}`));
+            strip.remove();
         }
     }
-    releaseDiscardedStrips(row);
-    row.insertBefore(buildStrip(section), row.firstChild ?? null);
 }
 
 export function removeSortTabs() {
@@ -628,3 +666,6 @@ export function removeSortTabsFrom(row) {
         strip.remove();
     }
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('trade-sort-tabs', { liveBars, offeredCache });

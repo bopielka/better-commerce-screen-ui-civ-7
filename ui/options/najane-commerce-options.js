@@ -18,7 +18,7 @@ import {
     setCultureGatheringEnabled,
     setGoldGatheringEnabled,
 } from '../planner/hoard-setting.js';
-import { isResourceLockingAllowed, setResourceLockingAllowed } from '../engine/resource-locks.js';
+import { isResourceLockingAllowed, setResourceLockingAllowed } from '../engine/resource-lock-setting.js';
 import { areModTooltipsHidden, setModTooltipsHidden } from '../engine/tooltip-setting.js';
 import { flushNajaneOptions, registerNajaneOptions } from './najane-mod-options-registry.js';
 
@@ -70,8 +70,9 @@ function persist(optionID, value) {
 }
 
 function restore(optionID) {
+    // ⚠️ 0 falls through too: an option never set reads back as 0, and the mirror is what persists.
     const stored = UI.getOption('user', 'Mod', `${MOD_ID}.${optionID}`);
-    if (stored != null) {
+    if (stored != null && Number(stored) !== 0) {
         return stored;
     }
     try {
@@ -117,12 +118,19 @@ export function placesResourcesAutomatically(mode = CommerceOptions.autoAssignMo
 }
 
 /**
- * Carries over the three checkboxes this dropdown replaced.
+ * Carries over the three checkboxes this dropdown replaced; with none of them stored, the default.
  * ⚠️ NOT dead: the result is never persisted, so a profile holding only the old keys runs this every
- * session - deleting it switches that player's automatic assignment Off without a word.
+ * session - deleting it switches that player's automatic assignment to the default without a word.
+ *
+ * ⚠️ THE DEFAULT IS `NewOnly` (user's instruction, 2026-10-30). An explicit Off survives it: Off is
+ * stored as 0, which the `modSettings` mirror returns as 0, not null.
  */
 function migrateFromCheckboxes() {
-    if (!Number(restore('autoAssignNewResources'))) {
+    const assignedNew = restore('autoAssignNewResources');
+    if (assignedNew == null) {
+        return AutoAssignMode.NewOnly;
+    }
+    if (!Number(assignedNew)) {
         return AutoAssignMode.Off;
     }
     if (Number(restore('autoReassignEverything'))) {
@@ -142,7 +150,7 @@ const CommerceOptions = new (class {
     mode = null;
     skipPrompt = null;
 
-/** Off by default: it acts on the player's behalf without being asked and shows nothing. */
+/** "Assign new resources" by default; see `migrateFromCheckboxes`. */
     get autoAssignMode() {
         if (this.mode === null) {
             const stored = restore('autoAssignMode');

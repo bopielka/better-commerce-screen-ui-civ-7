@@ -29,6 +29,7 @@ import { removeModTooltips } from './support/dom.js';
 import { forgetGameData } from './support/game-data.js';
 import { BUILD_STAMP } from './support/build-stamp.js';
 import { DIAGNOSTICS, log, warn } from './support/diagnostics.js';
+import { startMemoryProbe } from './support/memory-probe.js';
 
 startAutoAssign();
 // The other end of the same dropdown: putting back what the GAME slots by itself.
@@ -89,3 +90,6 @@ if (DIAGNOSTICS) {
  */
 warn(`loaded, build ${BUILD_STAMP}`);
 log('diagnostics are on');
+// ⚠️ TEMPORARY: a one-minute heartbeat of memory figures for the V8 OOM crashes; remove before
+// publishing, with its gauges. See support/memory-probe.js.
+startMemoryProbe();

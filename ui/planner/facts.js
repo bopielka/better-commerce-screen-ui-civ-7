@@ -9,6 +9,7 @@ import { effectTypeOf, modifierApplies, modifierIsConditional, resourceModifiers
 import { onEngineEvent } from '../engine/events.js';
 import { isAssignableResourceType, resourceClassFromType } from '../engine/resource-types.js';
 import { onGameDataStale } from '../support/game-data.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 
 export const HAPPINESS_YIELD = 'YIELD_HAPPINESS';
 export const PRODUCTION_YIELD = 'YIELD_PRODUCTION';
@@ -303,3 +304,6 @@ onGameDataStale(() => {
     warehouseScalingCache.clear();
     bestBoostCache.clear();
 });
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('facts', { importOriginCache, bestBoostCache, warehouseScalingCache, unitProductionCache });

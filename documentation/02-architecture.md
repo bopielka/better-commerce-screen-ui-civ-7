@@ -15,10 +15,9 @@ the options screen writes to a setting, a setting never reads the options screen
 also loads in **shell** scope, where there is no game, so nothing it pulls in may touch the
 game at import time.
 
-The one setting with more behind it is `engine/resource-locks.js`, which also imports
-`engine/events.js` and `engine/mod-storage.js` (and through it `support/game-data.js`). At import
-those only declare themselves and register a reset in a `Set`; every engine subscription is made
-from `startResourceLockUpkeep()`, which only the game-scope entry point calls.
+⚠️ The resource-lock switch is `engine/resource-lock-setting.js`, split from
+`engine/resource-locks.js` because the locks themselves live in the save (`engine/save-store.js`),
+which does not exist in the main menu. Nothing `ui/options/` imports may reach `save-store.js`.
 
 | Layer | Folder | Knows about | Must not know about |
 |---|---|---|---|
@@ -65,7 +64,7 @@ call site. That setting reaches no further than `stored-setting.js`.
 `ui/options/` is outside the chain in both directions, so neither arrow above describes it:
 
 - it **imports** settings modules (`planner/happiness-setting.js`, `planner/hoard-setting.js`,
-  `engine/resource-locks.js`) in order to write to them;
+  `engine/resource-lock-setting.js`) in order to write to them;
 - `planner/` and `screen/` **import it back**, to read `CommerceOptions`.
 
 That is a cycle on paper and not one in practice: what the options screen writes to is a value

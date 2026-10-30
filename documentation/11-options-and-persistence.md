@@ -1,7 +1,12 @@
 # 11 — Options and persistence
 
-Eight separate things are remembered between sessions, all through the same channel, none of
+The settings below are remembered between sessions, all through the same channel, none of
 them in the save file.
+
+⚠️ **Every per-game store lives IN THE SAVE instead** (user's instruction, 2026-10-30): settlement
+priorities, resource locks, merchant standing orders and the trade queue, through
+`ui/engine/save-store.js` and the game's `Catalog`, so a loaded save holds exactly what it was
+saved with. See [engine](05-engine.md#stored-in-the-save--save-storejs).
 
 | What | Module | Key |
 |---|---|---|
@@ -12,8 +17,7 @@ them in the save file.
 | Build a gold settlement | `ui/planner/hoard-setting.js` | `better-commerce-screen-ui.gatherGold` |
 | "Imports first" | `ui/planner/imports-first-setting.js` | `better-commerce-screen-ui.importsFirstChoice` |
 | "Factories first" | `ui/planner/factory-first-setting.js` | `better-commerce-screen-ui.factoryFirstChoice` |
-| Per-settlement priority | `ui/planner/priority-store.js` | `better-commerce-screen-ui.priority.<gameSeed>.<cityKey>` |
-| Resource locks allowed | `ui/engine/resource-locks.js` | `better-commerce-screen-ui.resourceLockingAllowed` |
+| Resource locks allowed | `ui/engine/resource-lock-setting.js` | `better-commerce-screen-ui.resourceLockingAllowed` |
 | Hide this mod's tooltips | `ui/engine/tooltip-setting.js` | `better-commerce-screen-ui.hideTooltips` |
 
 ### ⚠️ "Don't show tooltips on the Commerce screen"
@@ -52,8 +56,13 @@ Configuration.getUser().saveCheckpoint();     // ⚠️ required, or it does not
 ⚠️ **Every use of `UI.setOption` in the game itself passes a NUMBER.** Priorities are therefore
 stored as a small integer rather than as JSON.
 
-⚠️ **`localStorage` alone does not come back after a reload.** It is kept everywhere as a *second*
-write — harmless if it works, ignored if it does not.
+⚠️ **`UI.setOption('user', 'Mod', …)` does not reach the disk.** On 2026-09-30 no key of this mod
+was in `UserOptions.txt` or anywhere else in the profile, while the `localStorage` mirror
+(`modSettings` in `LocalStorage.sqlite`) was. A player reported the three settings that went
+through `engine/stored-setting.js` — which had no mirror — resetting on every start. Every store now
+writes both and reads the option first, the mirror when the option answers `null` or `0`; the
+switches' mirror is `modSettings['better-commerce-screen-ui'].settings`. (An older note here said
+`localStorage` alone did not come back after a reload; the disk says otherwise for `modSettings`.)
 
 ⚠️ **Not the save file.** This mod declares `AffectsSavedGames = 0`; writing into a save would make
 that a lie and tie the save to having the mod installed.
@@ -150,15 +159,16 @@ placesResourcesAutomatically(mode)   // false for BOTH Off and HandsOff
 
 and not compare against `Off`. `auto-assign.js` and `assign-notification.js` both do.
 
-`Off` is the default, deliberately: automatic assignment **acts on the player's behalf without being
-asked and shows nothing while doing it.**
+`NewOnly` ("assign new resources") is the default (user's instruction, 2026-10-30). A player who
+picked `Off` keeps it: Off is stored as 0, and the `modSettings` mirror returns that 0 rather than
+null, so only a profile that never chose anything gets the default.
 
 `migrateFromCheckboxes()` carries over the three checkboxes the dropdown replaced, so an existing
-setting is not silently switched off.
+setting is not silently changed; with none of them stored it returns the default.
 
 ⚠️ **It is not dead code, however old it looks.** Its answer is never persisted, so a profile that
 holds only the old checkbox keys runs it every session; deleting it switches that player's
-automatic assignment Off without a word. It can go only after something writes the migrated mode
+automatic assignment to the default without a word. It can go only after something writes the migrated mode
 once.
 
 ### The change event
@@ -283,7 +293,8 @@ callers never need to check the age themselves.
 
 ## `ui/planner/priority-store.js`
 
-The persistent half of [`priorities.js`](07-planner-assignment.md#prioritiesjs--what-each-settlement-should-be-fed-first).
+The persistent half of [`priorities.js`](07-planner-assignment.md#prioritiesjs--what-each-settlement-should-be-fed-first),
+kept **in the save** as the `priorities` store of `ui/engine/save-store.js` (city key → code).
 
 ```js
 storedPriority(cityKey)   // → yieldType | null (explicit Balanced) | undefined (never set)
@@ -303,23 +314,16 @@ const CODES = [null, 'YIELD_FOOD', 'YIELD_PRODUCTION', 'YIELD_HAPPINESS',
 
 An unknown `yieldType` is refused with a warning rather than stored.
 
-### ⚠️ Keyed per game
+### ⚠️ Per game, because it is in the save
 
 A settlement is identified by the numeric part of its `ComponentID`, which is **only unique within
-one game** — the same number is a different city in the next campaign. Every entry is therefore
-filed under `Configuration.getGame().gameSeed`, fixed for the life of a game and different between
-games.
+one game**. That is safe because the save itself belongs to one game. It used to be filed under
+`gameSeed` in `localStorage`, which leaked: every save of one game shares the seed, so a priority
+chosen later showed up in an older save. The old `modSettings` section `priorities` is migrated
+into the save once.
 
-If the seed cannot be read, reads return `undefined` and writes are skipped — better to forget than
-to apply one game's choices to another's cities.
-
-The seed is `currentGameKey()` from `ui/engine/mod-storage.js`, the one copy every store shares; it
-caches a non-null seed and drops it through `support/game-data.js` on `GameStarted`.
-`forgetLoadedGame()` only re-arms the one-time "priorities are filed under…" report. It is called
-from `forgetPriorityMemory()`, which `startAutoAssign()` calls at load and `priorities.js`
+While the save cannot be reached yet, reads return `undefined` and writes are skipped, and
+`isPriorityStoreReady()` says so — `priorities.js` must not memoise "never chosen" before then.
+`forgetLoadedGame()` only re-arms the one-time "priorities read from the save" report. It is
+called from `forgetPriorityMemory()`, which `startAutoAssign()` calls at load and `priorities.js`
 subscribes to `GameStarted`.
-
-### ⚠️ Why not `localStorage` alone
-
-That was the first attempt and **it did not come back after a reload.** It survives here only as a
-mirror write.

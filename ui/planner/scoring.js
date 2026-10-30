@@ -66,6 +66,7 @@ import {
 } from './facts.js';
 import { onGameDataStale } from '../support/game-data.js';
 import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 
 /** How far the happiness job goes: every settlement it may touch ends at +1 or better. */
 const HAPPINESS_TARGET = 1;
@@ -1230,3 +1231,6 @@ export function bestAssignment(model, targetCityID = null, blockedPairs = new Se
     }
     return null;
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('scoring', { eligibilityByCity, lastLoggedPileTarget });

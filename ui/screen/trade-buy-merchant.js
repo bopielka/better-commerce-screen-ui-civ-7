@@ -32,7 +32,6 @@ import {
     influenceBalance,
     proposeTradeRelations,
     refusalClearsWithTheTurn,
-    relationshipBlocksTrade,
     tradeRelationsOffer,
 } from '../engine/diplomacy.js';
 import {
@@ -67,6 +66,7 @@ import { yieldIcon } from './icons.js';
 import { TRADE_HEAD_CLASS } from './screen-parts.js';
 import { bindActivatable, clearChildren, makeElement } from '../support/dom.js';
 import { log, warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 
 /**
  * Raised when this mod proposes "Improve Trade Relations"; listened for by screen/trade-routes.js.
@@ -277,7 +277,11 @@ ${ICON_BUTTON_STYLE}
     justify-content: center;
     width: 1.7rem;
     min-width: 1.7rem;
-    /* Height comes from the price button beside it; see the note on the row above. */
+    /*
+     * Height comes from the price button beside it; see the note on the row above. The floor is
+     * for when that button is not drawn (it cannot be clicked) and the plus stands alone.
+     */
+    min-height: 1.7rem;
     margin-left: 0.3rem;
     padding: 0;
     border: 0.08rem solid rgba(179, 158, 128, 0.55);
@@ -351,7 +355,6 @@ ${ICON_BUTTON_STYLE}
     line-height: 1;
 }
 .${SEND_WIDE_CLASS}__cost { pointer-events: none; }
-.${SEND_WIDE_CLASS}--blocked { opacity: 0.45; }
 .${SEND_WIDE_CLASS}:hover { filter: brightness(1.45); }
 /* Passes the row's stretch through to the button, which is this mount's only child. */
 
@@ -562,8 +565,8 @@ ${ICON_BUTTON_STYLE}
     filter: ${WAIT_ICON_FILTER};
 }
 /*
- * Dark, not gone. A price that cannot be paid is still the answer to "what would this cost",
- * and the tooltip says which of the reasons it is.
+ * Only ever worn with --busy now: a price button that cannot be clicked is not drawn at all
+ * (user's instruction, 2026-09-26), so the one dark state left is a purchase in flight.
  */
 .${BUY_CLASS}--blocked {
     opacity: 0.45;
@@ -625,7 +628,8 @@ ${ICON_BUTTON_STYLE}
    this renderer has no proven support for; see the ⚠️ on firstMeasurableCard in trade-routes.js. */
 .${IMPROVE_CLASS}__influence-cost { margin-right: 0.5rem; }
 /* ⚠️ Compound selector: ".__icon" sets background-size too, and one class each would tie. */
-.${IMPROVE_CLASS}__icon.${IMPROVE_CLASS}__wait-icon {
+.${IMPROVE_CLASS}__icon.${IMPROVE_CLASS}__wait-icon,
+.${SEND_WIDE_CLASS}__icon.${SEND_WIDE_CLASS}__wait-icon {
     margin-left: 0.35rem;
     background-size: 74%;
     filter: ${WAIT_ICON_FILTER};
@@ -746,39 +750,6 @@ function treatyCanBeProposedLater(leaderId, offer) {
         return false;
     }
     return Boolean(offer.canStart) || refusalClearsWithTheTurn(leaderId, offer);
-}
-
-/**
- * Whether the trade limit with this leader could be RAISED later - the section's question, which
- * is not the same as whether the treaty can be proposed.
- *
- * ⚠️ HOSTILITY RULES IT OUT HERE AND ONLY HERE (user's instruction, 2026-09-10): such a route
- * stays under "unavailable" rather than being lifted among the ones the player can buy their way
- * into. It is a judgement about whether the other leader would ACCEPT, which is not a thing the
- * engine answers - `canStart` only says whether the proposal may be made, and at `level=-8` it
- * still says yes.
- *
- * ⚠️ ASKED FIRST, AND THAT ORDER IS THE FIX. "Short of Influence" was tested before this and
- * answered yes on its own - so a hostile pairing that the player also could not afford came out as
- * "wait and it will happen", and the route was lifted into the available section.
- */
-function treatyCanComeLater(leaderId, offer) {
-    if (relationshipBlocksTrade(leaderId)) {
-        return false;
-    }
-    return treatyCanBeProposedLater(leaderId, offer);
-}
-
-/**
- * Whether the trade limit with this leader could be raised at all, now or later.
- *
- * ⚠️ Exported for the SECTION pass: a route held back only by the limit belongs among the
- * available ones because it is a decision - but not while the two are hostile, when the treaty is
- * not worth offering as one. See `liftLimitBlocked` in trade-routes.js, and `treatyCanComeLater`
- * for why that is a judgement rather than the engine's answer.
- */
-export function canRaiseLimitLater(leaderId) {
-    return treatyCanComeLater(leaderId, improveOfferFor(leaderId));
 }
 
 /**
@@ -1234,6 +1205,11 @@ function buildBuyButton(stack, route, targetCity, site, canPlan, scope) {
      * while an identical card beside them offered one.
      */
     const waitingForGold = canPlan && !ready && !busy && shortOfGoldFor(site);
+    // ⚠️ Only buttons that can be clicked are drawn (user's instruction, 2026-09-26); busy is the
+    // exception, because it is the feedback for the click that just happened.
+    if (!ready && !waitingForGold && !busy) {
+        return null;
+    }
 
     const button = makeElement('div', BUY_CLASS);
     /*
@@ -1406,9 +1382,18 @@ function errandRow(unit, targetCity, scope) {
 /** Raise the trade limit, then send the merchant you already have. */
 function buildSendSpareImproveButton(stack, route, targetCity, offer, scope) {
     const affordable = Boolean(offer?.canStart) && offer.cost <= influenceBalance();
+    /*
+     * ⚠️ SHORT OF INFLUENCE IS A WAIT, NOT A DEAD BUTTON (user's instruction, 2026-09-26). It was
+     * drawn dark and did nothing, so with a merchant standing idle the only way to plan the route
+     * was the gold button - buying a second merchant. The queue sends the spare one at once and
+     * proposes the treaty when the Influence is there; see engine/trade-queue.js.
+     */
+    const canWait = !affordable && treatyCanBeProposedLater(route.leaderId, offer);
+    if (!affordable && !canWait) {
+        return null;
+    }
 
     const button = makeElement('div', SEND_WIDE_CLASS);
-    button.classList.toggle(`${SEND_WIDE_CLASS}--blocked`, !affordable);
 
     const plus = makeElement('div', `${SEND_WIDE_CLASS}__plus`);
     plus.textContent = '+';
@@ -1424,7 +1409,18 @@ function buildSendSpareImproveButton(stack, route, targetCity, offer, scope) {
     cost.textContent = offer ? String(offer.cost) : '-';
     button.appendChild(cost);
 
+    if (canWait) {
+        const wait = makeElement('div', `${SEND_WIDE_CLASS}__icon ${SEND_WIDE_CLASS}__wait-icon`);
+        wait.style.backgroundImage = `url(${WAIT_ICON})`;
+        button.appendChild(wait);
+    }
+
     bindActivatable(button, () => {
+        if (canWait) {
+            // `queueTradeAction` sends the idle merchant straight away and announces the change.
+            queueTradeAction(targetCity);
+            return;
+        }
         if (!affordable) {
             return;
         }
@@ -1454,13 +1450,16 @@ function buildSendSpareImproveButton(stack, route, targetCity, offer, scope) {
     const mount = makeElement('div', `${SEND_WIDE_CLASS}-mount`);
     appendWithFramedTooltip(mount, button, {
         scope,
-        title: 'LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE',
-        text: Locale.compose(
-            'LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP',
-            leaderName(route.leaderId) || Locale.compose(targetCity.name ?? ''),
-            offer?.cost ?? 0,
-            Locale.compose(targetCity.name ?? ''),
-        ),
+        title: canWait ? 'LOC_NAJANE_COMMERCE_QUEUE' : 'LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE',
+        // With a merchant idle, `queueActionText` names the spare one and no gold.
+        text: canWait
+            ? queueActionText(route.leaderId, offer, targetCity, null, false, true)
+            : Locale.compose(
+                'LOC_NAJANE_COMMERCE_SEND_SPARE_IMPROVE_TOOLTIP',
+                leaderName(route.leaderId) || Locale.compose(targetCity.name ?? ''),
+                offer?.cost ?? 0,
+                Locale.compose(targetCity.name ?? ''),
+            ),
     });
     return mount;
 }
@@ -1469,14 +1468,17 @@ function buildSendSpareImproveButton(stack, route, targetCity, offer, scope) {
  * The price button, with the plus beside it when a spare merchant exists.
  *
  * ⚠️ Returns the price button UNWRAPPED when there is nothing spare, so a card that cannot
- * offer this keeps exactly the markup it had before the feature existed.
+ * offer this keeps exactly the markup it had before the feature existed. Either half may be
+ * missing - a price nobody can click is not drawn - and with both missing this returns null.
  */
 function priceRow(priceMount, targetCity, spare, scope) {
     if (!spare) {
         return priceMount;
     }
     const row = makeElement('div', PRICE_ROW_CLASS);
-    row.appendChild(priceMount);
+    if (priceMount) {
+        row.appendChild(priceMount);
+    }
     row.appendChild(buildSendSpareButton(targetCity, scope));
     return row;
 }
@@ -1579,9 +1581,18 @@ function buildImproveButton(stack, route, targetCity, site, offer, onTheWay, sco
      * this turn - or every merchant is spoken for. All of those change when the turn does, and the
      * queue does the whole errand: merchant first, treaty when the Influence is there.
      */
+    /*
+     * ⚠️ NOT WHILE A MERCHANT STANDS IDLE: the queue always takes the spare one before buying, so
+     * an hourglass beside a gold price promised a purchase that would never happen. The plan lives
+     * on the plus button under this one then - same rule as `canPlanTheBuy` on an available card.
+     */
     const canWait = !ready && !busy && onTheWay === 0
         && treatyCanBeProposedLater(route.leaderId, offer)
-        && (Boolean(site?.offer) || Boolean(nearestIdleMerchant(targetCity)));
+        && Boolean(site?.offer) && !nearestIdleMerchant(targetCity);
+    // ⚠️ Not drawn when it cannot be clicked; busy stays, as on the gold button.
+    if (!ready && !canWait && !busy) {
+        return null;
+    }
 
     const button = makeElement('div', IMPROVE_CLASS);
     // ⚠️ Fully lit while it answers a click; see the same note on the gold button.
@@ -1677,10 +1688,13 @@ function renderAvailableStack(stack, route, targetCity) {
          * thing to press then, and it costs nothing.
          */
         const canPlanTheBuy = !spare;
-        stack.appendChild(priceRow(
+        const row = priceRow(
             buildBuyButton(stack, route, targetCity, site, canPlanTheBuy, scope),
             targetCity, spare, scope,
-        ));
+        );
+        if (row) {
+            stack.appendChild(row);
+        }
     }
     // The slot under the price holds one of the two, never both.
     /*
@@ -1722,19 +1736,26 @@ function renderImproveStack(stack, route, targetCity) {
     disposeFramedTooltips(scope);
     clearChildren(stack);
     const queued = isTradeActionQueued(targetCity);
-    if (!queued) {
-        stack.appendChild(buildImproveButton(stack, route, targetCity, site, offer, heading.length, scope));
+    // Either button may come back null: one that cannot be clicked is not drawn.
+    const improve = queued
+        ? null
+        : buildImproveButton(stack, route, targetCity, site, offer, heading.length, scope);
+    if (improve) {
+        stack.appendChild(improve);
     }
     // ⚠️ Its OWN ROW under the price, not beside it like the plus on an available card: this
     // button carries two prices and there is no width left on the title row.
-    if (!queued && heading.length === 0 && offer && nearestIdleMerchant(targetCity)) {
-        stack.appendChild(buildSendSpareImproveButton(stack, route, targetCity, offer, scope));
+    const sendSpare = !queued && heading.length === 0 && offer && nearestIdleMerchant(targetCity)
+        ? buildSendSpareImproveButton(stack, route, targetCity, offer, scope)
+        : null;
+    if (sendSpare) {
+        stack.appendChild(sendSpare);
     }
     /*
-     * ⚠️ NO SEPARATE PLAN BUTTON HERE. The improve button above carries both prices and grows its
-     * own hourglass when neither can be paid yet; a second control repeating one of those prices
-     * read as a third cost. The queued state is the exception - then the price is gone and what
-     * remains is the hourglass with the X that calls it off.
+     * ⚠️ NO SEPARATE PLAN BUTTON HERE. The plan is an hourglass on whichever of the two buttons
+     * above it will actually use: the plus while a merchant stands idle, the gold one otherwise -
+     * never both, or one plan reads as two costs. The queued state is the exception - then the
+     * price is gone and what remains is the hourglass with the X that calls it off.
      */
     if (queued) {
         stack.appendChild(queueRow(route.leaderId, null, targetCity, site, true, scope));
@@ -1808,3 +1829,6 @@ export function decorateBuyMerchant(card, route, unavailableGroup = null) {
     stack.dataset.najaneMode = mode;
     keepLast(head, stack);
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('trade-buy-merchant', { liveStacks, siteCache, arrivalCache });

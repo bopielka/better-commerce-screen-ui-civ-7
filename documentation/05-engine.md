@@ -14,8 +14,10 @@ through here — and everything the game raises comes back through here too.
 | `mod-storage.js` | this mod's `localStorage` namespace, and the game-seed key every store files under |
 | `merchant.js` | buying a merchant, walking it, signing the route |
 | `merchant-orders.js` | the standing order a bought merchant carries, turn after turn |
+| `save-store.js` | per-game state written INTO THE SAVE through the game's `Catalog`: merchant orders, the trade queue, resource locks, settlement priorities |
 | `trade-queue.js` | trade actions planned for when the turn turns |
-| `resource-locks.js` | resources pinned in place; obeyed by `unassign.js`, cleared when one leaves |
+| `resource-locks.js` | resources pinned in place (in the save); obeyed by `unassign.js`, cleared when one leaves |
+| `resource-lock-setting.js` | the Options switch for the padlocks, split out so `ui/options/` never reaches the save |
 | `treasure-convoys.js` | sends loaded Treasure Convoys home, unloads them, and announces it |
 | `treasure-return-setting.js` | the switch that turns that off; **on** by default |
 | `tooltip-setting.js` | the switch that hides every tooltip this mod draws; **off** by default |
@@ -429,6 +431,15 @@ re-requests, is refused, is woken by its own refusal, and the cascade never ends
 per unit per turn; a deliberate click resets the budget. Holistic QoL+ documents the same
 freeze.
 
+⚠️ **Nothing is sent once End Turn is pressed** (`isLocalTurnOpen`: `hasSentTurnComplete()` or the
+turn not active). The end-turn automation walks merchants along their queued course and raises the
+very events a pass runs on; a route signed then is a command after `sendTurnComplete`, the engine
+un-readies the turn while the button still shows "please wait", and the turn never ends. Reported
+against 1.19 with `net_message_debug.log` showing "movement remaining after completing automation"
+followed by `MAKE_TRADE_ROUTE` on the same merchant. The next `LocalPlayerTurnBegin` pass picks the
+order up. Signing a route also spends one of the three tries per turn - counted on the send, never
+on the `canStart` question, which a walking merchant is asked on every tile.
+
 ⚠️ **Most passes are sign-only.** `UnitMoved`, `UnitMoveComplete`, `UnitOperationsCleared`,
 `UnitOperationDeactivated` and `UnitRemovedFromMap` may only *try to sign the route*. Movement
 is re-issued from `LocalPlayerTurnBegin` and from the click that gave the order, and nowhere
@@ -444,17 +455,43 @@ every merchant. Two passes that fall in the same window merge, and the one that 
 engine passes the event payload to the listener, and a payload object is truthy — passing the
 function straight in made **every** event a moving one.
 
-Storage is `UI.setOption("user", "Mod", …)` with a **number** — the target's plot index plus
-one, so that zero can mean "no order" — keyed per game seed, exactly as
-[`ui/planner/priority-store.js`](07-planner-assignment.md) does it. Nothing is written into
-the save; the mod still declares `AffectsSavedGames = 0`.
+### A merchant waiting on the limit sleeps (Modern)
 
-The game-seed key comes from `mod-storage.js` `currentGameKey()`, shared by every store (orders,
-the trade queue, settlement priorities, resource locks). ⚠️ It caches a **non-null** seed only —
-remembering the null answered before the seed is readable would strand every store — and is
-reset through `support/game-data.js`. A cleared order or finished queue entry is **deleted** from
-the `localStorage` mirror, and a game's object with it once empty; writing 0 instead grew the
-shared `modSettings` with every merchant of every game ever played.
+In the Modern age a merchant opens its route from where it stands, so one under an order that the
+trade limit refuses just waits - and the game asked for its orders every turn. `advance` now puts
+it to sleep (`UNITOPERATION_SLEEP`) while `used >= capacity` with the target's owner, and once
+there is room wakes it (`UNITCOMMAND_WAKE`) and runs a sign-only pass 500 ms later (user's
+instruction, 2026-10-30). A refusal with room to spare - war, spent movement - leaves it awake.
+⚠️ Not yet confirmed in game whether a sleeping merchant can sign without being woken first;
+`[sleep-probe]` lines in `UI.log` record each decision until that is settled.
+
+### Stored in the save — `save-store.js`
+
+Merchant orders (unit key → target plot index **plus one**, so zero can mean "no order"), the
+trade queue (plot index → step), resource locks (`city.plot` → 1) and settlement priorities
+(city key → code, see [options](11-options-and-persistence.md)) are written **into the save file** through the game's own
+`Catalog` (`/core/ui/utilities/utility-serialize.js`): dynamic properties of the local player,
+catalog `NajaneBetterCommerce`, object `state`, one key per store. Loading a save brings back
+exactly the orders and queued requests it was saved with. The `.modinfo` still declares
+`AffectsSavedGames = 0`: a save loads without the mod, the properties simply sit unread.
+
+⚠️ **Why not the seed-keyed `localStorage` any more** (user's instruction, 2026-10-30): the seed
+survives a reload, so every save of one game shared one store — a route planned after saving
+leaked into the older save, one cancelled later vanished from it. Same move as
+`najane-recurring-diplomacy`.
+
+⚠️ **One property per store**, the whole map as `key=value,key=value`. A `SerialObject` can never
+drop a key, so one key per merchant would grow the save with every unit id ever ordered.
+
+⚠️ **A player-catalog write is queued** — a read in the same frame still returns the old value.
+Each store is read from the save once per game and served from memory after that;
+`save-store.js` is its only writer. The memory is dropped through `support/game-data.js`
+(`GameStarted`, `GameAgeEnded`) and the catalog's listener disposed with it.
+
+⚠️ **Migration, once:** the first time a store is opened, the current game's entries in the old
+`modSettings` section (`merchantOrders` / `tradeQueue` / `priorities`, keyed by seed) are carried into a save that
+has none of its own, and deleted from `localStorage` either way. An older save loaded first after
+the update therefore gets the in-flight orders once; from then on every save is exact.
 
 ⚠️ The merchant list and what each merchant is doing are read once per **snapshot** and shared by
 every card that asks during it (`idleMerchants`, `nearestIdleMerchant`, `merchantsOrderedTo`,
@@ -463,14 +500,12 @@ every card that asks during it (`idleMerchants`, `nearestIdleMerchant`, `merchan
 ### Merchants that never arrive
 
 A merchant lost at sea, killed by a raider or disbanded takes **nothing** with it: the order is
-a number in the user options and the engine does not know it is there. Every processing pass
+a number in this mod's store in the save and the engine does not know it is there. Every processing pass
 therefore prunes the stored orders against the live merchant list, and announces the change.
 
-⚠️ `UI.getOption` **cannot be enumerated** — it answers about a name you already know. So the
-module keeps a set of the unit keys that have an order, seeded from the `localStorage` mirror
-(the only channel that can be read back whole). Without that set, a drowned merchant's order
-can never be found again to be cleared, and **unit ids are recycled**: the next merchant born
-with that id would silently inherit a dead one's errand.
+⚠️ The store is an enumerable map of the unit keys that have an order. Without that, a drowned
+merchant's order can never be found again to be cleared, and **unit ids are recycled**: the next
+merchant born with that id would silently inherit a dead one's errand.
 
 ⚠️ Pruning is **skipped entirely** when the merchant list could not be read. An empty list
 means "they are all gone"; a failed call means nothing at all. `readMerchants()` returns
@@ -542,8 +577,7 @@ means the action resolves at the end of the turn it was proposed in, so "propose
 *is* the engine's own answer, said a few frames earlier. Without it, the redraw a click
 triggers faithfully restored the button bright and priced on an action that could no longer be
 taken. Cleared on `LocalPlayerTurnBegin` (a refusal frees the action again, and the turn
-boundary is where that happens whichever way it went) and on `GameStarted`. The hostile-band
-ceiling read from `GameInfo` is reset through `support/game-data.js`. The engine's real answers arrive with
+boundary is where that happens whichever way it went) and on `GameStarted`. The engine's real answers arrive with
 `GameCoreEventPlaybackComplete`; see [screen: tabs](10-screen-tabs.md).
 
 ⚠️ Influence cost is read from `project.targetList1.find(entry => entry.targetID === leaderId)`

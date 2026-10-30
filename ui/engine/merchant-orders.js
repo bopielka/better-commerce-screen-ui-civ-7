@@ -8,10 +8,14 @@
  * ⚠️ THE ATTEMPT CAP IS NOT TIDINESS - WITHOUT IT THE GAME FREEZES. The engine answers a move it
  * cannot honour with `UnitOperationsCleared`/`UnitOperationDeactivated`, which is exactly what
  * this module listens for: the merchant re-requests, is refused, is woken by its own refusal.
- * Three tries per unit per turn; a deliberate click resets it.
+ * Three tries per unit per turn - a route signed counts as a try, same as a move; a deliberate
+ * click resets it.
  *
- * ⚠️ Stored as a NUMBER through `UI.setOption` - the target plot index plus one, so zero can mean
- * "no order". Nothing is written into the save; this mod declares AffectsSavedGames = 0.
+ * ⚠️ NO COMMAND ONCE THE TURN IS ENDED - see `isLocalTurnOpen`. Reported against 1.19 as end turn
+ * spinning for ever, with MAKE_TRADE_ROUTE after "movement remaining after completing automation".
+ *
+ * ⚠️ STORED IN THE SAVE (./save-store.js) as the target plot index plus one, so zero can mean
+ * "no order": loading a save brings back exactly the orders it was saved with.
  *
  * ⚠️ TEMPORARY: `[trade-crash-probe]` warn() lines are diagnostic-only; see the note atop
  * ./merchant.js. Remove once the crash is pinned down.
@@ -26,15 +30,19 @@ import {
     readMerchants,
     routesOpenFromAnywhere,
     signRoute,
+    sleepMerchant,
+    tradeCapacityWith,
     unitKey,
+    wakeMerchant,
 } from './merchant.js';
-import { currentGameKey, readSection, writeSection } from './mod-storage.js';
+import { savedMap, writeSaved } from './save-store.js';
 import { onEngineEvent, onLocalPlayerEvent } from './events.js';
 import { log, warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 
-const MOD_ID = 'better-commerce-screen-ui';
-/** ⚠️ A section of the SHARED `modSettings` key - see engine/mod-storage.js for why. */
-const SECTION = 'merchantOrders';
+/** The store's name in the save, and the `modSettings` section it is migrated out of once. */
+const STORE = 'merchantOrders';
+const STORE_OPTIONS = { legacySection: 'merchantOrders' };
 
 /** Raised when the set of standing orders changes; anything drawing one redraws on it. */
 export const MerchantOrdersChangedEventName = 'najane-merchant-orders-changed';
@@ -75,65 +83,18 @@ const MOVE_EVENTS = ['UnitMovementPointsChanged'];
 
 /**
  * The pass that runs whatever the store thinks it knows - the safety net for the shortcut in
- * `scheduleProcess`, which skips every pass when the (possibly unreadable) key set is empty.
+ * `scheduleProcess`, which skips every pass while no order can be read from the save.
  * It is also the pass that may move; see MOVE_EVENTS.
  */
 const FULL_PASS_EVENTS = ['LocalPlayerTurnBegin'];
 
-/** Unit ids are only unique within one game; the file is keyed by the game's seed. */
-function optionName(key) {
-    return `${MOD_ID}.merchantOrder.${currentGameKey()}.${key}`;
-}
-
-function readFallback(key) {
-    return readSection(SECTION)?.[currentGameKey()]?.[key];
-}
-
 /**
- * ⚠️ A cleared order is DELETED, never written as 0: every reader treats absent and 0 alike, and
- * the shared `modSettings` string - every mod's settings - is parsed whole on each read and write.
+ * Which merchants have an order, keyed by unit key; null while the save cannot be reached.
+ * ⚠️ Enumerable on purpose: the order of a merchant that has since drowned must be found again
+ * and cleared, because ids are recycled and the next merchant born with that id inherits it.
  */
-function writeFallback(key, code) {
-    writeSection(SECTION, (all) => {
-        const game = currentGameKey();
-        if (code > 0) {
-            all[game] ??= {};
-            all[game][key] = code;
-            return;
-        }
-        if (all[game]) {
-            delete all[game][key];
-            if (Object.keys(all[game]).length === 0) {
-                delete all[game];
-            }
-        }
-    });
-}
-
-/**
- * Which merchants have an order, as a set of unit keys.
- * ⚠️ Kept because `UI.getOption` cannot be ENUMERATED: without a list of names, the order of a
- * merchant that has since drowned can never be found again - and ids are recycled, so the next
- * merchant born with that id inherits it. Seeded from the localStorage mirror.
- */
-let orderedKeys = null;
-
-function knownOrderedKeys() {
-    if (orderedKeys) {
-        return orderedKeys;
-    }
-    orderedKeys = new Set();
-    try {
-        const all = readSection(SECTION);
-        for (const [key, code] of Object.entries(all?.[currentGameKey()] ?? {})) {
-            if (Number(code) > 0) {
-                orderedKeys.add(key);
-            }
-        }
-    } catch (error) {
-        // An unreadable mirror is not worth a warning; see the note above.
-    }
-    return orderedKeys;
+function orders() {
+    return savedMap(STORE, STORE_OPTIONS);
 }
 
 function announceChange() {
@@ -145,60 +106,17 @@ function announceChange() {
 }
 
 function writeOrder(key, code) {
-    try {
-        UI.setOption('user', 'Mod', optionName(key), code);
-        Configuration.getUser().saveCheckpoint();
-    } catch (error) {
-        warn(`could not save the merchant's order: ${error}`);
+    if (!writeSaved(STORE, key, code, STORE_OPTIONS)) {
+        warn('could not save the order of a merchant');
     }
-    writeFallback(key, code);
-    if (code > 0) {
-        knownOrderedKeys().add(key);
-    } else {
-        knownOrderedKeys().delete(key);
-    }
-    // This module is the only writer, so the cache is repaired rather than thrown away.
-    orderByKey.set(key, Number(code) > 0 ? Number(code) - 1 : -1);
     forgetMerchantState();
     announceChange();
 }
 
-/**
- * What every order says, read through to storage ONCE per merchant.
- *
- * ⚠️ `UI.getOption` is a lookup, and this is asked per merchant per pass AND per merchant per
- * trade-route card - a card asks three questions that each walked the whole list. Written only
- * by `writeOrder`, which repairs the entry rather than dropping it.
- *
- * ⚠️ Negative answers are cached too: "this merchant has no errand" is the common case and was
- * the one paying for a lookup every time. Same rule as `readLock` in resource-locks.js.
- */
-const orderByKey = new Map();
-
 /** @returns the plot index of the settlement this merchant is heading for, or -1. */
 function readOrder(key) {
-    // ⚠️ NOT cached: before the seed is readable every answer is "no order", and remembering
-    // that would strand every merchant in a game loaded mid-session.
-    if (currentGameKey() === null) {
-        return -1;
-    }
-    const cached = orderByKey.get(key);
-    if (cached !== undefined) {
-        return cached;
-    }
-    let code = null;
-    try {
-        code = UI.getOption('user', 'Mod', optionName(key));
-    } catch (error) {
-        code = null;
-    }
-    if (code == null) {
-        code = readFallback(key);
-    }
-    const plotIndex = Number(code) - 1;
-    const order = Number.isInteger(plotIndex) && plotIndex >= 0 ? plotIndex : -1;
-    orderByKey.set(key, order);
-    return order;
+    const code = orders()?.get(key);
+    return code > 0 ? code - 1 : -1;
 }
 
 /** The settlement an order points at, or -1. */
@@ -261,6 +179,35 @@ function mayAttempt(key) {
     }
     entry.count++;
     return true;
+}
+
+/**
+ * Whether this module may send the engine anything right now.
+ *
+ * ⚠️ FALSE FROM THE MOMENT END TURN IS PRESSED. The end-turn automation walks merchants along their
+ * queued course, which raises exactly the events a pass runs on; a route signed then is a new
+ * command after `sendTurnComplete`, the engine un-readies the turn while the button still believes
+ * it was sent (`panel-action.js` shows "please wait" while `hasSentTurnComplete()`), and the turn
+ * never ends. `LocalPlayerTurnBegin` runs a forced pass, so nothing waiting here is lost.
+ * ⚠️ Cannot tell = closed: a skipped pass costs a turn, a wrong command costs the game.
+ */
+let reportedClosedTurn = -1;
+
+function isLocalTurnOpen() {
+    let open = false;
+    try {
+        open = !GameContext.hasSentTurnComplete()
+            && Players.get(GameContext.localPlayerID)?.isTurnActive === true;
+    } catch (error) {
+        warn(`could not read whether the turn is still open: ${error}`);
+        return false;
+    }
+    // TEMPORARY PROBE (2026-09-30, end-turn hang report): once per turn. Remove once confirmed.
+    if (!open && reportedClosedTurn !== currentTurn()) {
+        reportedClosedTurn = currentTurn();
+        warn(`[turn-hang-probe] merchant orders held: the turn has been ended (turn ${currentTurn()})`);
+    }
+    return open;
 }
 
 /** Drops the order of a merchant the player has called back or halted. */
@@ -381,9 +328,21 @@ export function clearMerchantOrder(unitID) {
 /** One merchant: sign if the engine will have it, walk on if the caller allows it. */
 function advance(unit, city, mayMove) {
     warn(`[trade-crash-probe] advance: unit=${unitKey(unit?.id)} city=${city?.id?.id} mayMove=${mayMove}`);
-    if (signRoute(unit, city.location)) {
-        log(() => `trade route opened with ${Locale.compose(city.name ?? '')}`);
-        return true;
+    if (!isLocalTurnOpen()) {
+        return false;
+    }
+    // ⚠️ The cap is spent on a SEND, not on asking: a walking merchant is asked on every tile, and
+    // counting those would exhaust the budget before it arrived.
+    if (canSignRoute(unit, city.location)) {
+        if (!mayAttempt(unitKey(unit.id))) {
+            warn(`[turn-hang-probe] unit=${unitKey(unit.id)} route not re-sent: ${ATTEMPTS_PER_TURN} tries this turn`);
+            return false;
+        }
+        warn(`[turn-hang-probe] unit=${unitKey(unit.id)} sending MAKE_TRADE_ROUTE on turn ${currentTurn()}`);
+        if (signRoute(unit, city.location)) {
+            log(() => `trade route opened with ${Locale.compose(city.name ?? '')}`);
+            return true;
+        }
     }
 
     /*
@@ -392,6 +351,7 @@ function advance(unit, city, mayMove) {
      * fixes. Doing it anyway carried freshly bought merchants off across the map for nothing.
      */
     if (routesOpenFromAnywhere()) {
+        restWhileTheLimitIsFull(unit, city);
         return false;
     }
 
@@ -427,6 +387,35 @@ function advance(unit, city, mayMove) {
     return false;
 }
 
+/** Wakes after this long, then a sign-only pass; a wake is queued like every request. */
+const AFTER_WAKE_MS = 500;
+
+/**
+ * Modern only: a merchant waiting for the trade limit SLEEPS, so it does not ask for orders every
+ * turn (user's instruction, 2026-10-30), and is woken once the limit has room, then signed.
+ * ⚠️ Only for the LIMIT. A refusal with room to spare - a war, spent movement - leaves it awake.
+ * ⚠️ `commandedAt` is stamped: our own request must not read as the player calling it back.
+ */
+function restWhileTheLimitIsFull(unit, city) {
+    const key = unitKey(unit.id);
+    const owner = city.owner ?? city.id?.owner;
+    const { capacity, used } = tradeCapacityWith(owner);
+    if (used >= capacity) {
+        if (sleepMerchant(unit)) {
+            commandedAt.set(key, Date.now());
+            warn(`[sleep-probe] unit=${key} asleep: limit with ${owner} is ${used}/${capacity}`);
+        }
+        return;
+    }
+    if (wakeMerchant(unit)) {
+        commandedAt.set(key, Date.now());
+        warn(`[sleep-probe] unit=${key} woken: limit with ${owner} is ${used}/${capacity}`);
+        setTimeout(() => scheduleProcess(false), AFTER_WAKE_MS);
+    } else {
+        warn(`[sleep-probe] unit=${key} room ${used}/${capacity} but the route was refused and it is awake`);
+    }
+}
+
 let processing = false;
 let scheduled = false;
 let scheduledMayMove = false;
@@ -442,18 +431,19 @@ function pruneOrders(merchants) {
     if (!merchants) {
         return;
     }
-    const known = knownOrderedKeys();
-    if (known.size === 0) {
+    const known = orders();
+    if (!known || known.size === 0) {
         return;
     }
     const alive = new Set(merchants.map((unit) => unitKey(unit.id)));
     let dropped = 0;
-    for (const key of Array.from(known)) {
+    // A copy: `writeOrder` deletes from the map being walked.
+    for (const key of [...known.keys()]) {
         if (alive.has(key)) {
             continue;
         }
         forgetUnitState(key);
-        // writeOrder announces the change and takes the key out of the set.
+        // writeOrder announces the change and takes the key out of the store.
         writeOrder(key, 0);
         dropped++;
     }
@@ -480,13 +470,6 @@ function processOrders(mayMove) {
             if (plotIndex < 0) {
                 continue;
             }
-            /*
-             * ⚠️ Repairs the set from the store that actually holds the orders. `knownOrderedKeys`
-             * is seeded from the localStorage mirror, which may be unreadable - and an empty set
-             * means "skip every pass", so without this a session that started with an unreadable
-             * mirror would fall back to one pass a turn for good.
-             */
-            knownOrderedKeys().add(key);
             const city = cityAtPlot(plotIndex);
             if (!city) {
                 // The settlement is gone - razed, or never found again. The merchant is left
@@ -513,9 +496,9 @@ function scheduleProcess(mayMove = false, { force = false } = {}) {
     /*
      * ⚠️ Nothing is under an order, so there is nothing to do - and this is the cheapest place to
      * say so. Below this line a pass reads every unit the player owns and asks the engine about
-     * each. FULL_PASS_EVENTS is the safety net for a wrong set.
+     * each. FULL_PASS_EVENTS is the safety net for a save not yet readable.
      */
-    if (!force && knownOrderedKeys().size === 0) {
+    if (!force && !(orders()?.size > 0)) {
         return;
     }
     scheduledMayMove = scheduledMayMove || mayMove;
@@ -549,8 +532,8 @@ export function orderMerchantTo(unit, city, { mayMove = true } = {}) {
         return false;
     }
     const key = unitKey(unit.id);
-    if (!key || currentGameKey() === null) {
-        warn('[trade-crash-probe] orderMerchantTo: bailed - no key or no game key');
+    if (!key || !orders()) {
+        warn('[trade-crash-probe] orderMerchantTo: bailed - no key or no save store');
         return false;
     }
 
@@ -591,8 +574,8 @@ function hasStandingOrder(unit) {
  * ⚠️ THE ONE PLACE THE UNIT'S REAL STATE IS READ. "Free" and "on its way" are opposites; answered
  * separately they drifted into claiming the same merchant was both.
  *
- * ⚠️ The standing order is NOT evidence of travel. Orders live outside the save and outlive a
- * reload, and the player can stop a merchant without the store hearing - which was reported as
+ * ⚠️ The standing order is NOT evidence of travel. The player can stop a merchant
+ * without the store hearing - which was reported as
  * missing buttons after a reload and merchants "on the way" long after being called back.
  */
 function isTravelling(unit) {
@@ -822,17 +805,15 @@ export function startMerchantOrders() {
     }
     /*
      * A game loaded mid-session brings its own seed, and with it its own orders.
-     * ⚠️ ALL FIVE, not just the attempts. Unit ids are recycled between games, so anything keyed
+     * ⚠️ ALL FOUR, not just the attempts. Unit ids are recycled between games, so anything keyed
      * by one describes a unit that no longer exists - and these grew for the whole session.
-     * The seed itself is dropped by mod-storage.js, after this handler; nothing here reads it.
+     * The orders themselves are re-read from the save by ./save-store.js.
      */
     onEngineEvent('GameStarted', () => {
-        orderedKeys = null;
         attempts.clear();
         commandedAt.clear();
         wasTravelling.clear();
         spokenForOnTurn.clear();
-        orderByKey.clear();
         forgetMerchantState();
     });
     // A load lands mid-journey as often as not: sign straight away, and let the turn beginning
@@ -840,3 +821,6 @@ export function startMerchantOrders() {
     // reads its orders.
     scheduleProcess(false, { force: true });
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('merchant-orders', { attempts, commandedAt, spokenForOnTurn, wasTravelling });

@@ -34,6 +34,7 @@ import CommerceOptions, {
     CommerceOptionsChangedEventName,
 } from '../options/najane-commerce-options.js';
 import { log, warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 
 const UNASSIGNED_EVENT = 'ResourceUnassigned';
 
@@ -392,3 +393,6 @@ export function startHandsOff() {
     window.addEventListener(CommerceOptionsChangedEventName, applyMode);
     whenReadable(READY_ATTEMPTS);
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('hands-off', { pushedBack, queue });

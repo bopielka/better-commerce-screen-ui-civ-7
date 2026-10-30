@@ -54,6 +54,10 @@ const SAME_CLICK_WINDOW_MS = 400;
 const originalFactory = CommerceResourcesContainer.factory();
 const overridePriority = (CommerceResourcesContainer.overridePriority ?? 0) + 100;
 
+// ⚠️ See the crash-guard note beside `originalFactory(props)` below.
+let factoryDepth = 0;
+const MAX_FACTORY_DEPTH = 15;
+
 function CommerceResourcesContainerWithRightClickUnassign(props) {
     const model = useCommerceScreenContext();
 
@@ -187,7 +191,20 @@ function CommerceResourcesContainerWithRightClickUnassign(props) {
         clearCommerceModel(model);
     });
 
-    return originalFactory(props);
+    // ⚠️ CRASH GUARD (user's instruction, 2026-09-23): same class of failure as trade-routes.js's
+    // TradeRouteCardWithDestination - see the note there. Mirrored here because this wrapper sits
+    // on the same footing (the ⚠️ above about Resource+'s overridePriority).
+    factoryDepth++;
+    try {
+        if (factoryDepth > MAX_FACTORY_DEPTH) {
+            warn(`CommerceResourcesContainer factory re-entered ${factoryDepth} times without ` +
+                'returning - stopping short of a stack overflow instead of letting it crash the game');
+            return null;
+        }
+        return originalFactory(props);
+    } finally {
+        factoryDepth--;
+    }
 }
 
 ComponentRegistry.register({

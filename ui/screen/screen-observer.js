@@ -18,6 +18,7 @@
 import { settlementCards } from '../model/screen-model.js';
 import { isAssignmentInProgress } from '../planner/run.js';
 import { warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 import { COMMERCE_SCREEN_SELECTOR } from './screen-parts.js';
 
 const subscribers = new Set();
@@ -153,3 +154,6 @@ function unwatchCommerceScreen(callback) {
         frame = null;
     }
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('screen-observer', { subscribers });

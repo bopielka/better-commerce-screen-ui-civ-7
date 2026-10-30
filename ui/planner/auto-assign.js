@@ -1,5 +1,5 @@
 /**
- * Assigning newly acquired resources by itself, with the Commerce screen closed. Off by default;
+ * Assigning newly acquired resources by itself, with the Commerce screen closed. "New only" by default;
  * how far it goes is one four-step setting in ui/options/najane-commerce-options.js.
  *
  * ⚠️ Decides WHEN and nothing else - the work goes through run.js, the same entry points the
@@ -19,7 +19,7 @@
  * ⚠️ Triggers fire BEFORE the resource is in your hands - `ConstructibleBuildCompleted` means the
  * improvement finished. Hence the late-arrival retries.
  */
-import { assignAll, isAssignmentInProgress, reassignAll } from './run.js';
+import { assignAll, isAssignmentInProgress, quickAssignSettlement, reassignAll } from './run.js';
 import { isAssignableToSettlement } from './facts.js';
 import { forgetPriorityMemory } from './priorities.js';
 import { getCommerceModel } from '../model/screen-model.js';
@@ -90,6 +90,8 @@ const SWEEP_MS = 15000;
 
 let known = null;
 let knownCapacity = null;
+/** Settlement id -> its slot count, so "more room" can say WHERE. */
+let knownCaps = null;
 let running = false;
 
 /**
@@ -146,11 +148,33 @@ function currentResourceValues() {
 function readBoardCounts() {
     let capacity = 0;
     let assigned = 0;
+    const caps = new Map();
     for (const city of Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? []) {
-        capacity += city.Resources?.getAssignedResourcesCap() ?? 0;
+        const cap = city.Resources?.getAssignedResourcesCap() ?? 0;
+        capacity += cap;
         assigned += city.Resources?.getAssignedResources()?.length ?? 0;
+        caps.set(String(city.id?.id), { cap, cityID: city.id });
     }
-    return { capacity, assigned };
+    return { capacity, assigned, caps };
+}
+
+/**
+ * Settlements that already existed and now have more slots - a building or wonder with resource
+ * slots finished there. A settlement new to the list is left out: founding or taking one is not
+ * the player building room, and a captured one arrives with its own layout.
+ */
+function settlementsThatGrew(caps) {
+    const grown = [];
+    if (knownCaps === null) {
+        return grown;
+    }
+    for (const [key, { cap, cityID }] of caps) {
+        const before = knownCaps.get(key);
+        if (before !== undefined && cap > before) {
+            grown.push(cityID);
+        }
+    }
+    return grown;
 }
 
 /**
@@ -187,12 +211,13 @@ async function check(trigger, options = {}) {
     running = true;
     try {
         const current = currentResourceValues();
-        const { capacity, assigned } = readBoardCounts();
+        const { capacity, assigned, caps } = readBoardCounts();
         if (known === null) {
             // Seeding should have happened long before this; if it somehow did not, do it
             // now rather than treat every resource the player owns as newly acquired.
             known = current;
             knownCapacity = capacity;
+            knownCaps = caps;
             warn(`${trigger}: arrived before the resource list was ready, seeding now`);
             return;
         }
@@ -204,13 +229,18 @@ async function check(trigger, options = {}) {
             }
         }
         const roomGrew = knownCapacity !== null && capacity > knownCapacity;
+        const grownSettlements = settlementsThatGrew(caps);
         knownCapacity = capacity;
+        knownCaps = caps;
 
         /*
-         * ⚠️ New room is a reason to run, but NOT in "the new resource only": a Marketplace hands
-         * you nothing, so in that mode the pool holds resources the player left there on purpose.
+         * ⚠️ In "the new resource only", new room fills ONLY THE SETTLEMENT THAT GAINED IT (user's
+         * instruction, 2026-10-30): a building with slots is the player asking for them to be
+         * used. The rest of the pool may still be there on purpose, so no empire-wide pass.
          */
-        const actOnRoom = roomGrew && mode !== AutoAssignMode.NewOnly;
+        const newOnly = mode === AutoAssignMode.NewOnly;
+        const actOnRoom = roomGrew && !newOnly;
+        const fillGrown = newOnly ? grownSettlements : [];
 
         /*
          * ⚠️ EVERY mode waits for something to happen; the modes differ in SCOPE, not in when they
@@ -218,7 +248,7 @@ async function check(trigger, options = {}) {
          * which emptied the pool on load and again every fifteen seconds - overriding the one
          * principle this module is built on.
          */
-        if (fresh.size === 0 && !actOnRoom) {
+        if (fresh.size === 0 && !actOnRoom && fillGrown.length === 0) {
             if (!quiet) {
                 log(
                     `${trigger}: nothing to do (${current.size} resources owned, ` +
@@ -246,11 +276,22 @@ async function check(trigger, options = {}) {
         }
 
         const everything = mode === AutoAssignMode.EverythingUnassigned;
-        log(`${trigger}: ${why}` + (everything ? ' - placing everything unassigned' : ''));
-        const placed = await assignAll(null, {
-            scope: everything ? null : fresh,
-            label: 'auto assign',
-        });
+        let placed = 0;
+        if (fresh.size > 0 || actOnRoom) {
+            log(`${trigger}: ${why}` + (everything ? ' - placing everything unassigned' : ''));
+            placed = await assignAll(null, {
+                scope: everything ? null : fresh,
+                label: 'auto assign',
+            });
+        }
+        // ⚠️ One settlement at a time, after the new resources: those are the mode's first claim.
+        for (const cityID of fillGrown) {
+            log(`${trigger}: settlement ${cityID?.id} gained resource slots, filling them`);
+            await quickAssignSettlement(null, cityID);
+        }
+        if (fresh.size === 0) {
+            return;
+        }
 
         /*
          * ⚠️ Only now, and only if something landed. Updating before the work meant a pass that
@@ -362,7 +403,9 @@ function trySeed() {
         return false;
     }
     known = currentResourceValues();
-    knownCapacity = readBoardCounts().capacity;
+    const board = readBoardCounts();
+    knownCapacity = board.capacity;
+    knownCaps = board.caps;
     log(`remembering ${known.size} resources already owned and ${knownCapacity} slots`);
     return true;
 }

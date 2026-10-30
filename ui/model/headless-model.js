@@ -12,6 +12,7 @@ import { heldResourceType, isAssignableResourceType, resourceTypeFromHash } from
 
 import { onGameDataStale } from '../support/game-data.js';
 import { DIAGNOSTICS, warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 
 /**
  * Which yields a resource counts as affecting, exactly as the screen's model works it out - from
@@ -405,3 +406,6 @@ onGameDataStale(() => {
     warehouseByConstructibleType.clear();
     forgetSettlementFacts();
 });
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('headless-model', { yieldsByCity, warehousesByCity, factoryByCity, nameByCity });

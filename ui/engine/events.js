@@ -13,6 +13,7 @@
  * dispatcher, so a listener that must be removable has to keep its handle.
  */
 import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
+import { registerMemoryGauges } from '../support/memory-probe.js';
 
 const OWNER_ON_ID = new Set(['NotificationAdded']);
 
@@ -202,3 +203,6 @@ export function logEventStats() {
     counts.clear();
     millis.clear();
 }
+
+// ⚠️ TEMPORARY memory probe; see support/memory-probe.js.
+registerMemoryGauges('events', { events: byName, listeners: () => [...byName.values()].reduce((n, entry) => n + entry.listeners.length, 0) });

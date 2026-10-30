@@ -20,9 +20,10 @@
  * ⚠️ READ, MERGE, WRITE BACK - never `setItem('modSettings', ours)`. The object belongs to every
  * mod at once; replacing it is the same destruction by another route.
  *
- * ⚠️ Still only a MIRROR. `UI.setOption` + `saveCheckpoint()` remains the durable channel; this
- * exists because `UI.getOption` came back null for every read in UI.log on 2026-08-27. Losing what
- * is here must always mean "back to the default", never a broken state.
+ * ⚠️ THIS IS THE CHANNEL THAT PERSISTS. `UI.setOption('user', 'Mod', ...)` is written too, but on
+ * 2026-09-30 none of it was anywhere on disk and `UI.getOption` came back null for every read in
+ * UI.log on 2026-08-27. Losing what is here must always mean "back to the default", never a broken
+ * state.
  */
 import { onGameDataStale } from '../support/game-data.js';
 
@@ -131,7 +132,8 @@ export function currentGameKey() {
 }
 
 /**
- * One section of this mod's namespace: `priorities`, `merchantOrders` or `tradeQueue`.
+ * One section of this mod's namespace: `settings`. `priorities`, `merchantOrders` and `tradeQueue`
+ * are only read once more, to migrate them into the save - see ./save-store.js.
  * @returns a plain object, never null - the caller may read straight through it.
  */
 export function readSection(section) {

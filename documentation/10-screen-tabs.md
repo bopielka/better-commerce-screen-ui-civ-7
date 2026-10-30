@@ -293,6 +293,11 @@ not invent a second wording for something the game already explains; it puts the
 somewhere a player is more likely to see it — the title, not three small lines at the card's
 foot.
 
+⚠️ **Under "one trade slot away" that foot band is hidden entirely** (`syncCriteriaBand`, user's
+instruction, 2026-10-30): the heading already names the limit, and with the met criteria filtered
+out the band holds only "Trade Route Limit (1 / 1)". Done with a class on the card, because the
+band is Solid's and has no class of its own beyond its utility classes. Also on an errand in "being established" held back only by the limit - a merchant is already on its way; range and war still show there.
+
 ⚠️ **No "inapplicable" branch needed.** The game's own model marks a criterion inapplicable
 when a civ trait waives it, but that case never reaches `route.status` at all — the engine
 simply leaves the flag out of the array once a trait bypasses it. A flag present in
@@ -446,6 +451,11 @@ range. Taken at face value the first would have been sorted as a diplomacy probl
 A route both over the limit and at war is **not** "just one more slot away", which is the whole
 point of the `limit` group, so `AT_WAR` disqualifies it.
 
+⚠️ **Relations never keep a limit-only route under "unavailable"** (user's instruction,
+2026-10-30, replacing the 2026-09-10 hostility rule): `liftLimitBlocked` moves every `limit` route
+into "available" whoever the leader is. "Unavailable" is for range, and for a war the engine
+reports.
+
 ⚠️ **Routes lifted out of the limit group are remembered**, in a `WeakSet` of the model's route
 objects (`liftedRoutes`), and `limitBlockedTargets` is rebuilt from it on every sync. A lift moves
 the route into "available", where the next lift never sees it again, so rebuilding from that
@@ -496,8 +506,10 @@ route the moment the engine allows it. The journey is looked after by
   the propose-and-buy variant below. On a card blocked by distance, or already running, the
   merchant would arrive to nothing this mod can promise, so those keep no button at all — the
   reason is already written across them.
-- **Dark, not hidden, when the settlement cannot sell.** A price that cannot be paid is still
-  the answer to "what would this cost", and the tooltip says which of the two reasons it is.
+- **Hidden, not dark, when it cannot be clicked** (user, 2026-09-26: only buttons that can be
+  pressed are shown). Applies to all three priced buttons — gold, gold + Influence, and
+  `+ Influence`. A price that can be *planned* (hourglass) still counts as clickable. The one
+  dimmed state left is a purchase in flight (`busy`), which is the feedback for the click itself.
 - **No confirmation dialog**, deliberately: the game's own production list buys with one click
   too, and the price is on the button before it is pressed.
 - Where the merchant is bought is the route's own `nearestCityId` first, and the nearest
@@ -652,6 +664,15 @@ render pass ago priced it with — Influence spent on something else since would
 Buying still goes ahead even if the proposal is refused at that final check: the merchant does
 not need it to have succeeded, only to eventually be accepted by *someone*.
 
+⚠️ **The plan (hourglass) sits on exactly one button** (user, 2026-09-26). With a merchant
+standing idle, a second row appears — `+ [🏛 12]`, "raise the limit and send the merchant you
+already have" — and it is that button that grows the hourglass when the treaty cannot be
+proposed yet (Influence short, or already proposed this turn). The propose-and-buy button then
+shows no hourglass: `trade-queue.js` always takes a spare merchant before buying, so a gold price
+beside the hourglass promised a purchase that would never happen. With no merchant idle, the
+hourglass is on the propose-and-buy button as before. The plus used to go dark instead, which
+left buying a second merchant as the only way to plan the route.
+
 ⚠️ The button hangs at the **end of the title row**, like the gold button; the leader's corner
 holds only the portrait. See `BUY_STYLE` in `trade-buy-merchant.js`.
 
@@ -667,8 +688,11 @@ of pass this mod has been slow for once already.
 
 ### The sort tabs — `trade-sort-tabs.js`
 
-Each section that is still a decision — "available" and "unavailable" — carries a small tab
-strip above its cards, one tab per yield:
+Each list that is still a decision carries a small tab strip, one tab per yield: "available"
+above the routes that need nothing, and the **limit group under its own header**, with its own
+choice (user's instruction, 2026-10-30). "Unavailable" has **no strip**: it opens collapsed and
+holds only what range or war rules out. Header, strip and cards of the limit group take flex
+`order` base − 2, base − 1 and base onwards; `keepSortTabsIn` drops strips a row no longer wants.
 
 ```
 [balanced] [food] [production] [gold] [science] [culture] [influence] [camels] [empire]
@@ -694,8 +718,8 @@ A filter belongs to the list it filters. The chosen tab falls
 back to Balanced if it stops being offered, or the section would empty itself with nothing on
 screen to explain why.
 
-⚠️ **Each section keeps its own choice**, keyed by what the section holds (`available` /
-`unavailable`) and **not** by the element it is drawn in — the rows are Solid's and are thrown
+⚠️ **Each section keeps its own choice**, keyed by what the section holds (`available` / `limit`)
+and **not** by the element it is drawn in — the rows are Solid's and are thrown
 away on every redraw, so a choice remembered against one would not survive the next.
 
 ⚠️ The camel tab is found by the **`BonusResourceSlots` column**, never by resource name —
@@ -752,13 +776,13 @@ as `data-najane-tooltip-scope`). Strips whose row Solid discarded — a section 
 expanded renders a new row — are released the next time a strip is built on a **connected** row;
 `removeSortTabs` releases every strip before removing it.
 
-### The unavailable section opens by default
+### The unavailable section stays collapsed
 
-`commerce-screen-model.js` gives that section `initiallyCollapsed: true`. That made sense for a
-list nobody could act on; this mod splits it into "one trade slot away" and "out of range" and
-puts a sort strip on it, none of which is visible behind a closed ribbon.
+`commerce-screen-model.js` gives that section `initiallyCollapsed: true`, and this mod leaves it
+so (user's instruction, 2026-10-30): with the limit group lifted into "available" it holds only
+routes out of range or blocked by war. It used to be opened, when it still held the limit group.
 
-⚠️ The **data** is changed, not the DOM — `prepareTradeTabData()` in `trade-routes.js`, called
+⚠️ To open a section, the **data** has to be changed, not the DOM — `prepareTradeTabData()` in `trade-routes.js`, called
 from the screen's own transcription in `factory-tab.js`, which is where the tab's data passes
 through this mod. `CollapsibleContainer` reads the flag once into a signal when it is created;
 by the time there is an element to click, the flag has been read, and clicking it from script

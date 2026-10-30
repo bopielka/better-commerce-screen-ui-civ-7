@@ -13,7 +13,6 @@
  */
 import { onEngineEvent } from './events.js';
 import { warn } from '../support/diagnostics.js';
-import { onGameDataStale } from '../support/game-data.js';
 
 const IMPROVE_TRADE_RELATIONS = 'DIPLOMACY_ACTION_IMPROVE_TRADE_RELATIONS';
 
@@ -36,71 +35,6 @@ const proposedThisTurn = new Set();
 onEngineEvent('LocalPlayerTurnBegin', () => proposedThisTurn.clear());
 // Leader ids repeat in another game loaded into the same session.
 onEngineEvent('GameStarted', () => proposedThisTurn.clear());
-
-// ⚠️ `GameInfo` holds the age being played; the bands are read from it and belong to that age -
-// or to another game's setup, which `onGameDataStale` also covers.
-onGameDataStale(() => {
-    hostileCeiling = undefined;
-});
-
-/**
- * The relationship band below which this mod stops offering to raise the trade limit.
- * ⚠️ The NAME is hardcoded, the NUMBER is not: the band's edge lives in
- * `DiplomacyPlayerRelationships` (`-2` today) and is balance data this mod has no business
- * carrying. Same footing as the action name at the top of this file.
- */
-const HOSTILE_RELATIONSHIP = 'PLAYER_RELATIONSHIP_HOSTILE';
-
-let hostileCeiling;
-
-function hostileBandCeiling() {
-    if (hostileCeiling !== undefined) {
-        return hostileCeiling;
-    }
-    hostileCeiling = null;
-    try {
-        for (const row of GameInfo.DiplomacyPlayerRelationships ?? []) {
-            if (row.DiplomacyPlayerRelationshipType === HOSTILE_RELATIONSHIP) {
-                const ceiling = Number(row.MaxRelationship);
-                hostileCeiling = Number.isFinite(ceiling) ? ceiling : null;
-                break;
-            }
-        }
-    } catch (error) {
-        warn(`could not read the relationship bands: ${error}`);
-    }
-    return hostileCeiling;
-}
-
-/**
- * Whether relations with this leader are too poor for this mod to present the treaty as a way out.
- *
- * ⚠️ NOT THE ENGINE'S ANSWER, and not a refusal at all: measured at `level=-8`, `canStart`
- * still allowed the proposal and complained only about the price. This is a judgement about
- * whether it would be ACCEPTED, so it decides one thing only - which SECTION a limit-blocked route
- * is listed under (`canRaiseLimitLater`). What the buttons may offer to wait for is the engine's
- * own refusal; see `refusalClearsWithTheTurn`.
- *
- * ⚠️ WAR IS DELIBERATELY NOT ASKED ABOUT HERE (user's instruction, 2026-09-10: Prussia can trade
- * while at war). Whether a war stops a route is a CIV ABILITY, and the engine already accounts for
- * it - `projectPossibleTradeRoutes` reports `AT_WAR` in a route's status only where it actually
- * blocks, and `unavailableGroupFor` reads that. A war test here would overrule the one thing that
- * knows about the exceptions.
- */
-export function relationshipBlocksTrade(leaderId) {
-    try {
-        const diplomacy = Players.get(GameContext.localPlayerID)?.Diplomacy;
-        if (!diplomacy) {
-            return false;
-        }
-        const level = Number(diplomacy.getRelationshipLevel?.(leaderId));
-        const ceiling = hostileBandCeiling();
-        return Number.isFinite(level) && ceiling !== null && level < ceiling;
-    } catch (error) {
-        // Cannot tell - assume it is not blocked, which only means the old behaviour.
-        return false;
-    }
-}
 
 function actionType() {
     return DiplomacyActionTypes[IMPROVE_TRADE_RELATIONS];

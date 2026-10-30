@@ -93,6 +93,7 @@ where a patch is most likely to break the mod.
 
 | File | What it is in the game | How this mod uses it |
 |---|---|---|
+| `utility-serialize.js` | `Catalog` — the game's per-player store of dynamic properties, i.e. data written into the save file. | Read-only. Used by [`ui/engine/save-store.js`](../../ui/engine/save-store.js) to keep merchant orders, the trade queue, resource locks and settlement priorities in the save. ⚠️ A player-catalog write is queued; the store is read once and then served from memory. |
 | `utilities-plotcoord.js` | `PlotCoord` — validates a plot coordinate (`PlotCoord.isValid(location)`). | Read-only. Used by [`ui/engine/treasure-convoys.js`](../../ui/engine/treasure-convoys.js) to validate treasure fleet map locations. ⚠️ Noted in that file as a trap: it *looks* like it belongs to the game's global namespace (like most engine names) but is a plain ES module export and must be imported. |
 
 ## `core/vendor/solid-js/`
