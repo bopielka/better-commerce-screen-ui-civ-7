@@ -58,8 +58,9 @@ out would fail to parse and take the whole mod down with it.
 1:1 copies of the original game `.js` files this mod imports from or overrides (via
 `ComponentRegistry`), one sub-folder per game version — see
 [`game-files-snapshots/README.md`](game-files-snapshots/README.md) for the file-by-file
-breakdown and how to add the next one. It is **tracked in git** (not ignored), so a future update
-can be diffed against exactly what was captured. ⚠️ It never reaches the player's mod folder —
+breakdown and how to add the next one. ⚠️ The version folders are **ignored by git** (user's
+instruction, 2026-11-13) and live only on this machine; only that README is tracked. A fresh
+clone has none - capture them from the game install. ⚠️ It never reaches the player's mod folder —
 `deploy.sh` only copies `.modinfo` + `ui/` + `text/` + `config/` (see above); this folder is a
 sibling of those, outside them by construction, not by an exclude list.
 
@@ -150,8 +151,8 @@ Two shared choke points worth knowing before writing anything new:
 7. **Set `DIAGNOSTICS = false` before publishing.**
 8. **`game-files-snapshots/` keeps AT MOST two versions: newest, and ONE version back** (user's
    instruction, 2026-09-20) — the opposite rule from the changelog in 5. Adding a third snapshot
-   folder means deleting the oldest one in the same change. As of 1.18 there is only `1.5.0/`,
-   because that is the first game update this process covers.
+   folder means deleting the oldest one in the same change. As of 1.21 there are `1.5.0/` and
+   `1.5.1/` - the limit, so the next game update deletes `1.5.0/`.
 9. **A change that makes the mod import from, or override, an original game file not already under
    `game-files-snapshots/<newest>/` must add that file there in the same change** (user's
    instruction, 2026-09-20) — the snapshot has to stay a complete inventory of what the mod

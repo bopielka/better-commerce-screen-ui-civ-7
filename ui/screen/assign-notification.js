@@ -28,6 +28,7 @@ import CommerceOptions, {
 } from '../options/najane-commerce-options.js';
 import { onLocalPlayerEvent } from '../engine/events.js';
 import { heldResourceType } from '../engine/resource-types.js';
+import { copyKey } from '../engine/resource-identity.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const NOTIFICATION_TYPE = 'NOTIFICATION_ASSIGN_NEW_RESOURCES';
@@ -155,7 +156,7 @@ function computeAnythingCanBePlaced() {
             }
             const slotted = resources.getAssignedResources() ?? [];
             for (const resource of slotted) {
-                assigned.add(resource.value);
+                assigned.add(copyKey(resource));
             }
             if ((resources.getAssignedResourcesCap() ?? 0) - slotted.length > 0) {
                 // The factory and town answers are carried along so the pair loop below asks
@@ -180,16 +181,21 @@ function computeAnythingCanBePlaced() {
         // two loops below. All three used to run the same lookup over the same list.
         const unassigned = [];
         for (const resource of player?.Resources?.getResources() ?? []) {
-            if (assigned.has(resource.value)) {
+            if (assigned.has(copyKey(resource))) {
                 continue;
             }
             const resourceType = heldResourceType(resource);
-            if (!isAssignableToSettlement({ resourceType, resourceValue: resource.value })) {
+            if (!isAssignableToSettlement({ resourceType, resourceValue: resource.value, isOffMap: resource.isOffMap })) {
                 continue;
             }
             // ⚠️ Shaped so `resourceClassOf` can read it: it looks for `resourceType` first and
             // falls back to `resourceValue`, which the old shape did not carry.
-            unassigned.push({ value: resource.value, resourceValue: resource.value, resourceType });
+            unassigned.push({
+                value: resource.value,
+                resourceValue: resource.value,
+                isOffMap: resource.isOffMap === true,
+                resourceType,
+            });
         }
 
         /*
@@ -229,7 +235,7 @@ function computeAnythingCanBePlaced() {
                 if (needsCity && settlement.isTown) {
                     continue;
                 }
-                if (canAssign(settlement.cityID, resource.value)) {
+                if (canAssign(settlement.cityID, resource.value, resource.isOffMap)) {
                     return true;
                 }
             }

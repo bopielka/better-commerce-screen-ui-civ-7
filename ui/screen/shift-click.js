@@ -53,9 +53,13 @@ function activateAt(x, y) {
             return;
         }
         if (resource.cityID) {
-            model.clickSlottedResource({ resourceValue: resource.resourceValue, cityID: resource.cityID });
+            model.clickSlottedResource({
+                resourceValue: resource.resourceValue,
+                cityID: resource.cityID,
+                isOffMap: resource.isOffMap,
+            });
         } else {
-            model.clickAvailableResource({ resourceValue: resource.resourceValue });
+            model.clickAvailableResource({ resourceValue: resource.resourceValue, isOffMap: resource.isOffMap });
         }
         log(`shift + click selected ${resource.resourceType}`);
         return;

@@ -4,8 +4,8 @@
  *
  * ⚠️ STORED IN THE SAVE (./save-store.js), unlike Resource+'s: the button they guard is the one
  * you press without looking, and a loaded save must hold exactly the locks it was saved with.
- * Both halves of the key are game state: `resourceValue` is the resource's PLOT INDEX, and a
- * settlement's component id.
+ * Both halves of the key are game state: the resource's `copyKey` (its PLOT INDEX, or `o<id>` for
+ * an off-map one - ./resource-identity.js), and a settlement's component id.
  *
  * ⚠️ In engine/, not screen/, because engine/unassign.js must obey it. The padlock itself is
  * screen/resource-locks-ui.js; the Options switch is ./resource-lock-setting.js, which is what
@@ -13,6 +13,7 @@
  */
 import { onLocalPlayerEvent } from './events.js';
 import { isResourceLockingAllowed, ResourceLocksChangedEventName } from './resource-lock-setting.js';
+import { copyFromEvent, copyKeyOf } from './resource-identity.js';
 import { savedMap, writeSaved } from './save-store.js';
 import { log, warn } from '../support/diagnostics.js';
 
@@ -31,9 +32,9 @@ const LOCKED = 1;
  * pin every copy of it, and locking a settlement would pin whatever happened to be in it.
  * ⚠️ '.' as the separator: the save store keeps the map as `key=value,...`.
  */
-function lockKey(cityID, resourceValue) {
+function lockKey(cityID, resourceValue, isOffMap) {
     const city = cityID?.id ?? cityID;
-    return `${String(city)}.${String(resourceValue)}`;
+    return `${String(city)}.${String(copyKeyOf(resourceValue, isOffMap))}`;
 }
 
 /** Asked for every padlock on every injector pass and by unassign.js per assigned resource. */
@@ -41,8 +42,8 @@ function readLock(key) {
     return savedMap(STORE)?.has(key) ?? false;
 }
 
-export function isResourceLocked(cityID, resourceValue) {
-    return isResourceLockingAllowed() && readLock(lockKey(cityID, resourceValue));
+export function isResourceLocked(cityID, resourceValue, isOffMap = false) {
+    return isResourceLockingAllowed() && readLock(lockKey(cityID, resourceValue, isOffMap));
 }
 
 function announce() {
@@ -54,8 +55,8 @@ function announce() {
 }
 
 /** @returns the new state, so a caller can repaint without asking again. */
-export function toggleResourceLock(cityID, resourceValue) {
-    const key = lockKey(cityID, resourceValue);
+export function toggleResourceLock(cityID, resourceValue, isOffMap = false) {
+    const key = lockKey(cityID, resourceValue, isOffMap);
     const nowLocked = !readLock(key);
     if (!writeSaved(STORE, key, nowLocked ? LOCKED : 0)) {
         warn('could not save a resource lock');
@@ -67,8 +68,8 @@ export function toggleResourceLock(cityID, resourceValue) {
 }
 
 /** Takes the lock off a placement that no longer exists. */
-function clearResourceLock(cityID, resourceValue) {
-    const key = lockKey(cityID, resourceValue);
+function clearResourceLock(cityID, resourceValue, isOffMap) {
+    const key = lockKey(cityID, resourceValue, isOffMap);
     // ⚠️ Only when it was actually locked. This runs on every unassignment in the game,
     // including the hundreds a "Reassign all" fires, and each write reaches the save.
     if (!readLock(key)) {
@@ -96,10 +97,10 @@ export function startResourceLockUpkeep() {
     onLocalPlayerEvent('ResourceUnassigned', (data) => {
         // ⚠️ `targetCity` is the settlement it LEFT - the same field the game's own model reads.
         const city = data?.targetCity;
-        const location = data?.location;
-        if (!city || !location) {
+        const resource = city ? copyFromEvent(data) : null;
+        if (!resource) {
             return;
         }
-        clearResourceLock(city, GameplayMap.getIndexFromLocation(location));
+        clearResourceLock(city, resource.resourceValue, resource.isOffMap);
     });
 }

@@ -9,6 +9,7 @@
  */
 import { onGameDataStale } from '../support/game-data.js';
 import { isResourceLocked } from './resource-locks.js';
+import { copyKey } from './resource-identity.js';
 
 const bonusSlotsByType = new Map();
 let indexed = false;
@@ -73,16 +74,16 @@ export function companionCandidates(settlement, doomed) {
         return [];
     }
 
-    const alreadyGoing = new Set(doomed.map((resource) => resource.resourceValue));
+    const alreadyGoing = new Set(doomed.map(copyKey));
     const candidates = [];
 
     const slotted = settlement.slottedResources ?? [];
     for (let i = slotted.length - 1; i >= 0 && candidates.length < slotsLost; i--) {
         const candidate = slotted[i];
         if (
-            alreadyGoing.has(candidate.resourceValue)
+            alreadyGoing.has(copyKey(candidate))
             || grantsBonusSlots(candidate.resourceType)
-            || isResourceLocked(candidate.cityID, candidate.resourceValue)
+            || isResourceLocked(candidate.cityID, candidate.resourceValue, candidate.isOffMap)
         ) {
             continue;
         }

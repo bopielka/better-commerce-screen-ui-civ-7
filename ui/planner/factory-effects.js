@@ -23,6 +23,7 @@
  */
 import { effectTypeOf, resourceModifiers } from './effects.js';
 import { scoringRate, trackerRequirement } from './gdp.js';
+import { originCityOf } from '../engine/resource-identity.js';
 import { warn } from '../support/diagnostics.js';
 
 const FACTORY_CLASS = 'RESOURCECLASS_FACTORY';
@@ -250,7 +251,7 @@ function heldFactoryResources() {
             }
             const entry = byType.get(definition.ResourceType) ?? { total: 0, definition, origins: new Map() };
             entry.total += 1;
-            recordOrigin(entry.origins, resource.value);
+            recordOrigin(entry.origins, resource.value, resource.isOffMap === true);
             byType.set(definition.ResourceType, entry);
         });
     } catch (error) {
@@ -260,10 +261,10 @@ function heldFactoryResources() {
 }
 
 /** Which settlement, under which leader, this one copy came from. */
-function recordOrigin(origins, resourceValue) {
+function recordOrigin(origins, resourceValue, isOffMap) {
     try {
-        const cityID = Game.Resources.getOriginCity(resourceValue);
-        const city = Cities.get(cityID);
+        const cityID = originCityOf(resourceValue, isOffMap);
+        const city = cityID ? Cities.get(cityID) : null;
         if (!city) {
             return;
         }

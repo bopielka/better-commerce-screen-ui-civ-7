@@ -15,3 +15,7 @@ scratch/
 
 # Written by the deploy scripts on every deploy; the value is never source.
 ui/support/build-stamp.js
+
+# Copies of the game's own files, one folder per game version; local reference only, never
+# published. The README beside them (the update procedure) stays tracked.
+game-files-snapshots/*/

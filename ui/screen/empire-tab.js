@@ -43,6 +43,9 @@ const CAPPED_TOOLTIP = 'LOC_NAJANE_COMMERCE_EMPIRE_CAPPED';
 /** Shown on a bonus that only pays during a Celebration, while one is not running. */
 const CELEBRATION_TOOLTIP = 'LOC_NAJANE_COMMERCE_EMPIRE_CELEBRATION_ONLY';
 
+/** The game's own label (1.5.1+) for copies that came from no settlement. */
+const OFF_MAP_ORIGIN = 'LOC_UI_ORIGIN_OFF_MAP';
+
 const STYLE = `
 .${CLASS}-list {
     display: flex;
@@ -361,15 +364,33 @@ function descriptionFor(resource) {
     return (resource.description ?? []).map((key) => Locale.compose(key));
 }
 
+/**
+ * Who a group of copies came from, composed - or null for a group nobody can name.
+ * ⚠️ Game 1.5.1: copies with no settlement of origin arrive as one group under
+ * `PlayerIds.NO_PLAYER`; skipping every leaderless group made them vanish from the tooltip.
+ */
+function originName(originData) {
+    try {
+        if (originData.leaderId === PlayerIds.NO_PLAYER) {
+            return Locale.compose(OFF_MAP_ORIGIN);
+        }
+        const leader = Players.get(originData.leaderId);
+        return leader ? Locale.compose(leader.name) : null;
+    } catch (error) {
+        warn(`could not name where a resource came from: ${error}`);
+        return null;
+    }
+}
+
 /** Where the copies came from: a leader per line, that leader's settlements indented. */
 function originLines(resource) {
     const origins = [];
     for (const originData of resource.resourceOriginData ?? []) {
-        const leader = Players.get(originData.leaderId);
-        if (!leader) {
+        const name = originName(originData);
+        if (!name) {
             continue;
         }
-        origins.push(`${Locale.compose(leader.name)}:`);
+        origins.push(`${name}:`);
         for (const city of Object.values(originData.resourceOriginCities ?? {})) {
             origins.push(
                 `        ${Locale.compose(
@@ -387,15 +408,16 @@ function originLines(resource) {
 function originGroups(resource) {
     const groups = [];
     for (const originData of resource.resourceOriginData ?? []) {
-        const leader = Players.get(originData.leaderId);
-        if (!leader) {
+        const name = originName(originData);
+        if (!name) {
             continue;
         }
         const cities = Object.values(originData.resourceOriginCities ?? {});
         const total = cities.reduce((sum, city) => sum + (city.contributionCount ?? 0), 0);
         groups.push({
-            leaderId: originData.leaderId,
-            title: `${Locale.compose(leader.name)}: ${total}`,
+            // No portrait for the off-map group: there is no leader to draw.
+            leaderId: originData.leaderId === PlayerIds.NO_PLAYER ? undefined : originData.leaderId,
+            title: `${name}: ${total}`,
             lines: cities.map((city) =>
                 Locale.compose(
                     'LOC_COMMERCE_EMPIRE_ORIGIN_CITY_CONTRIBUTION_COUNTER',

@@ -11,6 +11,7 @@ through here — and everything the game raises comes back through here too.
 | `unassign.js` | releasing, and who has to leave with what |
 | `resource-slots.js` | `BonusResourceSlots` (camels) |
 | `resource-types.js` | a held resource's type and class, and whether it can be assigned at all |
+| `resource-identity.js` | **which** resource a record names - value AND off-map flag - and its origin settlement |
 | `mod-storage.js` | this mod's `localStorage` namespace, and the game-seed key every store files under |
 | `merchant.js` | buying a merchant, walking it, signing the route |
 | `merchant-orders.js` | the standing order a bought merchant carries, turn after turn |
@@ -158,23 +159,25 @@ its arguments:
 
 | Intent | Arguments |
 |---|---|
-| assign | `{ Location, City }` |
-| release one | `{ Location, City, Action: Deactivate }` |
+| assign | `{ Location, City }` (+ `Flags: true, ID` off-map) |
+| release one | `{ Location, City, Action: Deactivate }` (+ `ID` off-map) |
 | empty a settlement | `{ ResourceType: NO_RESOURCE, City, Action: Clear }` |
 
 `Location` is `GameplayMap.getLocationFromIndex(resourceValue)`. This mirrors `assignResource`
 and `unassignResource` in the game's `commerce-screen-model.ts`.
 
+⚠️ An **off-map** resource's value is an id, not a plot, so `Location` alone names a different
+resource; the game names it by `ID`. On-map args are byte-for-byte what shipped before.
+
 ### Exports
 
 ```js
-canAssign(cityID, resourceValue)            // → boolean
-requestAssign(cityID, resourceValue)        // sends without re-checking
-canUnassign(cityID, resourceValue)          // → boolean, guards null/undefined/-1
-requestUnassign(cityID, resourceValue)      // sends without re-checking
-unassignIfAllowed(cityID, resourceValue)    // check + send in one go
-requestClearSettlement(cityID)              // one operation, not one per resource
-assignRefusalReasons(cityID, resourceValue) // → localised strings; diagnostics only
+canAssign(cityID, resourceValue, isOffMap = false)            // → boolean
+requestAssign(cityID, resourceValue, isOffMap = false)        // sends without re-checking
+canUnassign(cityID, resourceValue, isOffMap = false)          // → boolean, guards null/undefined/-1
+requestUnassign(cityID, resourceValue, isOffMap = false)      // sends without re-checking
+requestClearSettlement(cityID)                                // one operation, not one per resource
+assignRefusalReasons(cityID, resourceValue, isOffMap = false) // → localised strings; diagnostics only
 ```
 
 ⚠️ **Everything that talks to `PlayerOperations` belongs here.** This module already said so
@@ -192,6 +195,30 @@ that asks it in a loop must cache (see `forgetEligibility` in `ui/planner/scorin
 settlements that cannot possibly accept anything (see `ui/screen/assign-notification.js`).
 
 ⚠️ `sendRequest` only **queues**. See `wait.js` below.
+
+---
+
+## `resource-identity.js` — which resource a record names
+
+A resource's `value` is its **plot index** - unless it is off-map, where it is an id from a
+separate sequence, and the two can be equal (the game added `DoesMatchResource` in 1.5.1 for this).
+So `value` alone is ambiguous, and everything that collects or compares resources goes through:
+
+```js
+copyKey(resource)            // Set/Map key: the bare value on-map, `o<id>` off-map
+sameCopy(a, b)               // value AND off-map flag
+copyFromEvent(data)          // ResourceAssigned/Unassigned payload → { resourceValue, isOffMap }
+resourceHashOf(value, offMap) // getResourceOnPlot / getOffMapUniqueResourceFromId
+originCityOf(value, offMap)  // getOriginCity / getOffMapResourceOriginCity; may be null off-map
+```
+
+Both shapes are accepted: an engine entry (`value`, `isOffMap`) and a record (`resourceValue`,
+`isOffMap`). Every record the mod builds carries `isOffMap`, as the screen's own do.
+
+⚠️ The on-map key is the **bare value** on purpose: resource locks in existing saves
+(`<city>.<plot>`) still match. An off-map lock is `<city>.o<id>`.
+
+⚠️ `place.js`'s `scope` and `auto-assign.js`'s `known` hold `copyKey`s, not values.
 
 ---
 

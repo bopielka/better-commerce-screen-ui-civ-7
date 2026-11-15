@@ -291,7 +291,11 @@ export function gdpPerTurn() {
             }
             const isTown = !!city.isTown;
             for (const held of assigned) {
-                const resource = { resourceValue: held.value, resourceType: heldResourceType(held) };
+                const resource = {
+                    resourceValue: held.value,
+                    isOffMap: held.isOffMap === true,
+                    resourceType: heldResourceType(held),
+                };
                 const className = resourceClassOf(resource);
                 if (className === FACTORY_CLASS) {
                     fromFactories += paying('factory');

@@ -9,6 +9,7 @@ import { ConstructibleHasTagType } from '/base-standard/ui/utilities/utilities-t
 
 import { isFactoryAge } from '../engine/age.js';
 import { heldResourceType, isAssignableResourceType, resourceTypeFromHash } from '../engine/resource-types.js';
+import { copyKey, resourceHashOf } from '../engine/resource-identity.js';
 
 import { onGameDataStale } from '../support/game-data.js';
 import { DIAGNOSTICS, warn } from '../support/diagnostics.js';
@@ -57,13 +58,8 @@ function yieldTypesFor(resourceType) {
     return list;
 }
 
-function resourceTypeOf(resourceValue) {
-    try {
-        const instance = Game.Resources.getResourceOnPlot(resourceValue);
-        return resourceTypeFromHash(instance.resource);
-    } catch (error) {
-        return null;
-    }
+function resourceTypeOf(resourceValue, isOffMap) {
+    return resourceTypeFromHash(resourceHashOf(resourceValue, isOffMap));
 }
 
 /**
@@ -254,6 +250,7 @@ function settlementFrom(city) {
             const type = heldResourceType(resource);
             return {
                 resourceValue: resource.value,
+                isOffMap: resource.isOffMap === true,
                 resourceType: type,
                 cityID: city.id,
                 yieldTypes: type ? yieldTypesFor(type) : EMPTY_YIELD_TYPES,
@@ -352,19 +349,21 @@ export function buildAvailableResources(settlements) {
     const assigned = new Set();
     for (const settlement of settlements) {
         for (const resource of settlement.slottedResources) {
-            assigned.add(resource.resourceValue);
+            assigned.add(copyKey(resource));
         }
     }
 
     const available = [];
     for (const resource of all) {
-        const value = resource.value;
-        if (assigned.has(value)) {
+        if (assigned.has(copyKey(resource))) {
             continue;
         }
-        const type = heldResourceType(resource) ?? resourceTypeOf(value);
+        const value = resource.value;
+        const isOffMap = resource.isOffMap === true;
+        const type = heldResourceType(resource) ?? resourceTypeOf(value, isOffMap);
         const entry = {
             resourceValue: value,
+            isOffMap,
             resourceType: type,
             cityID: undefined,
             yieldTypes: type ? yieldTypesFor(type) : EMPTY_YIELD_TYPES,

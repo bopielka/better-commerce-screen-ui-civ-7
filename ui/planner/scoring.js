@@ -43,6 +43,7 @@
  * ⚠️ "Balanced" means production in a city and food in a town, NOT "whatever it has least of".
  */
 import { canAssign } from '../engine/operations.js';
+import { copyKey } from '../engine/resource-identity.js';
 import { modifierApplies } from './effects.js';
 import { allSettlements, pooledResources } from '../model/screen-model.js';
 import { isFactoryFirstEnabled } from './factory-first-setting.js';
@@ -134,7 +135,7 @@ function resourceKey(resource) {
 
 //#region eligibility
 /**
- * ⚠️ NESTED cityKey -> resourceValue -> answer, and the nesting is the point: dropping one
+ * ⚠️ NESTED cityKey -> copyKey -> answer, and the nesting is the point: dropping one
  * settlement's answers used to walk every key in the cache looking for a matching suffix, once
  * per placement - `pool x settlements` string comparisons and a copy of the key list, to
  * invalidate one settlement.
@@ -150,16 +151,17 @@ export function forgetEligibility(cityID = null) {
     eligibilityByCity.delete(cityKey(cityID));
 }
 
-function canAssignCached(resourceValue, cityID, key) {
+function canAssignCached(resource, cityID, key) {
     let byResource = eligibilityByCity.get(key);
     if (!byResource) {
         byResource = new Map();
         eligibilityByCity.set(key, byResource);
     }
-    let answer = byResource.get(resourceValue);
+    const copy = copyKey(resource);
+    let answer = byResource.get(copy);
     if (answer === undefined) {
-        answer = canAssign(cityID, resourceValue);
-        byResource.set(resourceValue, answer);
+        answer = canAssign(cityID, resource.resourceValue, resource.isOffMap);
+        byResource.set(copy, answer);
     }
     return answer;
 }
@@ -170,10 +172,10 @@ function assignableCopy(group, settlement, blockedPairs, key) {
         // ⚠️ The pair key is only built when there is something to look up in - the normal case
         // is an empty set, and this runs per copy per settlement per placement.
         if (blockedPairs.size > 0
-            && blockedPairs.has(assignmentPairKey(resource.resourceValue, settlement.cityID))) {
+            && blockedPairs.has(assignmentPairKey(copyKey(resource), settlement.cityID))) {
             continue;
         }
-        if (canAssignCached(resource.resourceValue, settlement.cityID, key)) {
+        if (canAssignCached(resource, settlement.cityID, key)) {
             return resource;
         }
     }
@@ -473,8 +475,9 @@ function settlementResourceCapacity(settlement) {
     return (settlement.slottedResources?.length ?? 0) + (settlement.availableSlots?.length ?? 0);
 }
 
-export function assignmentPairKey(resourceValue, cityID) {
-    return `${String(resourceValue)}:${cityKey(cityID)}`;
+/** @param resourceCopyKey the resource's `copyKey`, never its bare value. */
+export function assignmentPairKey(resourceCopyKey, cityID) {
+    return `${String(resourceCopyKey)}:${cityKey(cityID)}`;
 }
 
 /**

@@ -10,7 +10,7 @@
  * cannot see. What is checked now is STATE: anything slotted that the player has not been seen to
  * slot is put back. The events are only cues to look.
  *
- * ⚠️ `approved` IS THE WHOLE SAFETY MECHANISM. It holds the resource values the player is known to
+ * ⚠️ `approved` IS THE WHOLE SAFETY MECHANISM. It holds the `copyKey`s of resources the player is known to
  * have placed, and it is filled from three places: the first look when the game loads, every
  * assignment made with the Commerce screen open, and the grace windows. A resource that is not in
  * it and is nonetheless sitting in a settlement was put there by the engine.
@@ -28,6 +28,8 @@ import { getCommerceModel } from '../model/screen-model.js';
 import { isAssignmentInProgress } from './run.js';
 import { onEngineEvent, onEngineEvents, onLocalPlayerEvent, stopEngineEvents } from '../engine/events.js';
 import { waitForEngineEvent } from '../engine/wait.js';
+import { copyFromEvent, copyKey } from '../engine/resource-identity.js';
+import { heldResourceType } from '../engine/resource-types.js';
 
 import CommerceOptions, {
     AutoAssignMode,
@@ -124,13 +126,13 @@ function withinGrace() {
     return now - attachedAt < SETTLE_IN_MS || now - bulkArrivalAt < BULK_GRACE_MS;
 }
 
-/** resourceValue -> the settlement holding it, for every slotted resource the player owns. */
+/** `copyKey` -> `{ cityID, held }`, for every slotted resource the player owns. */
 function slottedByValue() {
     const byValue = new Map();
     try {
         for (const city of Players.get(GameContext.localPlayerID)?.Cities?.getCities() ?? []) {
             for (const resource of city.Resources?.getAssignedResources() ?? []) {
-                byValue.set(resource.value, city.id);
+                byValue.set(copyKey(resource), { cityID: city.id, held: resource });
             }
         }
     } catch (error) {
@@ -146,17 +148,16 @@ function adopt(why) {
 }
 
 /** ⚠️ For the log line only - a name this cannot read must not stop the resource coming back. */
-function nameOf(resourceValue) {
+function nameOf(held) {
     try {
-        const resource = Game.Resources.getResourceOnPlot(resourceValue);
-        const definition = GameInfo.Resources.lookup(resource?.resource);
+        const definition = GameInfo.Resources.lookup(heldResourceType(held));
         if (definition) {
             return Locale.compose(definition.Name);
         }
     } catch (error) {
         // Deliberately quiet: see above.
     }
-    return `resource ${resourceValue}`;
+    return `resource ${copyKey(held)}`;
 }
 
 async function drain() {
@@ -166,21 +167,22 @@ async function drain() {
     draining = true;
     try {
         while (queue.length > 0) {
-            const { cityID, resourceValue, resourceName } = queue.shift();
-            if (pushedBack.has(resourceValue)) {
+            const { cityID, resourceValue, isOffMap, resourceName } = queue.shift();
+            const key = copyKey({ resourceValue, isOffMap });
+            if (pushedBack.has(key)) {
                 // Returned once already and the game put it straight back. Leaving it is the
                 // safe failure; taking it out again for ever is not.
                 warn(`${resourceName} was slotted again after being returned; leaving it this turn`);
                 continue;
             }
-            if (!canUnassign(cityID, resourceValue)) {
+            if (!canUnassign(cityID, resourceValue, isOffMap)) {
                 warn(`the game slotted ${resourceName} and the engine will not let it out again`);
                 continue;
             }
-            if (!requestUnassign(cityID, resourceValue)) {
+            if (!requestUnassign(cityID, resourceValue, isOffMap)) {
                 continue;
             }
-            pushedBack.add(resourceValue);
+            pushedBack.add(key);
             await waitForEngineEvent(UNASSIGNED_EVENT);
             /*
              * ⚠️ `warn`, not `log`. This is the mod changing the board without being asked, and
@@ -219,15 +221,21 @@ function check(trigger, { isRetry = false, isSweep = false } = {}) {
 
         const slotted = slottedByValue();
         const doomed = [];
-        for (const [resourceValue, cityID] of slotted) {
-            if (!approved.has(resourceValue)) {
-                doomed.push({ cityID, resourceValue, resourceName: nameOf(resourceValue) });
+        for (const [key, { cityID, held }] of slotted) {
+            if (!approved.has(key)) {
+                doomed.push({
+                    key,
+                    cityID,
+                    resourceValue: held.value,
+                    isOffMap: held.isOffMap === true,
+                    resourceName: nameOf(held),
+                });
             }
         }
 
         // Everything still in a settlement and not on its way out is the board as it stands.
-        const returning = new Set(doomed.map((entry) => entry.resourceValue));
-        approved = new Set([...slotted.keys()].filter((value) => !returning.has(value)));
+        const returning = new Set(doomed.map((entry) => entry.key));
+        approved = new Set([...slotted.keys()].filter((key) => !returning.has(key)));
 
         if (doomed.length === 0) {
             // ⚠️ The improvement finishes before the resource lands; look again shortly. A retry
@@ -295,9 +303,9 @@ function noteIfMine(data) {
         return false;
     }
     try {
-        const location = data?.location;
-        if (location) {
-            approved?.add(GameplayMap.getIndexFromLocation(location));
+        const resource = copyFromEvent(data);
+        if (resource) {
+            approved?.add(copyKey(resource));
         }
     } catch (error) {
         warn(`could not note an assignment as yours: ${error}`);

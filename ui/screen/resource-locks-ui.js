@@ -9,6 +9,7 @@ import {
     isResourceLockingAllowed,
     toggleResourceLock,
 } from '../engine/resource-locks.js';
+import { copyKey } from '../engine/resource-identity.js';
 import { bindActivatable, ensureStyle, makeElement, setTooltip } from '../support/dom.js';
 import { settlementCardsOnScreen, watchCommerceScreen } from './screen-observer.js';
 import { warn } from '../support/diagnostics.js';
@@ -88,8 +89,8 @@ function composed(key) {
     return text;
 }
 
-function paint(lock, cityID, resourceValue) {
-    const locked = isResourceLocked(cityID, resourceValue);
+function paint(lock, cityID, resource) {
+    const locked = isResourceLocked(cityID, resource.resourceValue, resource.isOffMap === true);
     /*
      * ⚠️ Nothing is written when nothing changed. Both attributes below are DOM mutations inside
      * the element the screen watcher is watching, so repainting a padlock that already reads
@@ -135,12 +136,12 @@ function injectOnce() {
             }
 
             slot.classList.add(SLOT_CLASS);
-            const key = `${settlement.cityID?.id}:${resource.resourceValue}`;
+            const key = `${settlement.cityID?.id}:${copyKey(resource)}`;
             const existing = slot.querySelector(`.${LOCK_CLASS}`);
             if (existing) {
         // ⚠️ Only reused when it still belongs to the same resource - the slots are recycled.
                 if (existing.dataset.najaneLockKey === key) {
-                    paint(existing, settlement.cityID, resource.resourceValue);
+                    paint(existing, settlement.cityID, resource);
                     return;
                 }
                 existing.remove();
@@ -151,10 +152,10 @@ function injectOnce() {
     // returned the padlock instead of the resource under it broke Shift-click on locked tiles.
             lock.setAttribute('data-najane-overlay', 'true');
             lock.dataset.najaneLockKey = key;
-            paint(lock, settlement.cityID, resource.resourceValue);
+            paint(lock, settlement.cityID, resource);
             bindActivatable(lock, () => {
-                toggleResourceLock(settlement.cityID, resource.resourceValue);
-                paint(lock, settlement.cityID, resource.resourceValue);
+                toggleResourceLock(settlement.cityID, resource.resourceValue, resource.isOffMap === true);
+                paint(lock, settlement.cityID, resource);
             });
             slot.appendChild(lock);
         });

@@ -23,8 +23,9 @@ import { InputEngineEventName } from '/core/ui/input/input-support.js';
 import { CommerceResourcesContainer } from '/base-standard/ui-next/screens/commerce/commerce-screen-resources-tab.js';
 import { useCommerceScreenContext } from '/base-standard/ui-next/screens/commerce/commerce-screen-model.js';
 
-import { clearCommerceModel, findSlottedResourceAtPoint, setCommerceModel } from '../model/screen-model.js';
+import { clearCommerceModel, deselectQuietly, findSlottedResourceAtPoint, setCommerceModel } from '../model/screen-model.js';
 import { unassignAllOfTypeInSettlement, unassignOne } from '../engine/unassign.js';
+import { sameCopy } from '../engine/resource-identity.js';
 import { refreshHighlight, startHoverHighlight, stopHoverHighlight } from './hover-highlight.js';
 import { startBulkAssign, stopBulkAssign } from './bulk-assign.js';
 import { startShiftClick, stopShiftClick } from './shift-click.js';
@@ -93,8 +94,8 @@ function CommerceResourcesContainerWithRightClickUnassign(props) {
         );
 
         // A resource that is about to leave its slot must not stay selected.
-        if (model.selectedResource().resourceValue === slottedResource.resourceValue) {
-            model.deselectSelectedResource();
+        if (sameCopy(model.selectedResource(), slottedResource)) {
+            deselectQuietly(model);
         }
 
     // Unassigning is a sequence of engine round-trips, not one call.

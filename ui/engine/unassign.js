@@ -17,6 +17,7 @@
 import { canAssign, canUnassign, requestClearSettlement, requestUnassign } from './operations.js';
 import { companionCandidates, grantsBonusSlots } from './resource-slots.js';
 import { isResourceLocked } from './resource-locks.js';
+import { sameCopy } from './resource-identity.js';
 import { heldResourceType } from './resource-types.js';
 import { waitForEngineEvent } from './wait.js';
 import { log, warn } from '../support/diagnostics.js';
@@ -89,8 +90,8 @@ function awaitReleasesLanded(expectedRemaining) {
 
 function trySend(resource) {
     return (
-        canUnassign(resource.cityID, resource.resourceValue) &&
-        requestUnassign(resource.cityID, resource.resourceValue)
+        canUnassign(resource.cityID, resource.resourceValue, resource.isOffMap) &&
+        requestUnassign(resource.cityID, resource.resourceValue, resource.isOffMap)
     );
 }
 
@@ -141,13 +142,13 @@ function awaitSettlementDropTo(cityID, expected) {
     });
 }
 
-function awaitReleased(cityID, resourceValue) {
+function awaitReleased(resource) {
     return new Promise((resolve) => {
         const started = Date.now();
         const gone = () => {
             try {
-                return !(Cities.get(cityID)?.Resources?.getAssignedResources() ?? []).some(
-                    (resource) => resource.value === resourceValue,
+                return !(Cities.get(resource.cityID)?.Resources?.getAssignedResources() ?? []).some(
+                    (held) => sameCopy(held, resource),
                 );
             } catch (error) {
                 return true;
@@ -178,7 +179,7 @@ function awaitReleased(cityID, resourceValue) {
  */
 async function releaseOne(resource, queue) {
     if (trySend(resource)) {
-        await awaitReleased(resource.cityID, resource.resourceValue);
+        await awaitReleased(resource);
         return 1;
     }
 
@@ -190,10 +191,10 @@ async function releaseOne(resource, queue) {
         }
         released++;
         log(`freed ${companion.resourceType} to make room for ${resource.resourceType}`);
-        await awaitReleased(companion.cityID, companion.resourceValue);
+        await awaitReleased(companion);
 
         if (trySend(resource)) {
-            await awaitReleased(resource.cityID, resource.resourceValue);
+            await awaitReleased(resource);
             return released + 1;
         }
     }
@@ -246,7 +247,7 @@ async function release(settlement, doomed) {
  * settlement silently did nothing.
  */
 export async function freeRoomForMove(sourceSettlement, slottedResource, targetCityID) {
-    if (canAssign(targetCityID, slottedResource.resourceValue)) {
+    if (canAssign(targetCityID, slottedResource.resourceValue, slottedResource.isOffMap)) {
         return true;
     }
 
@@ -259,7 +260,7 @@ export async function freeRoomForMove(sourceSettlement, slottedResource, targetC
         log(`freed ${companion.resourceType} to let ${slottedResource.resourceType} move out`);
         await waitForEngineEvent(UNASSIGNED_EVENT);
 
-        if (canAssign(targetCityID, slottedResource.resourceValue)) {
+        if (canAssign(targetCityID, slottedResource.resourceValue, slottedResource.isOffMap)) {
             return true;
         }
     }
@@ -280,7 +281,12 @@ export function unassignOne(settlement, slottedResource) {
  * screen - this is the same conversion, kept local to stay under the layer rule.
  */
 function toReleaseShape(cityID, resource) {
-    return { resourceValue: resource.value, resourceType: heldResourceType(resource), cityID };
+    return {
+        resourceValue: resource.value,
+        isOffMap: resource.isOffMap === true,
+        resourceType: heldResourceType(resource),
+        cityID,
+    };
 }
 
 /**
@@ -308,7 +314,7 @@ export async function unassignSettlement(cityID) {
     if (assigned.length === 0) {
         return 0;
     }
-    const doomed = assigned.filter((resource) => !isResourceLocked(cityID, resource.value));
+    const doomed = assigned.filter((resource) => !isResourceLocked(cityID, resource.value, resource.isOffMap));
     if (doomed.length === 0) {
         log('every resource in this settlement is locked; nothing returned');
         return 0;
@@ -351,7 +357,7 @@ export async function unassignEverySettlement() {
          * settlement and no list - it empties the lot and cannot be asked to spare anything - so a
          * settlement holding a locked resource is emptied one at a time instead.
          */
-        const doomed = assigned.filter((resource) => !isResourceLocked(city.id, resource.value));
+        const doomed = assigned.filter((resource) => !isResourceLocked(city.id, resource.value, resource.isOffMap));
         locked += assigned.length - doomed.length;
 
         if (doomed.length === 0) {

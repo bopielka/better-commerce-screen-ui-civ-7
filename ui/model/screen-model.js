@@ -2,7 +2,8 @@
  * The bridge between window-level input events and the Commerce screen's Solid model: what is
  * under the cursor, and what the model says about it.
  */
-import { log } from '../support/diagnostics.js';
+import { copyKey, sameCopy } from '../engine/resource-identity.js';
+import { log, warn } from '../support/diagnostics.js';
 import { registerMemoryGauges } from '../support/memory-probe.js';
 import { onGameDataStale } from '../support/game-data.js';
 
@@ -87,6 +88,36 @@ export function getCommerceModel() {
     return currentModel;
 }
 
+/** Far enough past any selection that the game's double-click window cannot be open. */
+const QUIET_DESELECT_SKEW_MS = 60 * 1000;
+
+/**
+ * Clears the screen's selection WITHOUT the game's double-click action.
+ *
+ * ⚠️ Game 1.5.1: `deselectSelectedResource` within 500 ms of a selection also UNSLOTS the
+ * selected resource (or auto-assigns a pooled one). Every call this mod makes precedes its own
+ * assign/unassign, so the game's would be a second, conflicting one. The window is a private
+ * `selectTime`; the only handle on it is `Date.now`, read once at the top of that function, so
+ * that ONE read is answered from the future and the clock is restored straight after.
+ */
+export function deselectQuietly(model) {
+    if (!model?.deselectSelectedResource) {
+        return;
+    }
+    const realNow = Date.now;
+    try {
+        Date.now = () => {
+            Date.now = realNow;
+            return realNow() + QUIET_DESELECT_SKEW_MS;
+        };
+        model.deselectSelectedResource();
+    } catch (error) {
+        warn(`clearing the selection failed: ${error}`);
+    } finally {
+        Date.now = realNow;
+    }
+}
+
 function settlementSections(model) {
     return model?.data?.resourceTabData?.slottedResourceSectionData ?? [];
 }
@@ -100,12 +131,10 @@ export function allSettlements(model) {
     return settlements;
 }
 
-/** Where a resource currently sits, or null if it is not assigned anywhere. */
-export function findSlottedResource(model, resourceValue) {
+/** Where a resource (any record with `resourceValue` + `isOffMap`) sits, or null if nowhere. */
+export function findSlottedResource(model, wanted) {
     for (const settlement of allSettlements(model)) {
-        const resource = (settlement.slottedResources ?? []).find(
-            (item) => item.resourceValue === resourceValue,
-        );
+        const resource = (settlement.slottedResources ?? []).find((item) => sameCopy(item, wanted));
         if (resource) {
             return { settlement, resource };
         }
@@ -322,7 +351,7 @@ function cityKeyOf(cityID) {
  * ⚠️ An entry with nowhere to go is LEFT WHERE IT IS. Showing a resource in the wrong place is a
  * display fault the player can undo; making it vanish is not.
  *
- * @param assignedTo resourceValue -> cityID, read from the engine.
+ * @param assignedTo `copyKey` -> cityID, read from the engine.
  * @returns `{ moved, returned, dropped }` - tiles put onto a card, put back into the pool, and
  *          duplicates discarded.
  */
@@ -345,7 +374,7 @@ export function reconcileScreenWithEngine(assignedTo) {
         }
     }
 
-    /** resourceValue -> `{ entry, list }`, taken out of wherever the screen had it wrong. */
+    /** `copyKey` -> `{ entry, list }`, taken out of wherever the screen had it wrong. */
     const orphans = new Map();
 
     // ⚠️ Backwards through every list: splicing shifts everything after the index.
@@ -356,38 +385,38 @@ export function reconcileScreenWithEngine(assignedTo) {
         }
         for (let index = slotted.length - 1; index >= 0; index--) {
             const entry = slotted[index];
-            const belongsTo = assignedTo.get(entry.resourceValue);
+            const belongsTo = assignedTo.get(copyKey(entry));
             if (belongsTo && cityKeyOf(belongsTo) === cityKeyOf(settlement.cityID)) {
                 continue;
             }
             slotted.splice(index, 1);
-            orphans.set(entry.resourceValue, { entry, list: slotted });
+            orphans.set(copyKey(entry), { entry, list: slotted });
         }
     }
     for (const subsection of poolSubsections) {
         const slots = subsection.resourceSlotData;
         for (let index = slots.length - 1; index >= 0; index--) {
             const entry = slots[index];
-            if (!assignedTo.has(entry.resourceValue)) {
+            if (!assignedTo.has(copyKey(entry))) {
                 continue;
             }
             slots.splice(index, 1);
-            orphans.set(entry.resourceValue, { entry, list: slots });
+            orphans.set(copyKey(entry), { entry, list: slots });
         }
     }
 
     let moved = 0;
-    for (const [resourceValue, cityID] of assignedTo) {
+    for (const [key, cityID] of assignedTo) {
         const settlement = cards.get(cityKeyOf(cityID));
         const slotted = settlement?.slottedResources;
-        if (!slotted || slotted.some((entry) => entry.resourceValue === resourceValue)) {
+        if (!slotted || slotted.some((entry) => copyKey(entry) === key)) {
             continue;
         }
-        const orphan = orphans.get(resourceValue);
+        const orphan = orphans.get(key);
         if (!orphan) {
             continue;
         }
-        orphans.delete(resourceValue);
+        orphans.delete(key);
         orphan.entry.cityID = settlement.cityID;
         slotted.push(orphan.entry);
         moved++;
@@ -395,13 +424,13 @@ export function reconcileScreenWithEngine(assignedTo) {
 
     let returned = 0;
     let dropped = 0;
-    for (const [resourceValue, { entry, list }] of orphans) {
+    for (const [key, { entry, list }] of orphans) {
         /*
          * ⚠️ The engine HAS this one placed and the card already showed it, so this copy is a
          * duplicate the pool failed to splice out - the one case where discarding an entry is
          * right. Everything below is a resource the engine holds nowhere.
          */
-        if (assignedTo.has(resourceValue)) {
+        if (assignedTo.has(key)) {
             dropped++;
             continue;
         }

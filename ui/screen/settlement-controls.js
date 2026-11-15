@@ -5,7 +5,7 @@
  * ⚠️ Re-injected from the shared screen watcher rather than placed once: the cards are Solid's
  * and every redraw discards whatever this mod added.
  */
-import { getCommerceModel } from '../model/screen-model.js';
+import { deselectQuietly, getCommerceModel } from '../model/screen-model.js';
 import { PRIORITY_OPTIONS, getPriority, priorityLabel, setPriority } from '../planner/priorities.js';
 import { quickAssignSettlement } from '../planner/run.js';
 import { unassignSettlement } from '../engine/unassign.js';
@@ -541,7 +541,7 @@ function createControl(settlement) {
         closeMenus();
     // ⚠️ This mod's own clear, not the model's `clearAllResources`: that one does not know about
     // resource locks and sweeps a padlocked resource away.
-        getCommerceModel()?.deselectSelectedResource?.();
+        deselectQuietly(getCommerceModel());
         unassignSettlement(settlement.cityID).catch((error) =>
             warn(`returning a settlement's resources failed: ${error}`),
         );

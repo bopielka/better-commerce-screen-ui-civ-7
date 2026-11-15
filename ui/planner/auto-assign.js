@@ -25,6 +25,7 @@ import { forgetPriorityMemory } from './priorities.js';
 import { getCommerceModel } from '../model/screen-model.js';
 import { onEngineEvent, onLocalPlayerEvent, stopEngineEvents } from '../engine/events.js';
 import { heldResourceType } from '../engine/resource-types.js';
+import { copyKey } from '../engine/resource-identity.js';
 
 import CommerceOptions, {
     AutoAssignMode,
@@ -128,15 +129,16 @@ let lastTriggerAt = 0;
  * produced a pass that placed nothing - and an arrival is only forgotten after something lands,
  * so it was retried forever.
  */
+// ⚠️ `copyKey`s, not values: the set becomes place.js's `scope`, which keys the same way.
 function currentResourceValues() {
     const player = Players.get(GameContext.localPlayerID);
     const values = new Set();
     for (const resource of player?.Resources?.getResources() ?? []) {
         const resourceType = heldResourceType(resource);
-        if (!isAssignableToSettlement({ resourceType, resourceValue: resource.value })) {
+        if (!isAssignableToSettlement({ resourceType, resourceValue: resource.value, isOffMap: resource.isOffMap })) {
             continue;
         }
-        values.add(resource.value);
+        values.add(copyKey(resource));
     }
     return values;
 }

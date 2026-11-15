@@ -12,6 +12,7 @@
  */
 import { assignRefusalReasons, canAssign, requestAssign } from '../engine/operations.js';
 import { heldResourceType } from '../engine/resource-types.js';
+import { copyKey, sameCopy } from '../engine/resource-identity.js';
 import {
     buildAvailableResources,
     buildHeadlessModel,
@@ -54,13 +55,13 @@ const CONFIRM_FAST_WINDOW_MS = 50;
 const CONFIRM_POLL_CEILING_MS = 32;
 const CONFIRM_TIMEOUT_MS = 2000;
 
-function awaitAssignment(cityID, resourceValue) {
+function awaitAssignment(cityID, resource) {
     return new Promise((resolve) => {
         const started = Date.now();
         const landed = () => {
             try {
                 return (Cities.get(cityID)?.Resources?.getAssignedResources() ?? []).some(
-                    (resource) => resource.value === resourceValue,
+                    (held) => sameCopy(held, resource),
                 );
             } catch (error) {
                 return false;
@@ -164,12 +165,12 @@ function anythingCouldFit(scope, targetCityID) {
         }
         const camels = [];
         for (const held of player?.Resources?.getResources() ?? []) {
-            if (scope !== null && !scope.has(held.value)) {
+            if (scope !== null && !scope.has(copyKey(held))) {
                 continue;
             }
             const type = heldResourceType(held);
             if (type === null || type === CAMEL_RESOURCE_TYPE) {
-                camels.push(held.value);
+                camels.push(copyKey(held));
             }
         }
         if (camels.length === 0) {
@@ -179,10 +180,10 @@ function anythingCouldFit(scope, targetCityID) {
         const slotted = new Set();
         for (const city of cities) {
             for (const resource of city.Resources.getAssignedResources() ?? []) {
-                slotted.add(resource.value);
+                slotted.add(copyKey(resource));
             }
         }
-        return camels.some((value) => !slotted.has(value));
+        return camels.some((key) => !slotted.has(key));
     } catch (error) {
         warn(`could not tell whether anything fits, reading the whole board: ${error}`);
         return true;
@@ -225,12 +226,15 @@ export async function placeResources({ scope = null, targetCityID = null, label 
     const refused = new Set();
     const refusalsByResource = new Map();
 
-    const setAsideRefusal = (resourceValue, cityID) => {
-        blockedPairs.add(assignmentPairKey(resourceValue, cityID));
-        const count = (refusalsByResource.get(resourceValue) ?? 0) + 1;
-        refusalsByResource.set(resourceValue, count);
+    // ⚠️ Every set here keys on `copyKey`, as does `scope`: a bare value is ambiguous once an
+    // off-map resource is in the pool (engine/resource-identity.js).
+    const setAsideRefusal = (resource, cityID) => {
+        const key = copyKey(resource);
+        blockedPairs.add(assignmentPairKey(key, cityID));
+        const count = (refusalsByResource.get(key) ?? 0) + 1;
+        refusalsByResource.set(key, count);
         if (count >= MAX_PAIR_REFUSALS) {
-            refused.add(resourceValue);
+            refused.add(key);
         }
     };
 
@@ -257,7 +261,7 @@ export async function placeResources({ scope = null, targetCityID = null, label 
     let lastFullReadAt = 0;
 
     const inScope = (resource) =>
-        (scope === null || scope.has(resource.resourceValue)) && !refused.has(resource.resourceValue);
+        (scope === null || scope.has(copyKey(resource))) && !refused.has(copyKey(resource));
 
     while (placed < MAX_PLACEMENTS) {
         let mark = Date.now();
@@ -290,18 +294,18 @@ export async function placeResources({ scope = null, targetCityID = null, label 
             // Nothing left that fits anywhere; the rest stays unassigned.
             break;
         }
-        if (!canAssign(plan.settlement.cityID, plan.resource.resourceValue)) {
-            setAsideRefusal(plan.resource.resourceValue, plan.settlement.cityID);
+        if (!canAssign(plan.settlement.cityID, plan.resource.resourceValue, plan.resource.isOffMap)) {
+            setAsideRefusal(plan.resource, plan.settlement.cityID);
             // ⚠️ The cache answered yes and the engine says no, so nothing this settlement was
             // asked about that pass can be trusted either - drop the lot, not just the one pair.
             forgetEligibility(plan.settlement.cityID);
             available = available.filter(inScope);
             continue;
         }
-        if (!requestAssign(plan.settlement.cityID, plan.resource.resourceValue)) {
+        if (!requestAssign(plan.settlement.cityID, plan.resource.resourceValue, plan.resource.isOffMap)) {
             // ⚠️ NOT `break`. One operation the engine would not take used to end the whole run,
             // leaving every resource after it in the pool.
-            setAsideRefusal(plan.resource.resourceValue, plan.settlement.cityID);
+            setAsideRefusal(plan.resource, plan.settlement.cityID);
             available = available.filter(inScope);
             continue;
         }
@@ -324,11 +328,11 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         }
 
         mark = Date.now();
-        const landed = await awaitAssignment(plan.settlement.cityID, plan.resource.resourceValue);
+        const landed = await awaitAssignment(plan.settlement.cityID, plan.resource);
         if (!landed) {
             // Accepted but never arrived: stop asking for this one rather than choosing it
             // again on every pass for the rest of the run.
-            refused.add(plan.resource.resourceValue);
+            refused.add(copyKey(plan.resource));
             placed--;
             warn(`the engine took ${plan.resource.resourceType} but it never arrived; skipping it`);
         }
@@ -339,7 +343,7 @@ export async function placeResources({ scope = null, targetCityID = null, label 
         mark = Date.now();
         settlements = rebuildSettlement(settlements, plan.settlement.cityID);
         available = landed
-            ? available.filter((resource) => resource.resourceValue !== plan.resource.resourceValue)
+            ? available.filter((resource) => !sameCopy(resource, plan.resource))
             : available.filter(inScope);
         boardMs += Date.now() - mark;
     }
@@ -392,7 +396,7 @@ export async function verifyScreenMatchesEngine() {
         const assignedTo = new Map();
         for (const settlement of buildSettlements()) {
             for (const resource of settlement.slottedResources) {
-                assignedTo.set(resource.resourceValue, settlement.cityID);
+                assignedTo.set(copyKey(resource), settlement.cityID);
             }
         }
 
@@ -437,7 +441,7 @@ function explainWhyNothingFits(scope, refused) {
     try {
         const settlements = buildSettlements();
         const available = buildAvailableResources(settlements).filter(
-            (resource) => scope === null || scope.has(resource.resourceValue),
+            (resource) => scope === null || scope.has(copyKey(resource)),
         );
         if (available.length === 0) {
             log('nothing to place: the pool is empty');
@@ -488,7 +492,7 @@ function explainWhyNothingFits(scope, refused) {
         // over a hundred resources.
         const sample = available.slice(0, EXPLAIN_SAMPLE);
         for (const resource of sample) {
-            const reasons = assignRefusalReasons(target.cityID, resource.resourceValue);
+            const reasons = assignRefusalReasons(target.cityID, resource.resourceValue, resource.isOffMap);
             log(`  ${resource.resourceType} -> ${where}: ${reasons.join(' | ') || 'no reason given'}`);
         }
         if (available.length > sample.length) {

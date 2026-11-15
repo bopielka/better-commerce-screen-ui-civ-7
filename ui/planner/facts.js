@@ -7,7 +7,8 @@
  */
 import { effectTypeOf, modifierApplies, modifierIsConditional, resourceModifiers } from './effects.js';
 import { onEngineEvent } from '../engine/events.js';
-import { isAssignableResourceType, resourceClassFromType } from '../engine/resource-types.js';
+import { isAssignableResourceType, resourceClassFromType, resourceTypeFromHash } from '../engine/resource-types.js';
+import { copyKey, originCityOf, resourceHashOf } from '../engine/resource-identity.js';
 import { onGameDataStale } from '../support/game-data.js';
 import { registerMemoryGauges } from '../support/memory-probe.js';
 
@@ -22,19 +23,13 @@ export function resourceType(resource) {
     if (resource.resourceType) {
         return resource.resourceType;
     }
-    const cacheKey = String(resource.resourceValue);
+    const cacheKey = String(copyKey(resource));
     if (resourceTypeCache.has(cacheKey)) {
         return resourceTypeCache.get(cacheKey);
     }
-    try {
-        const instance = Game.Resources.getResourceOnPlot(resource.resourceValue);
-        const type = GameInfo.Resources.lookup(instance.resource)?.ResourceType ?? null;
-        resourceTypeCache.set(cacheKey, type);
-        return type;
-    } catch (error) {
-        resourceTypeCache.set(cacheKey, null);
-        return null;
-    }
+    const type = resourceTypeFromHash(resourceHashOf(resource.resourceValue, resource.isOffMap === true));
+    resourceTypeCache.set(cacheKey, type);
+    return type;
 }
 
 /**
@@ -184,11 +179,13 @@ for (const name of ['CityTransfered', 'ConqueredSettlementIntegrated']) {
 }
 
 export function isImportedResource(resource) {
-    const key = String(resource.resourceValue);
+    const key = String(copyKey(resource));
     let imported = importOriginCache.get(key);
     if (imported === undefined) {
         try {
-            const originCity = Cities.get(Game.Resources.getOriginCity(resource.resourceValue));
+            // ⚠️ An off-map copy with no settlement of origin is not an import: nobody sent it.
+            const originID = originCityOf(resource.resourceValue, resource.isOffMap === true);
+            const originCity = originID ? Cities.get(originID) : null;
             imported = !!originCity && originCity.owner !== GameContext.localPlayerID;
         } catch (error) {
             // Cannot tell: treat it as ours. Over-reporting imports would promote a

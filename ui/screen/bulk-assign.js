@@ -6,20 +6,21 @@
  * ⚠️ It works in every direction - pool to settlement, settlement to settlement, settlement to
  * pool. An earlier version only did the first, which read as the shortcut being broken.
  */
-import { findSlottedResource, pooledResources } from '../model/screen-model.js';
+import { deselectQuietly, findSlottedResource, pooledResources } from '../model/screen-model.js';
 import { freeRoomForMove } from '../engine/unassign.js';
 import { verifyScreenMatchesEngine } from '../planner/place.js';
 import { grantsBonusSlots } from '../engine/resource-slots.js';
 import { canAssign, canUnassign, requestAssign, requestUnassign } from '../engine/operations.js';
 import { waitForEngineEvent } from '../engine/wait.js';
+import { sameCopy } from '../engine/resource-identity.js';
 import { isShiftHeld } from '../engine/shift.js';
 import { log, warn } from '../support/diagnostics.js';
 
 const ASSIGNED_EVENT = 'ResourceAssigned';
 const UNASSIGNED_EVENT = 'ResourceUnassigned';
 
-function resourceTypeOf(model, resourceValue) {
-    return pooledResources(model).find((resource) => resource.resourceValue === resourceValue)?.resourceType;
+function resourceTypeOf(model, wanted) {
+    return pooledResources(model).find((resource) => sameCopy(resource, wanted))?.resourceType;
 }
 
 /** The other resources Shift should carry along, and where they are coming from. */
@@ -35,7 +36,7 @@ function planBulk(model, selected, targetCityID) {
         if (String(selected.cityID.id) === String(targetCityID?.id)) {
             return null;
         }
-        const source = findSlottedResource(model, value);
+        const source = findSlottedResource(model, selected);
         const resourceType = source?.resource?.resourceType;
         if (!resourceType) {
             return null;
@@ -43,20 +44,20 @@ function planBulk(model, selected, targetCityID) {
         return {
             resourceType,
             candidates: (source.settlement.slottedResources ?? []).filter(
-                (resource) => resource.resourceType === resourceType && resource.resourceValue !== value,
+                (resource) => resource.resourceType === resourceType && !sameCopy(resource, selected),
             ),
         };
     }
 
     // Unassigned: the pool, as before.
-    const resourceType = resourceTypeOf(model, value);
+    const resourceType = resourceTypeOf(model, selected);
     if (!resourceType) {
         return null;
     }
     return {
         resourceType,
         candidates: pooledResources(model).filter(
-            (resource) => resource.resourceType === resourceType && resource.resourceValue !== value,
+            (resource) => resource.resourceType === resourceType && !sameCopy(resource, selected),
         ),
     };
 }
@@ -72,11 +73,11 @@ async function fillWithMore(model, cityID, resourceType, candidates) {
 
     let assigned = 0;
     for (const candidate of candidates) {
-        if (!canAssign(cityID, candidate.resourceValue)) {
+        if (!canAssign(cityID, candidate.resourceValue, candidate.isOffMap)) {
             // Out of room - or this particular resource is not allowed here.
             break;
         }
-        if (!requestAssign(cityID, candidate.resourceValue)) {
+        if (!requestAssign(cityID, candidate.resourceValue, candidate.isOffMap)) {
             break;
         }
         assigned++;
@@ -98,7 +99,7 @@ function needsRoomFreed(model, selected, targetCityID, targetResourceValue) {
     if (selected.cityID.id === targetCityID.id) {
         return null;
     }
-    const found = findSlottedResource(model, selected.resourceValue);
+    const found = findSlottedResource(model, selected);
     if (!found || !grantsBonusSlots(found.resource.resourceType)) {
         return null;
     }
@@ -110,14 +111,15 @@ async function moveAfterFreeingRoom(model, source, resource, targetCityID, origi
     if (!(await freeRoomForMove(source.settlement, source.resource, targetCityID))) {
         return;
     }
-    const stillThere = findSlottedResource(model, resource.resourceValue);
+    const stillThere = findSlottedResource(model, resource);
     if (!stillThere) {
         return;
     }
-    model.deselectSelectedResource();
+    deselectQuietly(model);
     model.clickSlottedResource({
         resourceValue: stillThere.resource.resourceValue,
         cityID: stillThere.settlement.cityID,
+        isOffMap: stillThere.resource.isOffMap,
     });
     originalSlot.call(model, targetCityID);
 }
@@ -129,10 +131,10 @@ async function releaseMore(cityID, resourceType, candidates) {
 
     let released = 0;
     for (const candidate of candidates) {
-        if (!canUnassign(cityID, candidate.resourceValue)) {
+        if (!canUnassign(cityID, candidate.resourceValue, candidate.isOffMap)) {
             continue;
         }
-        if (!requestUnassign(cityID, candidate.resourceValue)) {
+        if (!requestUnassign(cityID, candidate.resourceValue, candidate.isOffMap)) {
             break;
         }
         released++;
@@ -200,14 +202,14 @@ export function startBulkAssign(model) {
     model.unslotSelectedResource = () => {
         const selected = model.selectedResource?.();
         const source = isShiftHeld() && selected?.cityID
-            ? findSlottedResource(model, selected.resourceValue)
+            ? findSlottedResource(model, selected)
             : null;
         const resourceType = source?.resource?.resourceType;
         const companions = resourceType
             ? (source.settlement.slottedResources ?? []).filter(
                 (resource) =>
                     resource.resourceType === resourceType
-                    && resource.resourceValue !== selected.resourceValue,
+                    && !sameCopy(resource, selected),
             )
             : [];
 

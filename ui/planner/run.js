@@ -6,6 +6,7 @@
  */
 import { unassignEverySettlement } from '../engine/unassign.js';
 import { buildSettlements } from '../model/headless-model.js';
+import { deselectQuietly } from '../model/screen-model.js';
 import { settlementHappiness } from './scoring.js';
 import { placeResources } from './place.js';
 import { DIAGNOSTICS, log, warn } from '../support/diagnostics.js';
@@ -45,7 +46,7 @@ async function runExclusively(model, work, label = 'assignment') {
     assignmentInProgress = true;
     const startedAt = Date.now();
     try {
-        model?.deselectSelectedResource?.();
+        deselectQuietly(model);
         return await work();
     } catch (error) {
         warn(`assignment run failed: ${error}`);
@@ -101,7 +102,7 @@ function logHappinessState() {
  * Fills everything that is free, best first.
  *
  * @param model  the Commerce screen's model, or null when the screen is shut.
- * @param scope  the resource values that may be placed, or null for the whole pool.
+ * @param scope  the `copyKey`s (engine/resource-identity.js) that may be placed, or null for the whole pool.
  * @param label  what to call this in the log.
  * @returns how many resources were placed, or false if the run never started.
  */
